@@ -1,11 +1,12 @@
+import { useEffect, useRef } from 'react';
 import { useStore } from '../../state/StoreContext';
-import { effBlocks } from '../../state/store';
-import { blockLoad } from '../../state/selectors';
+import { effBlocks, setsFor } from '../../state/store';
+import { blockLoad, filledSetCount, isBlockComplete, isSetFilled } from '../../state/selectors';
 import { defaultDay } from '../../domain/program';
 import { LIFTS } from '../../domain/lifts';
-import { repLabel, feelLabel, isPerLeg } from '../../domain/format';
-import { SwapIcon, TrashIcon, PlusIcon } from '../common/icons';
-import type { Block, BlockClass } from '../../domain/types';
+import { repLabel, feelLabel, rpeNum, isPerLeg } from '../../domain/format';
+import { SwapIcon, TrashIcon, PlusIcon, CheckIcon } from '../common/icons';
+import type { Block, BlockClass, LoggedSet } from '../../domain/types';
 
 /** Intensity → dot color. */
 const DOT: Record<BlockClass, string> = {
@@ -21,79 +22,94 @@ const CHIP: Record<BlockClass, string> = {
   'r-iso': 'bg-yellow/15 text-yellow',
 };
 
-function Load({ block }: { block: Block }) {
-  const { state, dispatch } = useStore();
-  const lift = LIFTS[block.lift];
-  const perLeg = isPerLeg(block, lift.uni);
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-  if (lift.type === 'computed') {
-    const load = blockLoad(state, block);
-    if (load === null) {
-      return (
-        <div className="text-right">
-          <div className="rounded-lg bg-surface-2 px-2.5 py-1 font-mono text-[11px] text-muted-2">
-            enter ref →
-          </div>
-        </div>
-      );
-    }
-    return (
-      <div className="text-right leading-none">
-        <div className="font-mono text-[30px] font-bold tracking-[-0.02em] tabular-nums text-ink">
-          {load}
-          <span className="ml-1 align-baseline text-[13px] font-medium text-muted">kg</span>
-        </div>
-        <div className="mt-1.5 text-[11px] text-muted-2">
-          {lift.unit}
-          {perLeg ? ' · each' : ''}
-        </div>
-      </div>
-    );
-  }
+/** Suggested values for the next set: carry over the last one, else the prescription. */
+function prefillSet(
+  block: Block,
+  sets: LoggedSet[],
+  targetLoad: number | null
+): LoggedSet {
+  const last = sets[sets.length - 1];
+  if (last) return { ...last };
+  const reps = Array.isArray(block.reps) ? block.reps[1] : block.reps;
+  return {
+    w: targetLoad !== null ? String(targetLoad) : '',
+    reps: String(reps),
+    rpe: String(rpeNum(block.rpe)),
+  };
+}
 
-  // manual lift — feel-based weight the user keeps
-  const value = state.manual[block.lift] ?? '';
+function SetInput({
+  value,
+  onChange,
+  label,
+  mode,
+  step,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+  mode: 'decimal' | 'numeric';
+  step?: string;
+}) {
   return (
-    <div className="text-right">
-      <div className="relative">
-        <input
-          type="number"
-          inputMode="decimal"
-          value={value}
-          placeholder="–"
-          aria-label={`${lift.name} weight`}
-          onChange={(e) => dispatch({ type: 'setManual', id: block.lift, value: e.target.value })}
-          className="h-12 w-[92px] rounded-xl border border-line-2 bg-surface-2 pl-2 pr-7 text-right font-mono text-[20px] font-bold text-ink transition-colors placeholder:text-muted-2 focus:border-yellow focus:outline-none"
-        />
-        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-2">
-          kg
-        </span>
-      </div>
-    </div>
+    <input
+      type="number"
+      inputMode={mode}
+      step={step}
+      value={value}
+      placeholder="–"
+      aria-label={label}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-10 w-full rounded-lg border border-line-2 bg-surface-2 text-center font-mono text-[15px] text-ink transition-colors placeholder:text-muted-2 focus:border-accent focus:outline-none"
+    />
   );
 }
 
-function BlockRow({
+function BlockCard({
   block,
   index,
+  dayKey,
   onSwap,
-  onRemove,
 }: {
   block: Block;
   index: number;
+  dayKey: string;
   onSwap: (index: number) => void;
-  onRemove: (index: number) => void;
 }) {
+  const { state, dispatch } = useStore();
   const lift = LIFTS[block.lift];
   const perLeg = isPerLeg(block, lift.uni);
+  const sets = setsFor(state, dayKey, index);
+  const target = lift.type === 'computed' ? blockLoad(state, block) : null;
+  const done = filledSetCount(sets);
+  const complete = isBlockComplete(block, sets);
   const scheme = `${block.sets} × ${repLabel(block.reps)}${perLeg ? '/leg' : ''}`;
 
   return (
-    <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">
+    <div
+      id={`blk-${dayKey}-${index}`}
+      className={[
+        'scroll-mt-4 rounded-2xl border p-4 shadow-card transition-colors',
+        complete ? 'border-green/60 bg-green/[0.06]' : 'border-line bg-surface',
+      ].join(' ')}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[block.cls]}`} aria-hidden />
+            {complete ? (
+              <span
+                className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green text-bg"
+                aria-label="Completed"
+              >
+                <CheckIcon className="h-3 w-3" />
+              </span>
+            ) : (
+              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[block.cls]}`} aria-hidden />
+            )}
             <span className="truncate font-display text-[16px] font-bold tracking-[-0.01em]">
               {lift.name}
             </span>
@@ -105,25 +121,124 @@ function BlockRow({
             >
               {feelLabel(block)}
             </span>
+            {target !== null && (
+              <span className="font-mono text-[12px] text-muted-2">
+                target {target} kg{perLeg ? '/side' : ''}
+              </span>
+            )}
           </div>
         </div>
-        <Load block={block} />
+        <span
+          className={[
+            'shrink-0 rounded-full px-2.5 py-1 font-mono text-[12px] font-bold tabular-nums',
+            complete ? 'bg-green/15 text-green' : 'bg-surface-2 text-muted',
+          ].join(' ')}
+        >
+          {done}/{block.sets}
+        </span>
       </div>
 
-      <div className="mt-3 flex gap-2 border-t border-line pt-3">
+      {/* logged sets */}
+      {sets.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          <div className="grid grid-cols-[1.5rem_1fr_1fr_1fr_2rem] gap-2 px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-2">
+            <span className="text-center">#</span>
+            <span className="text-center">kg</span>
+            <span className="text-center">reps</span>
+            <span className="text-center">rpe</span>
+            <span />
+          </div>
+          {sets.map((set, si) => (
+            <div
+              key={si}
+              className="grid grid-cols-[1.5rem_1fr_1fr_1fr_2rem] items-center gap-2"
+            >
+              <span
+                className={[
+                  'text-center font-mono text-[12px]',
+                  isSetFilled(set) ? 'text-green' : 'text-muted-2',
+                ].join(' ')}
+              >
+                {si + 1}
+              </span>
+              <SetInput
+                value={set.w}
+                mode="decimal"
+                label={`${lift.name} set ${si + 1} weight`}
+                onChange={(v) =>
+                  dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'w', value: v })
+                }
+              />
+              <SetInput
+                value={set.reps}
+                mode="numeric"
+                label={`${lift.name} set ${si + 1} reps`}
+                onChange={(v) =>
+                  dispatch({
+                    type: 'updateSet',
+                    dayKey,
+                    index,
+                    setIndex: si,
+                    field: 'reps',
+                    value: v,
+                  })
+                }
+              />
+              <SetInput
+                value={set.rpe}
+                mode="decimal"
+                step="0.5"
+                label={`${lift.name} set ${si + 1} RPE`}
+                onChange={(v) =>
+                  dispatch({
+                    type: 'updateSet',
+                    dayKey,
+                    index,
+                    setIndex: si,
+                    field: 'rpe',
+                    value: v,
+                  })
+                }
+              />
+              <button
+                type="button"
+                aria-label={`Remove set ${si + 1}`}
+                onClick={() => dispatch({ type: 'removeSet', dayKey, index, setIndex: si })}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-2 transition-colors hover:bg-red/15 hover:text-red"
+              >
+                <TrashIcon className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center gap-2 border-t border-line pt-3">
         <button
           type="button"
-          onClick={() => onSwap(index)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-3 py-1.5 text-[12px] font-medium text-muted transition-colors hover:bg-surface-3 hover:text-ink"
+          id={`addset-${dayKey}-${index}`}
+          onClick={() =>
+            dispatch({ type: 'addSet', dayKey, index, set: prefillSet(block, sets, target) })
+          }
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-3"
         >
-          <SwapIcon className="h-3.5 w-3.5" /> Swap
+          <PlusIcon className="h-4 w-4" /> Add set
         </button>
         <button
           type="button"
-          onClick={() => onRemove(index)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-3 py-1.5 text-[12px] font-medium text-muted transition-colors hover:bg-red/15 hover:text-red"
+          onClick={() => onSwap(index)}
+          aria-label="Swap exercise"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 text-muted transition-colors hover:bg-surface-3 hover:text-ink"
         >
-          <TrashIcon className="h-3.5 w-3.5" /> Remove
+          <SwapIcon className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'removeBlock', dayKey, index })}
+          aria-label="Remove exercise"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 text-muted transition-colors hover:bg-red/15 hover:text-red"
+        >
+          <TrashIcon className="h-4 w-4" />
         </button>
       </div>
     </div>
@@ -139,9 +254,45 @@ export function DayView({
 }) {
   const { state, dispatch } = useStore();
   const day = defaultDay(state.day);
-  if (!day) return null;
   const blocks = effBlocks(state, state.day);
   const customized = state.customDays[state.day] !== undefined;
+  const hasLogs = (state.logs[state.day] ?? []).some((s) => s.length > 0);
+
+  // Completion of every block, used to auto-advance to the next unfinished one.
+  const completion = blocks.map((b, i) => isBlockComplete(b, setsFor(state, state.day, i)));
+  const completionKey = completion.map((c) => (c ? '1' : '0')).join('');
+  const prev = useRef<{ day: string; comp: boolean[] } | null>(null);
+
+  useEffect(() => {
+    const before = prev.current;
+    prev.current = { day: state.day, comp: completion };
+    if (!before || before.day !== state.day) return; // skip first paint / day switches
+
+    const justDone = completion.findIndex((c, i) => c && !before.comp[i]);
+    if (justDone === -1) return;
+
+    let next = -1;
+    for (let k = justDone + 1; k < completion.length; k++)
+      if (!completion[k]) {
+        next = k;
+        break;
+      }
+    if (next === -1)
+      for (let k = 0; k < justDone; k++)
+        if (!completion[k]) {
+          next = k;
+          break;
+        }
+    if (next === -1) return; // whole day complete
+
+    const card = document.getElementById(`blk-${state.day}-${next}`);
+    const addBtn = document.getElementById(`addset-${state.day}-${next}`);
+    card?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'center' });
+    addBtn?.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [completionKey, state.day]);
+
+  if (!day) return null;
 
   return (
     <div>
@@ -155,25 +306,39 @@ export function DayView({
           </h3>
           <p className="m-0 mt-1 text-[13px] text-muted">{day.note}</p>
         </div>
-        {customized && (
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'restoreDay', dayKey: state.day })}
-            className="shrink-0 rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-muted-2 hover:bg-surface-2 hover:text-ink"
-          >
-            Restore
-          </button>
-        )}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {hasLogs && (
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('Clear all logged sets for this day?'))
+                  dispatch({ type: 'clearDaySets', dayKey: state.day });
+              }}
+              className="rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-muted-2 hover:bg-surface-2 hover:text-ink"
+            >
+              Clear sets
+            </button>
+          )}
+          {customized && (
+            <button
+              type="button"
+              onClick={() => dispatch({ type: 'restoreDay', dayKey: state.day })}
+              className="rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-muted-2 hover:bg-surface-2 hover:text-ink"
+            >
+              Restore
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col gap-3">
         {blocks.map((block, i) => (
-          <BlockRow
+          <BlockCard
             key={`${block.lift}-${i}`}
             block={block}
             index={i}
+            dayKey={state.day}
             onSwap={onSwap}
-            onRemove={(index) => dispatch({ type: 'removeBlock', dayKey: state.day, index })}
           />
         ))}
       </div>

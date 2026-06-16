@@ -75,3 +75,10 @@ export interface RefSet {
 
 /** Rounding increment for computed loads. */
 export type Increment = 1 | 2.5 | 5;
+
+/** A single performed working set, logged against a block. Raw input strings. */
+export interface LoggedSet {
+  w: string;
+  reps: string;
+  rpe: string;
+}

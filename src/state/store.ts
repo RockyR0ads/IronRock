@@ -1,6 +1,6 @@
 import { DAYS, defaultDay } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
-import type { Block, Increment, RefSet } from '../domain/types';
+import type { Block, Increment, LoggedSet, RefSet } from '../domain/types';
 
 export interface State {
   /** Reference sets per computed lift id. */
@@ -9,6 +9,8 @@ export interface State {
   manual: Record<string, string>;
   /** Per-day overrides; absence means "use the default day". */
   customDays: Record<string, Block[]>;
+  /** Logged working sets per day, aligned to the day's block order. */
+  logs: Record<string, LoggedSet[][]>;
   /** Bodyweight (raw input). */
   bw: string;
   /** Rounding increment. */
@@ -20,7 +22,7 @@ export interface State {
 export const STORAGE_KEY = 'ironrock-loadsheet-v1';
 
 export function initialState(): State {
-  return { refs: {}, manual: {}, customDays: {}, bw: '', inc: 2.5, day: 'pushA' };
+  return { refs: {}, manual: {}, customDays: {}, logs: {}, bw: '', inc: 2.5, day: 'pushA' };
 }
 
 export type Action =
@@ -33,6 +35,10 @@ export type Action =
   | { type: 'removeBlock'; dayKey: string; index: number }
   | { type: 'addBlock'; dayKey: string; liftId: string }
   | { type: 'restoreDay'; dayKey: string }
+  | { type: 'addSet'; dayKey: string; index: number; set: LoggedSet }
+  | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: keyof LoggedSet; value: string }
+  | { type: 'removeSet'; dayKey: string; index: number; setIndex: number }
+  | { type: 'clearDaySets'; dayKey: string }
   | { type: 'clearAll' };
 
 /** Deep-clone a day's default blocks so edits never mutate the program template. */
@@ -44,6 +50,18 @@ function cloneDefaultBlocks(dayKey: string): Block[] {
 /** Blocks currently in effect for a day (override if present, else default). */
 export function effBlocks(state: State, dayKey: string): Block[] {
   return state.customDays[dayKey] ?? defaultDay(dayKey)?.blocks ?? [];
+}
+
+/** Logged sets for a single block (empty array if none yet). */
+export function setsFor(state: State, dayKey: string, index: number): LoggedSet[] {
+  return state.logs[dayKey]?.[index] ?? [];
+}
+
+/** A mutable copy of a day's log rows, padded so `index` is addressable. */
+function cloneDayLog(state: State, dayKey: string, minLength = 0): LoggedSet[][] {
+  const rows = (state.logs[dayKey] ?? []).map((sets) => sets.map((s) => ({ ...s })));
+  while (rows.length < minLength) rows.push([]);
+  return rows;
 }
 
 /** A new block with a sensible default scheme for the chosen lift. */
@@ -108,25 +126,66 @@ export function reducer(state: State, action: Action): State {
         lift: action.liftId,
         perLeg: !!LIFTS[action.liftId].uni,
       };
-      return { ...state, customDays: { ...state.customDays, [action.dayKey]: blocks } };
+      // a different exercise now occupies the slot — drop its logged sets
+      const log = cloneDayLog(state, action.dayKey, blocks.length);
+      log[action.index] = [];
+      return {
+        ...state,
+        customDays: { ...state.customDays, [action.dayKey]: blocks },
+        logs: { ...state.logs, [action.dayKey]: log },
+      };
     }
     case 'removeBlock': {
       const blocks = (state.customDays[action.dayKey] ?? cloneDefaultBlocks(action.dayKey)).filter(
         (_, i) => i !== action.index
       );
-      return { ...state, customDays: { ...state.customDays, [action.dayKey]: blocks } };
+      const log = cloneDayLog(state, action.dayKey).filter((_, i) => i !== action.index);
+      return {
+        ...state,
+        customDays: { ...state.customDays, [action.dayKey]: blocks },
+        logs: { ...state.logs, [action.dayKey]: log },
+      };
     }
     case 'addBlock': {
       const blocks = (state.customDays[action.dayKey] ?? cloneDefaultBlocks(action.dayKey)).map(
         (b) => ({ ...b })
       );
       blocks.push(newBlock(action.liftId));
-      return { ...state, customDays: { ...state.customDays, [action.dayKey]: blocks } };
+      const log = cloneDayLog(state, action.dayKey, blocks.length);
+      return {
+        ...state,
+        customDays: { ...state.customDays, [action.dayKey]: blocks },
+        logs: { ...state.logs, [action.dayKey]: log },
+      };
     }
     case 'restoreDay': {
-      const next = { ...state.customDays };
-      delete next[action.dayKey];
-      return { ...state, customDays: next };
+      const customDays = { ...state.customDays };
+      delete customDays[action.dayKey];
+      const logs = { ...state.logs };
+      delete logs[action.dayKey];
+      return { ...state, customDays, logs };
+    }
+    case 'addSet': {
+      const log = cloneDayLog(state, action.dayKey, action.index + 1);
+      log[action.index] = [...log[action.index], { ...action.set }];
+      return { ...state, logs: { ...state.logs, [action.dayKey]: log } };
+    }
+    case 'updateSet': {
+      const log = cloneDayLog(state, action.dayKey, action.index + 1);
+      const sets = log[action.index];
+      if (!sets[action.setIndex]) return state;
+      sets[action.setIndex] = { ...sets[action.setIndex], [action.field]: action.value };
+      return { ...state, logs: { ...state.logs, [action.dayKey]: log } };
+    }
+    case 'removeSet': {
+      const log = cloneDayLog(state, action.dayKey, action.index + 1);
+      log[action.index] = log[action.index].filter((_, i) => i !== action.setIndex);
+      return { ...state, logs: { ...state.logs, [action.dayKey]: log } };
+    }
+    case 'clearDaySets': {
+      const logs = { ...state.logs };
+      delete logs[action.dayKey];
+      return { ...state, logs };
     }
     case 'clearAll':
       return { ...initialState(), inc: state.inc, day: state.day };
@@ -142,7 +201,12 @@ export function loadState(): State {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return base;
     const parsed = JSON.parse(raw) as Partial<State>;
-    return { ...base, ...parsed, customDays: parsed.customDays ?? {} };
+    return {
+      ...base,
+      ...parsed,
+      customDays: parsed.customDays ?? {},
+      logs: parsed.logs ?? {},
+    };
   } catch {
     return base;
   }
