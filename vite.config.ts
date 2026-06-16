@@ -4,7 +4,10 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // Served from a project page (https://<user>.github.io/IronRock/) when built,
+  // but from the root during local dev/preview-tool runs.
+  base: command === 'build' ? '/IronRock/' : '/',
   plugins: [
     react(),
     VitePWA({
@@ -18,7 +21,7 @@ export default defineConfig({
         background_color: '#0E0F12',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        // scope / start_url are derived from `base` by vite-plugin-pwa
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -49,4 +52,4 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     css: false,
   },
-});
+}));
