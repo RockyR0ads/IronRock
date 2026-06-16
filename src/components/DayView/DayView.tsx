@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { useStore } from '../../state/StoreContext';
+import { useRestTimer } from '../../state/RestTimer';
 import { effBlocks, setsFor } from '../../state/store';
-import { blockLoad, filledSetCount, isBlockComplete, isSetFilled } from '../../state/selectors';
+import { blockLoad, doneSetCount, isBlockComplete } from '../../state/selectors';
 import { defaultDay } from '../../domain/program';
 import { LIFTS } from '../../domain/lifts';
 import { repLabel, feelLabel, rpeNum, isPerLeg } from '../../domain/format';
 import { SwapIcon, TrashIcon, PlusIcon, CheckIcon } from '../common/icons';
-import type { Block, BlockClass, LoggedSet } from '../../domain/types';
+import { PlateBar } from '../common/PlateBar';
+import type { Block, BlockClass, LiftHistory, LoggedSet } from '../../domain/types';
 
 /** Intensity → dot color. */
 const DOT: Record<BlockClass, string> = {
@@ -26,19 +28,22 @@ const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-/** Suggested values for the next set: carry over the last one, else the prescription. */
+/** Suggested values for the next set: carry over last set, else last session, else prescription. */
 function prefillSet(
   block: Block,
   sets: LoggedSet[],
-  targetLoad: number | null
+  targetLoad: number | null,
+  history?: LiftHistory
 ): LoggedSet {
   const last = sets[sets.length - 1];
-  if (last) return { ...last };
+  if (last) return { w: last.w, reps: last.reps, rpe: last.rpe, done: false };
+  if (history) return { ...history, done: false };
   const reps = Array.isArray(block.reps) ? block.reps[1] : block.reps;
   return {
     w: targetLoad !== null ? String(targetLoad) : '',
     reps: String(reps),
     rpe: String(rpeNum(block.rpe)),
+    done: false,
   };
 }
 
@@ -48,12 +53,14 @@ function SetInput({
   label,
   mode,
   step,
+  done,
 }: {
   value: string;
   onChange: (v: string) => void;
   label: string;
   mode: 'decimal' | 'numeric';
   step?: string;
+  done: boolean;
 }) {
   return (
     <input
@@ -64,7 +71,10 @@ function SetInput({
       placeholder="–"
       aria-label={label}
       onChange={(e) => onChange(e.target.value)}
-      className="h-10 w-full rounded-lg border border-line-2 bg-surface-2 text-center font-mono text-[15px] text-ink transition-colors placeholder:text-muted-2 focus:border-accent focus:outline-none"
+      className={[
+        'h-10 w-full rounded-lg border bg-surface-2 text-center font-mono text-[15px] text-ink transition-colors placeholder:text-muted-2 focus:outline-none',
+        done ? 'border-green/40 focus:border-green' : 'border-line-2 focus:border-accent',
+      ].join(' ')}
     />
   );
 }
@@ -81,13 +91,26 @@ function BlockCard({
   onSwap: (index: number) => void;
 }) {
   const { state, dispatch } = useStore();
+  const rest = useRestTimer();
   const lift = LIFTS[block.lift];
   const perLeg = isPerLeg(block, lift.uni);
   const sets = setsFor(state, dayKey, index);
   const target = lift.type === 'computed' ? blockLoad(state, block) : null;
-  const done = filledSetCount(sets);
+  const history = state.history[block.lift];
+  const done = doneSetCount(sets);
   const complete = isBlockComplete(block, sets);
   const scheme = `${block.sets} × ${repLabel(block.reps)}${perLeg ? '/leg' : ''}`;
+
+  // weight shown on the barbell glyph: the latest logged set, else the target
+  const isBarbell = lift.unit === 'kg on bar';
+  const lastWeight = sets.length ? parseFloat(sets[sets.length - 1].w) : NaN;
+  const barWeight = lastWeight > 0 ? lastWeight : (target ?? 0);
+
+  function toggleDone(setIndex: number) {
+    const wasDone = sets[setIndex]?.done;
+    dispatch({ type: 'toggleSetDone', dayKey, index, setIndex });
+    if (!wasDone) rest.start(); // starting a rest when checking a set off
+  }
 
   return (
     <div
@@ -114,7 +137,10 @@ function BlockCard({
               {lift.name}
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+
+          {isBarbell && barWeight > 0 && <PlateBar weight={barWeight} />}
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span className="font-mono text-[13px] text-muted">{scheme}</span>
             <span
               className={`rounded-md px-2 py-0.5 font-mono text-[11px] font-medium ${CHIP[block.cls]}`}
@@ -127,7 +153,14 @@ function BlockCard({
               </span>
             )}
           </div>
+
+          {history && (
+            <div className="mt-1 font-mono text-[11px] text-muted-2">
+              Last {history.w || '–'} kg × {history.reps || '–'} @ RPE {history.rpe || '–'}
+            </div>
+          )}
         </div>
+
         <span
           className={[
             'shrink-0 rounded-full px-2.5 py-1 font-mono text-[12px] font-bold tabular-nums',
@@ -141,29 +174,33 @@ function BlockCard({
       {/* logged sets */}
       {sets.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          <div className="grid grid-cols-[1.5rem_1fr_1fr_1fr_2rem] gap-2 px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-2">
-            <span className="text-center">#</span>
+          <div className="grid grid-cols-[2.2rem_1fr_1fr_1fr_2rem] gap-2 px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-2">
+            <span className="text-center">Set</span>
             <span className="text-center">kg</span>
             <span className="text-center">reps</span>
             <span className="text-center">rpe</span>
             <span />
           </div>
           {sets.map((set, si) => (
-            <div
-              key={si}
-              className="grid grid-cols-[1.5rem_1fr_1fr_1fr_2rem] items-center gap-2"
-            >
-              <span
+            <div key={si} className="grid grid-cols-[2.2rem_1fr_1fr_1fr_2rem] items-center gap-2">
+              <button
+                type="button"
+                onClick={() => toggleDone(si)}
+                aria-label={set.done ? `Set ${si + 1} done, tap to undo` : `Mark set ${si + 1} done`}
+                aria-pressed={!!set.done}
                 className={[
-                  'text-center font-mono text-[12px]',
-                  isSetFilled(set) ? 'text-green' : 'text-muted-2',
+                  'flex h-9 w-9 items-center justify-center rounded-lg font-mono text-[13px] font-bold transition-colors',
+                  set.done
+                    ? 'bg-green text-bg'
+                    : 'bg-surface-2 text-muted-2 hover:bg-surface-3 hover:text-ink',
                 ].join(' ')}
               >
-                {si + 1}
-              </span>
+                {set.done ? <CheckIcon className="h-4 w-4" /> : si + 1}
+              </button>
               <SetInput
                 value={set.w}
                 mode="decimal"
+                done={!!set.done}
                 label={`${lift.name} set ${si + 1} weight`}
                 onChange={(v) =>
                   dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'w', value: v })
@@ -172,32 +209,20 @@ function BlockCard({
               <SetInput
                 value={set.reps}
                 mode="numeric"
+                done={!!set.done}
                 label={`${lift.name} set ${si + 1} reps`}
                 onChange={(v) =>
-                  dispatch({
-                    type: 'updateSet',
-                    dayKey,
-                    index,
-                    setIndex: si,
-                    field: 'reps',
-                    value: v,
-                  })
+                  dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'reps', value: v })
                 }
               />
               <SetInput
                 value={set.rpe}
                 mode="decimal"
                 step="0.5"
+                done={!!set.done}
                 label={`${lift.name} set ${si + 1} RPE`}
                 onChange={(v) =>
-                  dispatch({
-                    type: 'updateSet',
-                    dayKey,
-                    index,
-                    setIndex: si,
-                    field: 'rpe',
-                    value: v,
-                  })
+                  dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'rpe', value: v })
                 }
               />
               <button
@@ -218,7 +243,7 @@ function BlockCard({
           type="button"
           id={`addset-${dayKey}-${index}`}
           onClick={() =>
-            dispatch({ type: 'addSet', dayKey, index, set: prefillSet(block, sets, target) })
+            dispatch({ type: 'addSet', dayKey, index, set: prefillSet(block, sets, target, history) })
           }
           className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-3"
         >

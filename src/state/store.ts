@@ -1,6 +1,6 @@
 import { DAYS, defaultDay } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
-import type { Block, Increment, LoggedSet, RefSet } from '../domain/types';
+import type { Block, Increment, LiftHistory, LoggedSet, RefSet } from '../domain/types';
 
 export interface State {
   /** Reference sets per computed lift id. */
@@ -11,6 +11,8 @@ export interface State {
   customDays: Record<string, Block[]>;
   /** Logged working sets per day, aligned to the day's block order. */
   logs: Record<string, LoggedSet[][]>;
+  /** Last completed set per lift id — shown as a "last time" hint. */
+  history: Record<string, LiftHistory>;
   /** Bodyweight (raw input). */
   bw: string;
   /** Rounding increment. */
@@ -22,7 +24,16 @@ export interface State {
 export const STORAGE_KEY = 'ironrock-loadsheet-v1';
 
 export function initialState(): State {
-  return { refs: {}, manual: {}, customDays: {}, logs: {}, bw: '', inc: 2.5, day: 'pushA' };
+  return {
+    refs: {},
+    manual: {},
+    customDays: {},
+    logs: {},
+    history: {},
+    bw: '',
+    inc: 2.5,
+    day: 'pushA',
+  };
 }
 
 export type Action =
@@ -36,7 +47,8 @@ export type Action =
   | { type: 'addBlock'; dayKey: string; liftId: string }
   | { type: 'restoreDay'; dayKey: string }
   | { type: 'addSet'; dayKey: string; index: number; set: LoggedSet }
-  | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: keyof LoggedSet; value: string }
+  | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe'; value: string }
+  | { type: 'toggleSetDone'; dayKey: string; index: number; setIndex: number }
   | { type: 'removeSet'; dayKey: string; index: number; setIndex: number }
   | { type: 'clearDaySets'; dayKey: string }
   | { type: 'clearAll' };
@@ -177,6 +189,21 @@ export function reducer(state: State, action: Action): State {
       sets[action.setIndex] = { ...sets[action.setIndex], [action.field]: action.value };
       return { ...state, logs: { ...state.logs, [action.dayKey]: log } };
     }
+    case 'toggleSetDone': {
+      const log = cloneDayLog(state, action.dayKey, action.index + 1);
+      const set = log[action.index][action.setIndex];
+      if (!set) return state;
+      const nowDone = !set.done;
+      log[action.index][action.setIndex] = { ...set, done: nowDone };
+      let history = state.history;
+      if (nowDone) {
+        const liftId = effBlocks(state, action.dayKey)[action.index]?.lift;
+        if (liftId) {
+          history = { ...history, [liftId]: { w: set.w, reps: set.reps, rpe: set.rpe } };
+        }
+      }
+      return { ...state, logs: { ...state.logs, [action.dayKey]: log }, history };
+    }
     case 'removeSet': {
       const log = cloneDayLog(state, action.dayKey, action.index + 1);
       log[action.index] = log[action.index].filter((_, i) => i !== action.setIndex);
@@ -206,6 +233,7 @@ export function loadState(): State {
       ...parsed,
       customDays: parsed.customDays ?? {},
       logs: parsed.logs ?? {},
+      history: parsed.history ?? {},
     };
   } catch {
     return base;

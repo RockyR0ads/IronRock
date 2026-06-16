@@ -81,4 +81,9 @@ export interface LoggedSet {
   w: string;
   reps: string;
   rpe: string;
+  /** Explicitly checked off as completed. Drives card completion. */
+  done?: boolean;
 }
+
+/** Last recorded set for a lift, used as a "last time" hint. */
+export type LiftHistory = Pick<LoggedSet, 'w' | 'reps' | 'rpe'>;

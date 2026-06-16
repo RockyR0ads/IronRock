@@ -62,11 +62,13 @@ describe('reducer', () => {
   it('clearAll keeps inc and day but wipes entries', () => {
     let s = withRef(initialState());
     s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0 });
     s = reducer(s, { type: 'setInc', value: 5 });
     s = reducer(s, { type: 'setDay', key: 'legsB' });
     s = reducer(s, { type: 'clearAll' });
     expect(s.refs).toEqual({});
     expect(s.logs).toEqual({});
+    expect(s.history).toEqual({});
     expect(s.inc).toBe(5);
     expect(s.day).toBe('legsB');
   });
@@ -99,23 +101,36 @@ describe('set logging', () => {
     expect(setsFor(s, 'pushA', 0)).toHaveLength(0);
   });
 
-  it('marks a block complete once prescribed filled sets are logged', () => {
+  it('marks a block complete once prescribed sets are checked done', () => {
     const block = defaultDay('legsA')!.blocks[0]; // squat 5×3
     let s = initialState();
     for (let i = 0; i < block.sets; i++) {
       s = reducer(s, { type: 'addSet', dayKey: 'legsA', index: 0, set: SET('120', '3', '8') });
-      const done = isBlockComplete(block, setsFor(s, 'legsA', 0));
-      expect(done).toBe(i === block.sets - 1);
+      s = reducer(s, { type: 'toggleSetDone', dayKey: 'legsA', index: 0, setIndex: i });
+      expect(isBlockComplete(block, setsFor(s, 'legsA', 0))).toBe(i === block.sets - 1);
     }
   });
 
-  it('an unfilled set does not count toward completion', () => {
+  it('a logged-but-unchecked set does not count toward completion', () => {
     const block = defaultDay('legsA')!.blocks[1]; // rdl 3×[4,5]
     let s = initialState();
-    s = reducer(s, { type: 'addSet', dayKey: 'legsA', index: 1, set: SET('100', '5', '8') });
-    s = reducer(s, { type: 'addSet', dayKey: 'legsA', index: 1, set: SET('100', '5', '8') });
-    s = reducer(s, { type: 'addSet', dayKey: 'legsA', index: 1, set: SET('', '', '') });
-    expect(isBlockComplete(block, setsFor(s, 'legsA', 1))).toBe(false);
+    for (let i = 0; i < 3; i++)
+      s = reducer(s, { type: 'addSet', dayKey: 'legsA', index: 1, set: SET('100', '5', '8') });
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'legsA', index: 1, setIndex: 0 });
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'legsA', index: 1, setIndex: 1 });
+    expect(isBlockComplete(block, setsFor(s, 'legsA', 1))).toBe(false); // only 2 of 3 checked
+  });
+
+  it('records last-set history per lift when a set is checked done', () => {
+    let s = reducer(initialState(), {
+      type: 'addSet',
+      dayKey: 'pushA',
+      index: 0,
+      set: SET('102.5', '5', '8'),
+    });
+    expect(s.history.bench).toBeUndefined();
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0 });
+    expect(s.history.bench).toEqual({ w: '102.5', reps: '5', rpe: '8' });
   });
 
   it('keeps logs aligned when a block is removed', () => {

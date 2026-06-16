@@ -9,6 +9,7 @@ import { GlobalControls } from './components/GlobalControls';
 import { ReferenceLifts } from './components/ReferenceLifts/ReferenceLifts';
 import { DayView } from './components/DayView/DayView';
 import { DayNav } from './components/DayView/DayNav';
+import { RestTimerBar } from './components/RestTimerBar';
 import { ReferencePanels } from './components/ReferencePanels';
 import {
   ExercisePicker,
@@ -123,7 +124,12 @@ export default function App() {
         Saved locally · refresh-safe · works offline
       </footer>
 
-      <DayNav />
+      <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pt-2 pb-safe sm:static sm:px-0 sm:pb-0">
+        <div className="mx-auto max-w-[760px] space-y-2">
+          <RestTimerBar />
+          <DayNav />
+        </div>
+      </div>
 
       <ExercisePicker
         request={pickerRequest()}

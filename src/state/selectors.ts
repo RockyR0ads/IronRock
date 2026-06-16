@@ -26,17 +26,17 @@ export function blockLoad(state: State, block: Block): number | null {
   return calcTargetLoad(e1rm, midReps(block.reps), rpeNum(block.rpe), state.inc);
 }
 
-/** A logged set counts as done once weight, reps, and RPE are all positive. */
+/** A logged set has all three values entered. */
 export function isSetFilled(set: LoggedSet): boolean {
   return parseFloat(set.w) > 0 && parseFloat(set.reps) > 0 && parseFloat(set.rpe) > 0;
 }
 
-/** Number of fully-filled sets logged. */
-export function filledSetCount(sets: LoggedSet[]): number {
-  return sets.filter(isSetFilled).length;
+/** Number of sets explicitly checked off as done. */
+export function doneSetCount(sets: LoggedSet[]): number {
+  return sets.filter((s) => s.done).length;
 }
 
-/** A block is complete once it has at least its prescribed number of filled sets. */
+/** A block is complete once at least its prescribed number of sets are checked done. */
 export function isBlockComplete(block: Block, sets: LoggedSet[]): boolean {
-  return block.sets > 0 && filledSetCount(sets) >= block.sets;
+  return block.sets > 0 && doneSetCount(sets) >= block.sets;
 }

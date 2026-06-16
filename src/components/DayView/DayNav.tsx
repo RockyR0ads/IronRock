@@ -16,11 +16,8 @@ export function DayNav() {
   const { state, dispatch } = useStore();
 
   return (
-    <nav
-      aria-label="Training day"
-      className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pt-2 pb-safe sm:static sm:px-0 sm:pb-0"
-    >
-      <div className="mx-auto grid max-w-[760px] grid-cols-3 gap-1.5 rounded-2xl border border-line-2 bg-surface-2/95 p-1.5 shadow-pop backdrop-blur-md sm:grid-cols-6">
+    <nav aria-label="Training day">
+      <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-line-2 bg-surface-2/95 p-1.5 shadow-pop backdrop-blur-md sm:grid-cols-6">
         {DAYS.map((day) => {
           const active = day.key === state.day;
           return (
