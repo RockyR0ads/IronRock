@@ -149,6 +149,19 @@ describe('set logging', () => {
     expect(setsFor(s, 'pushA', 0)).toHaveLength(0);
   });
 
+  it('resetWeek clears all logged sets but keeps history, refs and edits', () => {
+    let s = withRef(initialState());
+    s = reducer(s, { type: 'swapBlock', dayKey: 'legsA', index: 0, liftId: 'frontsquat' });
+    s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0 });
+    s = reducer(s, { type: 'addSet', dayKey: 'legsA', index: 0, set: SET('120', '3', '8') });
+    s = reducer(s, { type: 'resetWeek' });
+    expect(s.logs).toEqual({});
+    expect(s.history.bench).toEqual({ w: '100', reps: '5', rpe: '8' }); // preserved
+    expect(s.refs.bench).toBeDefined(); // references kept
+    expect(s.customDays.legsA).toBeDefined(); // swapped exercise kept
+  });
+
   it('restoreDay drops that day’s logs', () => {
     let s = initialState();
     s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });

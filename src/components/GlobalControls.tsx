@@ -62,17 +62,30 @@ export function GlobalControls() {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => {
-          if (confirm('Clear all entered numbers and exercise swaps?')) {
-            dispatch({ type: 'clearAll' });
-          }
-        }}
-        className="mt-3 text-[12px] font-medium text-muted-2 underline-offset-4 hover:text-accent hover:underline"
-      >
-        Clear all data
-      </button>
+      <div className="mt-3 flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm('Reset the week? This clears every logged set across all days. Your references, exercise swaps, and last-session weights are kept.')) {
+              dispatch({ type: 'resetWeek' });
+            }
+          }}
+          className="text-[12px] font-medium text-muted-2 underline-offset-4 hover:text-accent hover:underline"
+        >
+          Reset week
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm('Clear ALL data — references, logged sets, exercise swaps, and history?')) {
+              dispatch({ type: 'clearAll' });
+            }
+          }}
+          className="text-[12px] font-medium text-muted-2 underline-offset-4 hover:text-accent hover:underline"
+        >
+          Clear all data
+        </button>
+      </div>
     </div>
   );
 }

@@ -51,6 +51,7 @@ export type Action =
   | { type: 'toggleSetDone'; dayKey: string; index: number; setIndex: number }
   | { type: 'removeSet'; dayKey: string; index: number; setIndex: number }
   | { type: 'clearDaySets'; dayKey: string }
+  | { type: 'resetWeek' }
   | { type: 'clearAll' };
 
 /** Deep-clone a day's default blocks so edits never mutate the program template. */
@@ -214,6 +215,10 @@ export function reducer(state: State, action: Action): State {
       delete logs[action.dayKey];
       return { ...state, logs };
     }
+    case 'resetWeek':
+      // Start a fresh training week: drop every day's logged sets, but keep
+      // references, swapped exercises, bodyweight, and last-session history.
+      return { ...state, logs: {} };
     case 'clearAll':
       return { ...initialState(), inc: state.inc, day: state.day };
     default:
