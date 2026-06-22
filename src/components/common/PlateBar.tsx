@@ -32,26 +32,32 @@ function Plate({ kg }: { kg: number }) {
 }
 
 /**
- * A compact loaded-barbell glyph for a given total weight (kg on a standard bar).
- * Plates are heaviest-nearest-the-collar on each side; a sub-bar weight shows a
- * bare bar.
+ * A loaded-barbell glyph for a given total weight (kg on a standard bar). Fills
+ * the available width: plates are loaded at each end (heaviest by the collar)
+ * with the bar spanning the gap. A sub-bar weight shows a bare bar.
  */
 export function PlateBar({ weight }: { weight: number }) {
   const perSide = platesPerSide(weight);
-  const left = [...perSide].reverse(); // lightest outward → heaviest by the collar
+  const left = [...perSide].reverse(); // outer → inner: lightest ... heaviest
 
   return (
     <span
-      className="relative inline-flex h-7 items-center"
+      className="relative flex h-7 w-full items-center"
       role="img"
       aria-label={`${weight} kg on the bar`}
     >
+      {/* the bar */}
       <span className="absolute inset-x-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-muted-2/70" />
+      {/* left collar of plates */}
       <span className="relative z-10 flex items-center gap-[1.5px]">
         {left.map((p, i) => (
           <Plate key={`l${i}`} kg={p} />
         ))}
-        <span className="mx-[3px] h-3 w-4 rounded-sm bg-line-2" />
+      </span>
+      {/* bare bar between the collars stretches to fill */}
+      <span className="flex-1" />
+      {/* right collar of plates */}
+      <span className="relative z-10 flex items-center gap-[1.5px]">
         {perSide.map((p, i) => (
           <Plate key={`r${i}`} kg={p} />
         ))}

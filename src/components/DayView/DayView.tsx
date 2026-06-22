@@ -100,80 +100,98 @@ function BlockCard({
   const done = doneSetCount(sets);
   const complete = isBlockComplete(block, sets);
   const scheme = `${block.sets} × ${repLabel(block.reps)}${perLeg ? '/leg' : ''}`;
+  const cardId = `blk-${dayKey}-${index}`;
 
-  // weight shown on the barbell glyph: the latest logged set, else the target
+  // weight shown on the barbell glyph: the most recent set with a weight
+  // entered, else the computed target (so it shows before logging too)
   const isBarbell = lift.unit === 'kg on bar';
-  const lastWeight = sets.length ? parseFloat(sets[sets.length - 1].w) : NaN;
-  const barWeight = lastWeight > 0 ? lastWeight : (target ?? 0);
+  const lastFilled = [...sets].reverse().find((s) => parseFloat(s.w) > 0);
+  const barWeight = lastFilled ? parseFloat(lastFilled.w) : (target ?? 0);
+
+  // rest countdown owned by this card → drain a green fill behind it
+  const isResting = rest.running && rest.ownerId === cardId;
+  const restPct = isResting && rest.duration > 0 ? (rest.secondsLeft / rest.duration) * 100 : 0;
 
   function toggleDone(setIndex: number) {
     const wasDone = sets[setIndex]?.done;
     dispatch({ type: 'toggleSetDone', dayKey, index, setIndex });
-    if (!wasDone) rest.start(); // starting a rest when checking a set off
+    if (!wasDone) rest.start(undefined, cardId); // starting a rest when checking a set off
   }
 
   return (
     <div
-      id={`blk-${dayKey}-${index}`}
+      id={cardId}
       className={[
-        'scroll-mt-4 rounded-2xl border p-4 shadow-card transition-colors',
+        'relative overflow-hidden scroll-mt-4 rounded-2xl border p-4 shadow-card transition-colors',
         complete ? 'border-green/60 bg-green/[0.06]' : 'border-line bg-surface',
+        isResting ? 'border-green/60' : '',
       ].join(' ')}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            {complete ? (
-              <span
-                className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green text-bg"
-                aria-label="Completed"
-              >
-                <CheckIcon className="h-3 w-3" />
-              </span>
-            ) : (
-              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[block.cls]}`} aria-hidden />
-            )}
-            <span className="truncate font-display text-[16px] font-bold tracking-[-0.01em]">
-              {lift.name}
-            </span>
-          </div>
-
-          {isBarbell && barWeight > 0 && <PlateBar weight={barWeight} />}
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[13px] text-muted">{scheme}</span>
+      {isResting && (
+        // a depleting green fill that recedes as the rest counts down, revealing
+        // the card's normal background behind it
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 bg-green/20 transition-[width] duration-1000 ease-linear"
+          style={{ width: `${restPct}%` }}
+          aria-hidden
+        />
+      )}
+      <div className="relative z-10">
+        <div className="flex items-center gap-2.5">
+          {complete ? (
             <span
-              className={`rounded-md px-2 py-0.5 font-mono text-[11px] font-medium ${CHIP[block.cls]}`}
+              className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green text-bg"
+              aria-label="Completed"
             >
-              {feelLabel(block)}
+              <CheckIcon className="h-3 w-3" />
             </span>
-            {target !== null && (
-              <span className="font-mono text-[12px] text-muted-2">
-                target {target} kg{perLeg ? '/side' : ''}
-              </span>
-            )}
-          </div>
+          ) : (
+            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[block.cls]}`} aria-hidden />
+          )}
+          <span className="min-w-0 shrink truncate font-display text-[16px] font-bold tracking-[-0.01em]">
+            {lift.name}
+          </span>
+          {isBarbell && barWeight > 0 ? (
+            <span className="min-w-[48px] flex-1">
+              <PlateBar weight={barWeight} />
+            </span>
+          ) : (
+            <span className="flex-1" />
+          )}
+          <span
+            className={[
+              'shrink-0 rounded-full px-2.5 py-1 font-mono text-[12px] font-bold tabular-nums',
+              complete ? 'bg-green/15 text-green' : 'bg-surface-2 text-muted',
+            ].join(' ')}
+          >
+            {done}/{block.sets}
+          </span>
+        </div>
 
-          {history && (
-            <div className="mt-1 font-mono text-[11px] text-muted-2">
-              Last {history.w || '–'} kg × {history.reps || '–'} @ RPE {history.rpe || '–'}
-            </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[13px] text-muted">{scheme}</span>
+          <span
+            className={`rounded-md px-2 py-0.5 font-mono text-[11px] font-medium ${CHIP[block.cls]}`}
+          >
+            {feelLabel(block)}
+          </span>
+          {target !== null && (
+            <span className="font-mono text-[12px] text-muted-2">
+              target {target} kg{perLeg ? '/side' : ''}
+            </span>
           )}
         </div>
 
-        <span
-          className={[
-            'shrink-0 rounded-full px-2.5 py-1 font-mono text-[12px] font-bold tabular-nums',
-            complete ? 'bg-green/15 text-green' : 'bg-surface-2 text-muted',
-          ].join(' ')}
-        >
-          {done}/{block.sets}
-        </span>
+        {history && (
+          <div className="mt-1 font-mono text-[11px] text-muted-2">
+            Last {history.w || '–'} kg × {history.reps || '–'} @ RPE {history.rpe || '–'}
+          </div>
+        )}
       </div>
 
       {/* logged sets */}
       {sets.length > 0 && (
-        <div className="mt-3 space-y-1.5">
+        <div className="relative z-10 mt-3 space-y-1.5">
           <div className="grid grid-cols-[2.2rem_1fr_1fr_1fr_2rem] gap-2 px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-2">
             <span className="text-center">Set</span>
             <span className="text-center">kg</span>
@@ -238,7 +256,7 @@ function BlockCard({
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-2 border-t border-line pt-3">
+      <div className="relative z-10 mt-3 flex items-center gap-2 border-t border-line pt-3">
         <button
           type="button"
           id={`addset-${dayKey}-${index}`}

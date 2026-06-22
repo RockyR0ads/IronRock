@@ -17,8 +17,10 @@ interface RestTimerValue {
   /** The duration the current rest started from (for progress display). */
   duration: number;
   running: boolean;
-  /** Start (or restart) a rest countdown. */
-  start: (seconds?: number) => void;
+  /** Id of the card that started the current rest (for its background fill). */
+  ownerId: string | null;
+  /** Start (or restart) a rest countdown, optionally tagged to a card id. */
+  start: (seconds?: number, ownerId?: string) => void;
   /** Add/remove time (e.g. ±15s) without restarting. */
   addTime: (delta: number) => void;
   /** Stop and reset to idle. */
@@ -31,6 +33,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [duration, setDuration] = useState(REST_DEFAULT);
   const [running, setRunning] = useState(false);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
   const tick = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stop = useCallback(() => {
@@ -41,18 +44,17 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     setRunning(false);
   }, []);
 
-  const start = useCallback(
-    (seconds = REST_DEFAULT) => {
-      setDuration(seconds);
-      setSecondsLeft(seconds);
-      setRunning(true);
-    },
-    []
-  );
+  const start = useCallback((seconds = REST_DEFAULT, owner: string | null = null) => {
+    setDuration(seconds);
+    setSecondsLeft(seconds);
+    setOwnerId(owner);
+    setRunning(true);
+  }, []);
 
   const skip = useCallback(() => {
     stop();
     setSecondsLeft(0);
+    setOwnerId(null);
   }, [stop]);
 
   const addTime = useCallback((delta: number) => {
@@ -82,7 +84,9 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
   }, [running]);
 
   return (
-    <RestTimerContext.Provider value={{ secondsLeft, duration, running, start, addTime, skip }}>
+    <RestTimerContext.Provider
+      value={{ secondsLeft, duration, running, ownerId, start, addTime, skip }}
+    >
       {children}
     </RestTimerContext.Provider>
   );
