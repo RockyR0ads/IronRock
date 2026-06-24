@@ -14,7 +14,8 @@ export function RestTimerBar() {
   const pct = duration > 0 ? Math.max(0, Math.min(100, (secondsLeft / duration) * 100)) : 0;
 
   return (
-    <div className="flex items-center gap-2.5 rounded-2xl border border-line-2 bg-surface-2/95 px-3 py-2 shadow-pop backdrop-blur-md">
+    <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pt-2 pb-safe">
+      <div className="mx-auto flex max-w-[760px] items-center gap-2.5 rounded-2xl border border-line-2 bg-surface-2/95 px-3 py-2 shadow-pop backdrop-blur-md">
       <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-2">Rest</span>
       <button
         type="button"
@@ -45,6 +46,7 @@ export function RestTimerBar() {
       >
         Skip
       </button>
+      </div>
     </div>
   );
 }

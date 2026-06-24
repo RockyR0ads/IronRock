@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from './state/StoreContext';
 import { effBlocks, computedInUse } from './state/store';
 import { e1rmFor } from './state/selectors';
 import { CAT, CAT_ORDER, liftsInCategory } from './domain/lifts';
-import { Dumbbell, ChevronLeft, ChevronRight } from './components/common/icons';
+import { defaultDay } from './domain/program';
+import { Dumbbell, ChevronLeft, ChevronRight, ChevronDown } from './components/common/icons';
 import { SectionHead } from './components/common/SectionHead';
 import { GlobalControls } from './components/GlobalControls';
 import { ReferenceLifts } from './components/ReferenceLifts/ReferenceLifts';
@@ -25,6 +26,17 @@ export default function App() {
   const { state, dispatch } = useStore();
   const [page, setPage] = useState<Page>('week');
   const [picker, setPicker] = useState<PickerMode | null>(null);
+  const [dayPickerOpen, setDayPickerOpen] = useState(false);
+
+  // close the day dropdown on Escape
+  useEffect(() => {
+    if (!dayPickerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDayPickerOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [dayPickerOpen]);
 
   function pickerRequest(): PickerRequest | null {
     if (!picker) return null;
@@ -59,26 +71,58 @@ export default function App() {
 
   const refIds = computedInUse(state);
   const refsSet = refIds.filter((id) => e1rmFor(state, id) !== null).length;
+  const day = defaultDay(state.day);
+  const dayLetter = day?.variant.split('·')[0].trim();
 
   return (
-    <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-36 pt-safe sm:px-6 sm:pb-24">
+    <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6 sm:pb-16">
       <header className="flex items-center justify-between pb-2 pt-6">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-accent text-bg shadow-glow">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-bg shadow-glow">
             <Dumbbell className="h-5 w-5" />
           </span>
-          <div className="leading-none">
+          <div className="min-w-0 leading-none">
             <div className="font-display text-[22px] font-black uppercase tracking-[-0.01em]">
               IronRock
             </div>
-            <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-2">
-              RPE Load Sheet
+            <div className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted-2">
+              PPL · Cut
             </div>
           </div>
         </div>
-        <span className="rounded-full border border-line-2 bg-surface px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
-          PPL · Cut
-        </span>
+
+        {/* day switcher: opens the day selector dropdown */}
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setDayPickerOpen((o) => !o)}
+            aria-haspopup="true"
+            aria-expanded={dayPickerOpen}
+            className="flex items-center gap-2 rounded-full border border-line-2 bg-surface py-2 pl-3.5 pr-2.5 transition-colors hover:border-accent/50"
+          >
+            <span className="font-display text-[14px] font-bold tracking-[-0.01em]">
+              {day?.label}
+            </span>
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-accent">
+              {dayLetter}
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 text-muted transition-transform ${dayPickerOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {dayPickerOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                aria-hidden
+                onClick={() => setDayPickerOpen(false)}
+              />
+              <div className="absolute right-0 top-full z-50 mt-2 w-[min(340px,82vw)] rounded-2xl border border-line-2 bg-surface-2 p-2 shadow-pop animate-fade-in">
+                <DayNav onSelect={() => setDayPickerOpen(false)} />
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       <p className="mb-3 mt-3 max-w-[52ch] text-[14px] leading-relaxed text-muted">
@@ -124,12 +168,7 @@ export default function App() {
         Saved locally · refresh-safe · works offline
       </footer>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 pt-2 pb-safe sm:static sm:px-0 sm:pb-0">
-        <div className="mx-auto max-w-[760px] space-y-2">
-          <RestTimerBar />
-          <DayNav />
-        </div>
-      </div>
+      <RestTimerBar />
 
       <ExercisePicker
         request={pickerRequest()}

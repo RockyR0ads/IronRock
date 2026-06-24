@@ -9,15 +9,15 @@ function dotColor(label: string): string {
 }
 
 /**
- * Day switcher. A floating, thumb-reachable pill bar pinned to the bottom on
- * mobile; a normal inline card on wider screens.
+ * Day switcher grid. Rendered inside the header's day-picker dropdown; calls
+ * `onSelect` after a day is chosen so the dropdown can close.
  */
-export function DayNav() {
+export function DayNav({ onSelect }: { onSelect?: () => void }) {
   const { state, dispatch } = useStore();
 
   return (
     <nav aria-label="Training day">
-      <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-line-2 bg-surface-2/95 p-1.5 shadow-pop backdrop-blur-md sm:grid-cols-6">
+      <div className="grid grid-cols-3 gap-1.5">
         {DAYS.map((day) => {
           const active = day.key === state.day;
           return (
@@ -25,7 +25,10 @@ export function DayNav() {
               key={day.key}
               type="button"
               aria-pressed={active}
-              onClick={() => dispatch({ type: 'setDay', key: day.key })}
+              onClick={() => {
+                dispatch({ type: 'setDay', key: day.key });
+                onSelect?.();
+              }}
               className={[
                 'flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 transition-colors',
                 active ? 'bg-ink text-bg' : 'text-muted hover:bg-surface-3 hover:text-ink',
