@@ -6,6 +6,7 @@ import {
   computedInUse,
   newBlock,
   setsFor,
+  FREESTYLE_KEY,
   type State,
 } from './store';
 import { defaultDay } from '../domain/program';
@@ -160,6 +161,16 @@ describe('set logging', () => {
     expect(s.history.bench).toEqual({ w: '100', reps: '5', rpe: '8' }); // preserved
     expect(s.refs.bench).toBeDefined(); // references kept
     expect(s.customDays.legsA).toBeDefined(); // swapped exercise kept
+  });
+
+  it('resetWeek keeps the freestyle workout but clears program logs', () => {
+    let s = reducer(initialState(), { type: 'addBlock', dayKey: FREESTYLE_KEY, liftId: 'deadlift' });
+    s = reducer(s, { type: 'addSet', dayKey: FREESTYLE_KEY, index: 0, set: SET('140', '5', '8') });
+    s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
+    s = reducer(s, { type: 'resetWeek' });
+    expect(setsFor(s, 'pushA', 0)).toHaveLength(0); // program cleared
+    expect(setsFor(s, FREESTYLE_KEY, 0)).toHaveLength(1); // freestyle kept
+    expect(effBlocks(s, FREESTYLE_KEY)).toHaveLength(1); // freestyle exercises kept
   });
 
   it('restoreDay drops that day’s logs', () => {

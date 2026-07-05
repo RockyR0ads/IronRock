@@ -23,6 +23,9 @@ export interface State {
 
 export const STORAGE_KEY = 'ironrock-loadsheet-v1';
 
+/** Day key used for the ad-hoc "freestyle" workout (has no program template). */
+export const FREESTYLE_KEY = 'freestyle';
+
 export function initialState(): State {
   return {
     refs: {},
@@ -215,10 +218,12 @@ export function reducer(state: State, action: Action): State {
       delete logs[action.dayKey];
       return { ...state, logs };
     }
-    case 'resetWeek':
-      // Start a fresh training week: drop every day's logged sets, but keep
-      // references, swapped exercises, bodyweight, and last-session history.
-      return { ...state, logs: {} };
+    case 'resetWeek': {
+      // Start a fresh training week: drop every program day's logged sets, but
+      // keep references, swapped exercises, history, and the freestyle workout.
+      const freestyle = state.logs[FREESTYLE_KEY];
+      return { ...state, logs: freestyle ? { [FREESTYLE_KEY]: freestyle } : {} };
+    }
     case 'clearAll':
       return { ...initialState(), inc: state.inc, day: state.day };
     default:

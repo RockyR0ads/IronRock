@@ -4,7 +4,7 @@ import { effBlocks, computedInUse } from './state/store';
 import { e1rmFor } from './state/selectors';
 import { CAT, CAT_ORDER, liftsInCategory } from './domain/lifts';
 import { defaultDay } from './domain/program';
-import { Dumbbell, ChevronLeft, ChevronRight, ChevronDown } from './components/common/icons';
+import { Dumbbell, ChevronLeft, ChevronRight, ChevronDown, PlusIcon } from './components/common/icons';
 import { SectionHead } from './components/common/SectionHead';
 import { GlobalControls } from './components/GlobalControls';
 import { ReferenceLifts } from './components/ReferenceLifts/ReferenceLifts';
@@ -12,12 +12,13 @@ import { DayView } from './components/DayView/DayView';
 import { DayNav } from './components/DayView/DayNav';
 import { RestTimerBar } from './components/RestTimerBar';
 import { ReferencePanels } from './components/ReferencePanels';
+import { FreestyleWorkout } from './components/FreestyleWorkout';
 import {
   ExercisePicker,
   type PickerRequest,
 } from './components/ExercisePicker/ExercisePicker';
 
-type Page = 'week' | 'reference';
+type Page = 'week' | 'reference' | 'freestyle';
 
 /** What the open picker is doing: swapping a block, or adding a new one. */
 type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
@@ -67,6 +68,10 @@ export default function App() {
 
   if (page === 'reference') {
     return <ReferencePage onBack={() => setPage('week')} />;
+  }
+
+  if (page === 'freestyle') {
+    return <FreestyleWorkout onBack={() => setPage('week')} />;
   }
 
   const refIds = computedInUse(state);
@@ -129,6 +134,26 @@ export default function App() {
         Set your reference lifts, then log your working sets for each day. Targets come from your
         estimated 1RM, and everything saves on this device.
       </p>
+
+      {/* primary: log a workout unrelated to the program */}
+      <button
+        type="button"
+        onClick={() => setPage('freestyle')}
+        className="mb-3 flex w-full items-center justify-between gap-3 rounded-2xl bg-accent p-4 text-left text-bg shadow-glow transition-transform active:scale-[0.99]"
+      >
+        <span className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg/20">
+            <PlusIcon className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block font-display text-[15px] font-black uppercase tracking-[-0.01em]">
+              Freestyle workout
+            </span>
+            <span className="text-[12px] text-bg/70">Log any session — no program</span>
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-bg/70" />
+      </button>
 
       {/* entry point to the reference-lifts page */}
       <button
