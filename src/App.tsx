@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useStore } from './state/StoreContext';
 import { effBlocks, computedInUse } from './state/store';
 import { e1rmFor } from './state/selectors';
-import { CAT, CAT_ORDER, liftsInCategory } from './domain/lifts';
 import { defaultDay } from './domain/program';
 import { Dumbbell, ChevronLeft, ChevronRight, ChevronDown, PlusIcon } from './components/common/icons';
 import { SectionHead } from './components/common/SectionHead';
@@ -44,16 +43,9 @@ export default function App() {
     if (picker.kind === 'swap') {
       const block = effBlocks(state, state.day)[picker.index];
       if (!block) return null;
-      return {
-        title: `Swap — ${CAT[block.cat]}`,
-        currentId: block.lift,
-        groups: [{ cat: block.cat, liftIds: liftsInCategory(block.cat) }],
-      };
+      return { title: 'Swap exercise', currentId: block.lift };
     }
-    return {
-      title: 'Add exercise',
-      groups: CAT_ORDER.map((cat) => ({ cat, liftIds: liftsInCategory(cat) })),
-    };
+    return { title: 'Add exercise' };
   }
 
   function handlePick(liftId: string) {

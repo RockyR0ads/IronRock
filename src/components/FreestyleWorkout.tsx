@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import { effBlocks, FREESTYLE_KEY } from '../state/store';
-import { CAT, CAT_ORDER, liftsInCategory } from '../domain/lifts';
 import { ChevronLeft, PlusIcon } from './common/icons';
 import { ExerciseCard } from './DayView/ExerciseCard';
 import { RestTimerBar } from './RestTimerBar';
@@ -24,16 +23,9 @@ export function FreestyleWorkout({ onBack }: { onBack: () => void }) {
     if (picker.kind === 'swap') {
       const block = blocks[picker.index];
       if (!block) return null;
-      return {
-        title: `Swap — ${CAT[block.cat]}`,
-        currentId: block.lift,
-        groups: [{ cat: block.cat, liftIds: liftsInCategory(block.cat) }],
-      };
+      return { title: 'Swap exercise', currentId: block.lift };
     }
-    return {
-      title: 'Add exercise',
-      groups: CAT_ORDER.map((cat) => ({ cat, liftIds: liftsInCategory(cat) })),
-    };
+    return { title: 'Add exercise' };
   }
 
   function handlePick(liftId: string) {

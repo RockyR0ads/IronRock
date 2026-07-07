@@ -10,6 +10,7 @@ import {
   type State,
 } from './store';
 import { defaultDay } from '../domain/program';
+import { LIFTS } from '../domain/lifts';
 import { isBlockComplete } from './selectors';
 import type { LoggedSet } from '../domain/types';
 
@@ -75,8 +76,8 @@ describe('reducer', () => {
   });
 
   it('newBlock gives manual lifts the iso default scheme', () => {
-    expect(newBlock('dbcurl')).toMatchObject({ sets: 3, reps: 12, rpe: 9, cls: 'r-iso' });
-    expect(newBlock('bench')).toMatchObject({ sets: 3, reps: [8, 10], rpe: 8, cls: 'r-hi' });
+    expect(newBlock(LIFTS.dbcurl)).toMatchObject({ sets: 3, reps: 12, rpe: 9, cls: 'r-iso' });
+    expect(newBlock(LIFTS.bench)).toMatchObject({ sets: 3, reps: [8, 10], rpe: 8, cls: 'r-hi' });
   });
 });
 

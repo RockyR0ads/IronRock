@@ -1,12 +1,22 @@
 import { DAYS, defaultDay } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
-import type { Block, Increment, LiftHistory, LoggedSet, RefSet } from '../domain/types';
+import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
+import type { Block, Increment, Lift, LiftHistory, LoggedSet, RefSet } from '../domain/types';
+
+/** A user-created exercise. */
+export interface CustomLift {
+  name: string;
+  unit: string;
+  group: string;
+}
 
 export interface State {
   /** Reference sets per computed lift id. */
   refs: Record<string, RefSet>;
   /** Entered weights per manual lift id (raw input strings). */
   manual: Record<string, string>;
+  /** User-created exercises, keyed by id. */
+  customLifts: Record<string, CustomLift>;
   /** Per-day overrides; absence means "use the default day". */
   customDays: Record<string, Block[]>;
   /** Logged working sets per day, aligned to the day's block order. */
@@ -30,6 +40,7 @@ export function initialState(): State {
   return {
     refs: {},
     manual: {},
+    customLifts: {},
     customDays: {},
     logs: {},
     history: {},
@@ -37,6 +48,20 @@ export function initialState(): State {
     inc: 2.5,
     day: 'pushA',
   };
+}
+
+/**
+ * Resolve any lift id to a Lift, checking the curated catalogue, the user's
+ * custom exercises, then the bundled library. Falls back to a bare manual lift.
+ */
+export function liftById(state: State, id: string): Lift {
+  const curated = LIFTS[id];
+  if (curated) return curated;
+  const custom = state.customLifts[id];
+  if (custom) return { id, name: custom.name, type: 'manual', unit: custom.unit, cats: [] };
+  const lib = LIBRARY_BY_ID[id];
+  if (lib) return libraryLift(lib);
+  return { id, name: id, type: 'manual', unit: '', cats: [] };
 }
 
 export type Action =
@@ -48,6 +73,7 @@ export type Action =
   | { type: 'swapBlock'; dayKey: string; index: number; liftId: string }
   | { type: 'removeBlock'; dayKey: string; index: number }
   | { type: 'addBlock'; dayKey: string; liftId: string }
+  | { type: 'addCustomLift'; id: string; name: string; unit: string; group: string }
   | { type: 'restoreDay'; dayKey: string }
   | { type: 'addSet'; dayKey: string; index: number; set: LoggedSet }
   | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe'; value: string }
@@ -80,17 +106,17 @@ function cloneDayLog(state: State, dayKey: string, minLength = 0): LoggedSet[][]
   return rows;
 }
 
-/** A new block with a sensible default scheme for the chosen lift. */
-export function newBlock(liftId: string): Block {
-  const lift = LIFTS[liftId];
+/** A new block with a sensible default scheme for the given (resolved) lift. */
+export function newBlock(lift: Lift): Block {
   const iso = lift.type === 'manual';
   return {
-    lift: liftId,
+    lift: lift.id,
     sets: 3,
     reps: iso ? 12 : [8, 10],
     rpe: iso ? 9 : 8,
     cls: iso ? 'r-iso' : 'r-hi',
-    cat: lift.cats[0],
+    // library/custom lifts have no movement role — fall back to a valid default
+    cat: lift.cats[0] ?? 'hpress',
     perLeg: !!lift.uni,
   };
 }
@@ -140,7 +166,7 @@ export function reducer(state: State, action: Action): State {
       blocks[action.index] = {
         ...target,
         lift: action.liftId,
-        perLeg: !!LIFTS[action.liftId].uni,
+        perLeg: !!liftById(state, action.liftId).uni,
       };
       // a different exercise now occupies the slot — drop its logged sets
       const log = cloneDayLog(state, action.dayKey, blocks.length);
@@ -166,7 +192,7 @@ export function reducer(state: State, action: Action): State {
       const blocks = (state.customDays[action.dayKey] ?? cloneDefaultBlocks(action.dayKey)).map(
         (b) => ({ ...b })
       );
-      blocks.push(newBlock(action.liftId));
+      blocks.push(newBlock(liftById(state, action.liftId)));
       const log = cloneDayLog(state, action.dayKey, blocks.length);
       return {
         ...state,
@@ -174,6 +200,14 @@ export function reducer(state: State, action: Action): State {
         logs: { ...state.logs, [action.dayKey]: log },
       };
     }
+    case 'addCustomLift':
+      return {
+        ...state,
+        customLifts: {
+          ...state.customLifts,
+          [action.id]: { name: action.name, unit: action.unit, group: action.group },
+        },
+      };
     case 'restoreDay': {
       const customDays = { ...state.customDays };
       delete customDays[action.dayKey];
@@ -241,6 +275,7 @@ export function loadState(): State {
     return {
       ...base,
       ...parsed,
+      customLifts: parsed.customLifts ?? {},
       customDays: parsed.customDays ?? {},
       logs: parsed.logs ?? {},
       history: parsed.history ?? {},

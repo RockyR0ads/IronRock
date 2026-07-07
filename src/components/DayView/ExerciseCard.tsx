@@ -1,8 +1,7 @@
 import { useStore } from '../../state/StoreContext';
 import { useRestTimer } from '../../state/RestTimer';
-import { setsFor } from '../../state/store';
+import { setsFor, liftById } from '../../state/store';
 import { blockLoad, doneSetCount, isBlockComplete } from '../../state/selectors';
-import { LIFTS } from '../../domain/lifts';
 import { repLabel, feelLabel, rpeNum, isPerLeg } from '../../domain/format';
 import { SwapIcon, TrashIcon, PlusIcon, CheckIcon } from '../common/icons';
 import { PlateBar } from '../common/PlateBar';
@@ -95,7 +94,7 @@ export function ExerciseCard({
   const { state, dispatch } = useStore();
   const rest = useRestTimer();
   const freestyle = variant === 'freestyle';
-  const lift = LIFTS[block.lift];
+  const lift = liftById(state, block.lift);
   const perLeg = isPerLeg(block, lift.uni);
   const sets = setsFor(state, dayKey, index);
   const target = lift.type === 'computed' ? blockLoad(state, block) : null;
