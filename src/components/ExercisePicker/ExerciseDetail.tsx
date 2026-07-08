@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { LIBRARY_BY_ID, imageUrl } from '../../domain/library';
 import { ChevronLeft, PlusIcon } from '../common/icons';
+import sketchManifest from '../../data/sketches.json';
+
+/** Exercise id → number of hand-drawn illustration frames available. */
+const SKETCH_FRAMES = sketchManifest as Record<string, number>;
+const sketchSrc = (id: string, i: number) =>
+  `${import.meta.env.BASE_URL}sketches/${id}/${i}.webp`;
 
 function cap(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -24,17 +30,33 @@ export function ExerciseDetail({
   const ex = LIBRARY_BY_ID[id];
   const [frame, setFrame] = useState(0);
   const [broken, setBroken] = useState(false);
+  const [sketchBroken, setSketchBroken] = useState(false);
 
+  const sketchCount = ex ? (SKETCH_FRAMES[ex.id] ?? 0) : 0;
+  const useSketch = sketchCount > 0 && !sketchBroken;
+  const frameCount = useSketch ? sketchCount : (ex?.images.length ?? 0);
+
+  // reset when switching exercises
   useEffect(() => {
     setFrame(0);
     setBroken(false);
-    if (!ex || ex.images.length < 2) return;
-    const t = setInterval(() => setFrame((f) => (f + 1) % ex.images.length), 1100);
-    return () => clearInterval(t);
+    setSketchBroken(false);
   }, [ex]);
 
+  // auto-flip between the available frames (illustration or photos)
+  useEffect(() => {
+    if (frameCount < 2) return;
+    const t = setInterval(() => setFrame((f) => (f + 1) % frameCount), 1100);
+    return () => clearInterval(t);
+  }, [frameCount]);
+
   if (!ex) return null;
-  const hasImage = ex.images.length > 0 && !broken;
+  const idx = frameCount > 0 ? frame % frameCount : 0;
+  const src = useSketch
+    ? sketchSrc(ex.id, idx)
+    : ex.images.length > 0 && !broken
+      ? imageUrl(ex.images[idx])
+      : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -54,12 +76,13 @@ export function ExerciseDetail({
 
       <div className="min-h-0 flex-1 overflow-auto px-5 pb-4">
         <div className="relative overflow-hidden rounded-2xl border border-line bg-surface-2">
-          {hasImage ? (
+          {src ? (
             <img
-              src={imageUrl(ex.images[frame])}
-              alt={`${ex.name} demonstration`}
-              onError={() => setBroken(true)}
+              src={src}
+              alt={`${ex.name} ${useSketch ? 'illustration' : 'demonstration'}`}
+              onError={() => (useSketch ? setSketchBroken(true) : setBroken(true))}
               className="aspect-[4/3] w-full object-cover"
+              style={useSketch ? { backgroundColor: '#f4efe3' } : undefined}
             />
           ) : (
             <div className="flex aspect-[4/3] w-full items-center justify-center text-[12px] text-muted-2">

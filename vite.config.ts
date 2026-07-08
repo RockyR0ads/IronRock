@@ -43,6 +43,18 @@ export default defineConfig(({ command }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // exercise illustrations are cached on demand, not precached
+        globIgnores: ['**/sketches/**'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/sketches\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'exercise-sketches',
+              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 120 },
+            },
+          },
+        ],
       },
     }),
   ],
