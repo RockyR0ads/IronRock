@@ -66,11 +66,15 @@ export interface Day {
   blocks: Block[];
 }
 
-/** A user-entered reference set for a computed lift. Stored as strings (raw inputs). */
+/**
+ * A user-entered reference set for a computed lift: the most reps they managed
+ * with that weight at maximum effort. Effort is implicit — a reference set is
+ * taken to failure, i.e. RPE 10 — so only weight and reps are recorded.
+ * Stored as strings (raw inputs).
+ */
 export interface RefSet {
   w?: string;
   reps?: string;
-  rpe?: string;
 }
 
 /** Rounding increment for computed loads. */
@@ -87,3 +91,24 @@ export interface LoggedSet {
 
 /** Last recorded set for a lift, used as a "last time" hint. */
 export type LiftHistory = Pick<LoggedSet, 'w' | 'reps' | 'rpe'>;
+
+/** One exercise as it was actually performed in an archived session. */
+export interface SessionExercise {
+  liftId: string;
+  /** Name resolved at archive time, so history survives a renamed custom lift. */
+  name: string;
+  /** Only the sets that were checked off. */
+  sets: LoggedSet[];
+}
+
+/** A finished workout, archived when the user completes it. */
+export interface Session {
+  id: string;
+  /** ISO timestamp of when it was completed. */
+  at: string;
+  /** Day it came from: a program day key, or the freestyle key. */
+  dayKey: string;
+  /** Display name at archive time, e.g. "Push" or "Freestyle". */
+  title: string;
+  exercises: SessionExercise[];
+}

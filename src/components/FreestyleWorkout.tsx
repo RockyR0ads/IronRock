@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import { effBlocks, FREESTYLE_KEY } from '../state/store';
-import { ChevronLeft, PlusIcon } from './common/icons';
+import { dayStats } from '../state/selectors';
+import { newSessionId } from '../domain/session';
+import type { WorkoutStats } from '../domain/stats';
+import { CheckIcon, ChevronLeft, PlusIcon } from './common/icons';
 import { ExerciseCard } from './DayView/ExerciseCard';
 import { RestTimerBar } from './RestTimerBar';
+import { WorkoutSummary } from './WorkoutSummary';
 import { ExercisePicker, type PickerRequest } from './ExercisePicker/ExercisePicker';
 
 type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
@@ -16,7 +20,9 @@ type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
 export function FreestyleWorkout({ onBack }: { onBack: () => void }) {
   const { state, dispatch } = useStore();
   const [picker, setPicker] = useState<PickerMode | null>(null);
+  const [summary, setSummary] = useState<WorkoutStats | null>(null);
   const blocks = effBlocks(state, FREESTYLE_KEY);
+  const hasLogs = (state.logs[FREESTYLE_KEY] ?? []).some((s) => s.length > 0);
 
   function pickerRequest(): PickerRequest | null {
     if (!picker) return null;
@@ -110,6 +116,38 @@ export function FreestyleWorkout({ onBack }: { onBack: () => void }) {
       >
         <PlusIcon className="h-4 w-4" /> Add exercise
       </button>
+
+      {hasLogs && (
+        <button
+          type="button"
+          onClick={() => {
+            // snapshot the stats before archiving — completing clears the slate
+            setSummary(dayStats(state, FREESTYLE_KEY));
+            dispatch({
+              type: 'completeWorkout',
+              dayKey: FREESTYLE_KEY,
+              title: 'Freestyle',
+              at: new Date().toISOString(),
+              id: newSessionId(),
+            });
+          }}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-green py-3.5 font-display text-[15px] font-black uppercase tracking-[-0.01em] text-bg shadow-glow transition-transform active:scale-[0.99]"
+        >
+          <CheckIcon className="h-4 w-4" /> Complete workout
+        </button>
+      )}
+
+      {summary && (
+        <WorkoutSummary
+          title="Freestyle"
+          stats={summary}
+          archived={summary.sets > 0}
+          onClose={() => {
+            setSummary(null);
+            if (summary.sets > 0) onBack(); // slate is blank now — back to the week
+          }}
+        />
+      )}
 
       <RestTimerBar />
 

@@ -5,3 +5,6 @@ export * from './format';
 export * from './lifts';
 export * from './program';
 export * from './plates';
+export * from './stats';
+export * from './rpeScale';
+export * from './session';

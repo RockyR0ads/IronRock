@@ -1,16 +1,23 @@
 import { estimate1Rm, targetLoad as calcTargetLoad, midReps, round } from '../domain/calc';
 import { rpeNum } from '../domain/format';
+import { workoutStats, type WorkoutStats } from '../domain/stats';
 import type { Block, LoggedSet } from '../domain/types';
-import type { State } from './store';
+import { effBlocks, liftById, setsFor, type State } from './store';
 
-/** Estimated 1RM for a computed lift's reference set, or null if incomplete. */
+/** Reference sets are taken to failure, so they always score as maximum effort. */
+const MAX_EFFORT_RPE = 10;
+
+/**
+ * Estimated 1RM for a computed lift's reference set, or null if incomplete.
+ * A reference set is a maximum-effort set, so it's scored at RPE 10 — the reps
+ * entered are the reps to failure.
+ */
 export function e1rmFor(state: State, liftId: string): number | null {
   const ref = state.refs[liftId];
   if (!ref) return null;
   const w = parseFloat(ref.w ?? '');
   const reps = parseFloat(ref.reps ?? '');
-  const rpe = parseFloat(ref.rpe ?? '');
-  return estimate1Rm(w, reps, rpe);
+  return estimate1Rm(w, reps, MAX_EFFORT_RPE);
 }
 
 /** Estimated 1RM rounded to the active increment, for display. */
@@ -39,4 +46,13 @@ export function doneSetCount(sets: LoggedSet[]): number {
 /** A block is complete once at least its prescribed number of sets are checked done. */
 export function isBlockComplete(block: Block, sets: LoggedSet[]): boolean {
   return block.sets > 0 && doneSetCount(sets) >= block.sets;
+}
+
+/** Summary of everything checked off on a day — powers the finish-workout screen. */
+export function dayStats(state: State, dayKey: string): WorkoutStats {
+  const entries = effBlocks(state, dayKey).map((block, i) => ({
+    name: liftById(state, block.lift).name,
+    sets: setsFor(state, dayKey, i),
+  }));
+  return workoutStats(entries, state.inc);
 }

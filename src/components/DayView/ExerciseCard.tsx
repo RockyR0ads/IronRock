@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { useRestTimer } from '../../state/RestTimer';
 import { setsFor, liftById } from '../../state/store';
 import { blockLoad, doneSetCount, isBlockComplete } from '../../state/selectors';
-import { repLabel, feelLabel, rpeNum, isPerLeg } from '../../domain/format';
+import { repLabel, feelLabel, rpeNum, rpeHue, isPerLeg } from '../../domain/format';
 import { SwapIcon, TrashIcon, PlusIcon, CheckIcon } from '../common/icons';
 import { PlateBar } from '../common/PlateBar';
+import { RpePicker } from './RpePicker';
 import type { Block, BlockClass, LiftHistory, LoggedSet } from '../../domain/types';
 
 /** Intensity → dot color. */
@@ -40,6 +42,7 @@ function prefillSet(
   };
 }
 
+/** One typed value in a logged set. Fills green once the set is checked off. */
 function SetInput({
   value,
   onChange,
@@ -65,10 +68,61 @@ function SetInput({
       aria-label={label}
       onChange={(e) => onChange(e.target.value)}
       className={[
-        'h-10 w-full rounded-lg border bg-surface-2 text-center font-mono text-[15px] text-ink transition-colors placeholder:text-muted-2 focus:outline-none',
-        done ? 'border-green/40 focus:border-green' : 'border-line-2 focus:border-accent',
+        'h-10 w-full rounded-lg border text-center font-mono text-[15px] transition-colors placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-accent/70',
+        done
+          ? 'border-green/50 bg-green/20 text-green focus:border-green'
+          : 'border-line-2 bg-surface-2 text-ink focus:border-accent',
       ].join(' ')}
     />
+  );
+}
+
+/**
+ * The RPE pill. Opens the scale picker rather than taking free-typed numbers,
+ * and takes its hue from the effort itself (green → red), so a hard set reads
+ * as hard whether or not it's been ticked.
+ */
+function RpeButton({
+  value,
+  done,
+  label,
+  onOpen,
+}: {
+  value: string;
+  done: boolean;
+  label: string;
+  onOpen: () => void;
+}) {
+  const rpe = parseFloat(value);
+  const rated = rpe > 0;
+  const hue = rated ? rpeHue(rpe) : 0;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-haspopup="dialog"
+      aria-label={rated ? `${label}, currently ${value}` : `${label}, not rated`}
+      style={
+        rated
+          ? {
+              backgroundColor: `hsl(${hue} 65% 45% / 0.22)`,
+              borderColor: `hsl(${hue} 65% 55% / 0.55)`,
+              color: `hsl(${hue} 85% 75%)`,
+            }
+          : undefined
+      }
+      className={[
+        'h-10 w-full rounded-lg border text-center font-mono text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-accent/70',
+        rated
+          ? ''
+          : done
+            ? 'border-green/50 bg-green/20 text-green'
+            : 'border-line-2 bg-surface-2 text-muted-2 hover:text-ink',
+      ].join(' ')}
+    >
+      {rated ? value : '–'}
+    </button>
   );
 }
 
@@ -93,6 +147,7 @@ export function ExerciseCard({
 }) {
   const { state, dispatch } = useStore();
   const rest = useRestTimer();
+  const [rpeFor, setRpeFor] = useState<number | null>(null);
   const freestyle = variant === 'freestyle';
   const lift = liftById(state, block.lift);
   const perLeg = isPerLeg(block, lift.uni);
@@ -203,7 +258,7 @@ export function ExerciseCard({
       {/* logged sets */}
       {sets.length > 0 && (
         <div className="relative z-10 mt-3 space-y-1.5">
-          <div className="grid grid-cols-[2.2rem_1fr_1fr_1fr_2rem] gap-2 px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-2">
+          <div className="grid grid-cols-[2.2rem_1fr_3.25rem_3.5rem_2rem] gap-2 px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-2">
             <span className="text-center">Set</span>
             <span className="text-center">kg</span>
             <span className="text-center">reps</span>
@@ -211,7 +266,7 @@ export function ExerciseCard({
             <span />
           </div>
           {sets.map((set, si) => (
-            <div key={si} className="grid grid-cols-[2.2rem_1fr_1fr_1fr_2rem] items-center gap-2">
+            <div key={si} className="grid grid-cols-[2.2rem_1fr_3.25rem_3.5rem_2rem] items-center gap-2">
               <button
                 type="button"
                 onClick={() => toggleDone(si)}
@@ -244,21 +299,17 @@ export function ExerciseCard({
                   dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'reps', value: v })
                 }
               />
-              <SetInput
+              <RpeButton
                 value={set.rpe}
-                mode="decimal"
-                step="0.5"
                 done={!!set.done}
                 label={`${lift.name} set ${si + 1} RPE`}
-                onChange={(v) =>
-                  dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'rpe', value: v })
-                }
+                onOpen={() => setRpeFor(si)}
               />
               <button
                 type="button"
                 aria-label={`Remove set ${si + 1}`}
                 onClick={() => dispatch({ type: 'removeSet', dayKey, index, setIndex: si })}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-2 transition-colors hover:bg-red/15 hover:text-red"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-red transition-colors hover:bg-red/15"
               >
                 <TrashIcon className="h-4 w-4" />
               </button>
@@ -290,11 +341,34 @@ export function ExerciseCard({
           type="button"
           onClick={() => dispatch({ type: 'removeBlock', dayKey, index })}
           aria-label="Remove exercise"
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 text-muted transition-colors hover:bg-red/15 hover:text-red"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2 text-red transition-colors hover:bg-red/15"
         >
           <TrashIcon className="h-4 w-4" />
         </button>
       </div>
+
+      {rpeFor !== null && sets[rpeFor] && (
+        <RpePicker
+          title={`${lift.name} · set ${rpeFor + 1}`}
+          value={parseFloat(sets[rpeFor].rpe) > 0 ? parseFloat(sets[rpeFor].rpe) : null}
+          onPick={(rpe) => {
+            dispatch({
+              type: 'updateSet',
+              dayKey,
+              index,
+              setIndex: rpeFor,
+              field: 'rpe',
+              value: String(rpe),
+            });
+            setRpeFor(null);
+          }}
+          onClear={() => {
+            dispatch({ type: 'updateSet', dayKey, index, setIndex: rpeFor, field: 'rpe', value: '' });
+            setRpeFor(null);
+          }}
+          onClose={() => setRpeFor(null)}
+        />
+      )}
     </div>
   );
 }

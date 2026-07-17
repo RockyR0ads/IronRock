@@ -18,6 +18,16 @@ export function feelLabel(block: Pick<Block, 'rpe' | 'drift'>): string {
   return `RPE ${block.rpe}`;
 }
 
+/**
+ * Hue for an RPE pill on a green→red effort scale: 1 (easy) is green, 10
+ * (maximal) is red, with the usual working range landing on yellow/orange.
+ * Values outside 1–10 clamp to the ends.
+ */
+export function rpeHue(rpe: number): number {
+  const clamped = Math.min(10, Math.max(1, rpe));
+  return Math.round(140 - ((clamped - 1) / 9) * 140);
+}
+
 /** Whether a block is shown/loaded per-leg. */
 export function isPerLeg(block: Pick<Block, 'perLeg'>, liftUni?: boolean): boolean {
   return !!block.perLeg || !!liftUni;

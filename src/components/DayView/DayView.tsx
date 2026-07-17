@@ -1,10 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { effBlocks, setsFor } from '../../state/store';
-import { isBlockComplete } from '../../state/selectors';
+import { dayStats, isBlockComplete } from '../../state/selectors';
 import { defaultDay } from '../../domain/program';
-import { PlusIcon } from '../common/icons';
+import { newSessionId } from '../../domain/session';
+import type { WorkoutStats } from '../../domain/stats';
+import { CheckIcon, PlusIcon } from '../common/icons';
 import { ExerciseCard } from './ExerciseCard';
+import { WorkoutSummary } from '../WorkoutSummary';
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
@@ -18,6 +21,7 @@ export function DayView({
   onAdd: () => void;
 }) {
   const { state, dispatch } = useStore();
+  const [summary, setSummary] = useState<WorkoutStats | null>(null);
   const day = defaultDay(state.day);
   const blocks = effBlocks(state, state.day);
   const customized = state.customDays[state.day] !== undefined;
@@ -26,6 +30,7 @@ export function DayView({
   // Completion of every block, used to auto-advance to the next unfinished one.
   const completion = blocks.map((b, i) => isBlockComplete(b, setsFor(state, state.day, i)));
   const completionKey = completion.map((c) => (c ? '1' : '0')).join('');
+  const allDone = blocks.length > 0 && completion.every(Boolean);
   const prev = useRef<{ day: string; comp: boolean[] } | null>(null);
 
   useEffect(() => {
@@ -115,6 +120,40 @@ export function DayView({
       >
         <PlusIcon className="h-4 w-4" /> Add exercise
       </button>
+
+      {hasLogs && (
+        <button
+          type="button"
+          onClick={() => {
+            // snapshot the stats before archiving — completing clears the day
+            setSummary(dayStats(state, state.day));
+            dispatch({
+              type: 'completeWorkout',
+              dayKey: state.day,
+              title: day.label,
+              at: new Date().toISOString(),
+              id: newSessionId(),
+            });
+          }}
+          className={[
+            'mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-display text-[15px] font-black uppercase tracking-[-0.01em] transition-transform active:scale-[0.99]',
+            allDone
+              ? 'bg-green text-bg shadow-glow'
+              : 'border border-line-2 bg-surface text-ink hover:border-green/60',
+          ].join(' ')}
+        >
+          <CheckIcon className="h-4 w-4" /> Complete workout
+        </button>
+      )}
+
+      {summary && (
+        <WorkoutSummary
+          title={day.label}
+          stats={summary}
+          archived={summary.sets > 0}
+          onClose={() => setSummary(null)}
+        />
+      )}
     </div>
   );
 }

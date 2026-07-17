@@ -3,7 +3,14 @@ import { useStore } from './state/StoreContext';
 import { effBlocks, computedInUse } from './state/store';
 import { e1rmFor } from './state/selectors';
 import { defaultDay } from './domain/program';
-import { Dumbbell, ChevronLeft, ChevronRight, ChevronDown, PlusIcon } from './components/common/icons';
+import {
+  Dumbbell,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  PlusIcon,
+  HistoryIcon,
+} from './components/common/icons';
 import { SectionHead } from './components/common/SectionHead';
 import { GlobalControls } from './components/GlobalControls';
 import { ReferenceLifts } from './components/ReferenceLifts/ReferenceLifts';
@@ -12,12 +19,14 @@ import { DayNav } from './components/DayView/DayNav';
 import { RestTimerBar } from './components/RestTimerBar';
 import { ReferencePanels } from './components/ReferencePanels';
 import { FreestyleWorkout } from './components/FreestyleWorkout';
+import { WorkoutHistory } from './components/WorkoutHistory';
+import { sessionDayLabel } from './domain/session';
 import {
   ExercisePicker,
   type PickerRequest,
 } from './components/ExercisePicker/ExercisePicker';
 
-type Page = 'week' | 'reference' | 'freestyle';
+type Page = 'week' | 'reference' | 'freestyle' | 'history';
 
 /** What the open picker is doing: swapping a block, or adding a new one. */
 type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
@@ -64,6 +73,10 @@ export default function App() {
 
   if (page === 'freestyle') {
     return <FreestyleWorkout onBack={() => setPage('week')} />;
+  }
+
+  if (page === 'history') {
+    return <WorkoutHistory onBack={() => setPage('week')} />;
   }
 
   const refIds = computedInUse(state);
@@ -147,6 +160,30 @@ export default function App() {
         <ChevronRight className="h-5 w-5 shrink-0 text-bg/70" />
       </button>
 
+      {/* entry point to the archived-workouts page */}
+      <button
+        type="button"
+        onClick={() => setPage('history')}
+        className="mb-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-accent/50"
+      >
+        <span className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+            <HistoryIcon className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block font-display text-[15px] font-bold tracking-[-0.01em]">
+              History
+            </span>
+            <span className="text-[12px] text-muted-2">
+              {state.sessions.length === 0
+                ? 'Completed workouts land here'
+                : `${state.sessions.length} workout${state.sessions.length === 1 ? '' : 's'} · last ${sessionDayLabel(state.sessions[0].at).toLowerCase()}`}
+            </span>
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-2" />
+      </button>
+
       {/* entry point to the reference-lifts page */}
       <button
         type="button"
@@ -219,8 +256,9 @@ function ReferencePage({ onBack }: { onBack: () => void }) {
       </header>
 
       <p className="mb-5 mt-3 max-w-[52ch] text-[14px] leading-relaxed text-muted">
-        One honest set each — weight, reps, and the RPE it actually felt like. These estimate your
-        1RM and set the target loads on every working set in the week.
+        One all-out set each — a weight, and the most reps you could manage with it. Taken to
+        failure, that's all it takes to estimate your 1RM and set the target loads on every working
+        set in the week.
       </p>
 
       <ReferenceLifts />

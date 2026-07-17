@@ -22,10 +22,15 @@ export function ReferencePanels() {
     <>
       <Panel summary="How the loads are calculated">
         <p className="mb-3">
-          Each reference set is converted to an estimated 1-rep max using the reps-to-failure model:{' '}
+          Everything runs on the reps-to-failure model:{' '}
           <strong>reps left in the tank = 10 − RPE</strong>, so 5 reps at RPE 8 is 7 reps from
           failure. That maps to a percentage of your 1RM (chart below), and the rest of the program
           loads back off that number.
+        </p>
+        <p className="mb-3">
+          A <strong>reference set is taken to failure</strong>, so there's no RPE to judge — it's
+          already RPE 10, and the reps you managed are the reps to failure. That's what makes it a
+          clean input: what you did, not how it felt.
         </p>
         <p className="mb-3">
           For a rep range, the displayed load is computed at the middle of the range —{' '}

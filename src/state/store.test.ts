@@ -16,11 +16,13 @@ import type { LoggedSet } from '../domain/types';
 
 const SET = (w: string, reps: string, rpe: string): LoggedSet => ({ w, reps, rpe });
 
+/** Fixed archive timestamp, so session tests don't depend on the clock. */
+const AT = '2026-07-17T18:30:00.000Z';
+
+/** A max-effort reference set: 100 kg for 5 reps. Effort is implicit (RPE 10). */
 function withRef(s: State): State {
-  let next = reducer(s, { type: 'setRef', id: 'bench', field: 'w', value: '100' });
-  next = reducer(next, { type: 'setRef', id: 'bench', field: 'reps', value: '5' });
-  next = reducer(next, { type: 'setRef', id: 'bench', field: 'rpe', value: '8' });
-  return next;
+  const next = reducer(s, { type: 'setRef', id: 'bench', field: 'w', value: '100' });
+  return reducer(next, { type: 'setRef', id: 'bench', field: 'reps', value: '5' });
 }
 
 describe('reducer', () => {
@@ -179,6 +181,90 @@ describe('set logging', () => {
     s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
     s = reducer(s, { type: 'restoreDay', dayKey: 'pushA' });
     expect(setsFor(s, 'pushA', 0)).toHaveLength(0);
+  });
+});
+
+describe('completeWorkout', () => {
+  const complete = (s: State, dayKey: string) =>
+    reducer(s, { type: 'completeWorkout', dayKey, title: 'Push', at: AT, id: 'sess-1' });
+
+  /** Log a set on pushA block 0 and check it off. */
+  function withDoneSet(s: State, dayKey = 'pushA'): State {
+    let next = reducer(s, { type: 'addSet', dayKey, index: 0, set: SET('100', '5', '8') });
+    next = reducer(next, { type: 'toggleSetDone', dayKey, index: 0, setIndex: 0 });
+    return next;
+  }
+
+  it('archives the checked-off sets and clears the day', () => {
+    const s = complete(withDoneSet(initialState()), 'pushA');
+    expect(s.sessions).toHaveLength(1);
+    expect(s.sessions[0]).toMatchObject({ id: 'sess-1', at: AT, dayKey: 'pushA', title: 'Push' });
+    expect(s.sessions[0].exercises).toHaveLength(1);
+    expect(s.sessions[0].exercises[0]).toMatchObject({ liftId: 'bench', name: LIFTS.bench.name });
+    expect(setsFor(s, 'pushA', 0)).toHaveLength(0);
+  });
+
+  it('archives only sets that were checked off', () => {
+    let s = withDoneSet(initialState());
+    s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '4', '9') });
+    s = complete(s, 'pushA');
+    expect(s.sessions[0].exercises[0].sets).toHaveLength(1);
+    expect(s.sessions[0].exercises[0].sets[0]).toMatchObject({ reps: '5' });
+  });
+
+  it('does nothing when no set is checked off, keeping half-entered work', () => {
+    let s = reducer(initialState(), {
+      type: 'addSet',
+      dayKey: 'pushA',
+      index: 0,
+      set: SET('100', '5', '8'),
+    });
+    s = complete(s, 'pushA');
+    expect(s.sessions).toHaveLength(0);
+    expect(setsFor(s, 'pushA', 0)).toHaveLength(1); // not destroyed
+  });
+
+  it('puts the newest session first', () => {
+    let s = complete(withDoneSet(initialState()), 'pushA');
+    s = withDoneSet(s);
+    s = reducer(s, { type: 'completeWorkout', dayKey: 'pushA', title: 'Push', at: AT, id: 'sess-2' });
+    expect(s.sessions.map((x) => x.id)).toEqual(['sess-2', 'sess-1']);
+  });
+
+  it('keeps a program day’s blocks but blanks the freestyle slate', () => {
+    let s = reducer(initialState(), { type: 'addBlock', dayKey: FREESTYLE_KEY, liftId: 'bench' });
+    s = withDoneSet(s, FREESTYLE_KEY);
+    const blocksBefore = effBlocks(s, 'pushA').length;
+
+    s = reducer(s, {
+      type: 'completeWorkout',
+      dayKey: FREESTYLE_KEY,
+      title: 'Freestyle',
+      at: AT,
+      id: 'sess-f',
+    });
+    expect(effBlocks(s, FREESTYLE_KEY)).toHaveLength(0);
+    expect(effBlocks(s, 'pushA')).toHaveLength(blocksBefore);
+  });
+
+  it('survives resetWeek — history is not a log', () => {
+    let s = complete(withDoneSet(initialState()), 'pushA');
+    s = reducer(s, { type: 'resetWeek' });
+    expect(s.sessions).toHaveLength(1);
+  });
+
+  it('removeSession drops just that session', () => {
+    let s = complete(withDoneSet(initialState()), 'pushA');
+    s = reducer(s, { type: 'removeSession', id: 'nope' });
+    expect(s.sessions).toHaveLength(1);
+    s = reducer(s, { type: 'removeSession', id: 'sess-1' });
+    expect(s.sessions).toHaveLength(0);
+  });
+
+  it('clearAll wipes history too', () => {
+    let s = complete(withDoneSet(initialState()), 'pushA');
+    s = reducer(s, { type: 'clearAll' });
+    expect(s.sessions).toEqual([]);
   });
 });
 

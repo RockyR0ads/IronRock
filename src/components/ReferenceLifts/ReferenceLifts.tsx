@@ -4,11 +4,11 @@ import { displayE1rm } from '../../state/selectors';
 import { LIFTS } from '../../domain/lifts';
 import type { RefSet } from '../../domain/types';
 
+/** A reference set is max effort by definition, so there's no RPE to record. */
 const FIELDS: { key: keyof RefSet; label: string; inputMode: 'decimal' | 'numeric'; step?: string }[] =
   [
     { key: 'w', label: 'Weight', inputMode: 'decimal' },
-    { key: 'reps', label: 'Reps', inputMode: 'numeric' },
-    { key: 'rpe', label: 'RPE', inputMode: 'decimal', step: '0.5' },
+    { key: 'reps', label: 'Max reps', inputMode: 'numeric' },
   ];
 
 function RefCard({ id }: { id: string }) {
@@ -39,7 +39,7 @@ function RefCard({ id }: { id: string }) {
         />
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         {FIELDS.map((f) => (
           <label key={f.key} className="block">
             <span className="mb-1 block text-[11px] font-medium text-muted-2">{f.label}</span>

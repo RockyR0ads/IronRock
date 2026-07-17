@@ -1,7 +1,16 @@
 import { DAYS, defaultDay } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
 import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
-import type { Block, Increment, Lift, LiftHistory, LoggedSet, RefSet } from '../domain/types';
+import { doneOnly } from '../domain/session';
+import type {
+  Block,
+  Increment,
+  Lift,
+  LiftHistory,
+  LoggedSet,
+  RefSet,
+  Session,
+} from '../domain/types';
 
 /** A user-created exercise. */
 export interface CustomLift {
@@ -23,6 +32,8 @@ export interface State {
   logs: Record<string, LoggedSet[][]>;
   /** Last completed set per lift id — shown as a "last time" hint. */
   history: Record<string, LiftHistory>;
+  /** Archived workouts, newest first. */
+  sessions: Session[];
   /** Bodyweight (raw input). */
   bw: string;
   /** Rounding increment. */
@@ -44,6 +55,7 @@ export function initialState(): State {
     customDays: {},
     logs: {},
     history: {},
+    sessions: [],
     bw: '',
     inc: 2.5,
     day: 'pushA',
@@ -80,6 +92,8 @@ export type Action =
   | { type: 'toggleSetDone'; dayKey: string; index: number; setIndex: number }
   | { type: 'removeSet'; dayKey: string; index: number; setIndex: number }
   | { type: 'clearDaySets'; dayKey: string }
+  | { type: 'completeWorkout'; dayKey: string; title: string; at: string; id: string }
+  | { type: 'removeSession'; id: string }
   | { type: 'resetWeek' }
   | { type: 'clearAll' };
 
@@ -252,6 +266,38 @@ export function reducer(state: State, action: Action): State {
       delete logs[action.dayKey];
       return { ...state, logs };
     }
+    case 'completeWorkout': {
+      // Archive what was actually performed: checked-off sets only, with the
+      // lift names resolved now so history survives later edits or renames.
+      const exercises = effBlocks(state, action.dayKey)
+        .map((block, i) => ({
+          liftId: block.lift,
+          name: liftById(state, block.lift).name,
+          sets: doneOnly(setsFor(state, action.dayKey, i)).map((s) => ({ ...s })),
+        }))
+        .filter((ex) => ex.sets.length > 0);
+      // nothing checked off — don't archive an empty session, and don't destroy
+      // the half-entered sets sitting on the day
+      if (exercises.length === 0) return state;
+
+      const session: Session = {
+        id: action.id,
+        at: action.at,
+        dayKey: action.dayKey,
+        title: action.title,
+        exercises,
+      };
+      const logs = { ...state.logs };
+      delete logs[action.dayKey];
+      // a program day keeps its prescribed blocks for next time; a freestyle
+      // workout is one-off, so it goes back to a blank slate
+      const customDays = { ...state.customDays };
+      if (action.dayKey === FREESTYLE_KEY) delete customDays[FREESTYLE_KEY];
+
+      return { ...state, sessions: [session, ...state.sessions], logs, customDays };
+    }
+    case 'removeSession':
+      return { ...state, sessions: state.sessions.filter((s) => s.id !== action.id) };
     case 'resetWeek': {
       // Start a fresh training week: drop every program day's logged sets, but
       // keep references, swapped exercises, history, and the freestyle workout.
@@ -279,6 +325,7 @@ export function loadState(): State {
       customDays: parsed.customDays ?? {},
       logs: parsed.logs ?? {},
       history: parsed.history ?? {},
+      sessions: parsed.sessions ?? [],
     };
   } catch {
     return base;
