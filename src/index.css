@@ -78,6 +78,60 @@
   animation: fade-in 0.18s ease-out;
 }
 
+/* a set gets checked off: the row gives a quick squash-and-settle */
+@keyframes set-pop {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.035);
+  }
+  65% {
+    transform: scale(0.994);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-set-pop {
+  animation: set-pop 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* the tick itself springs in, overshooting slightly */
+@keyframes check-pop {
+  0% {
+    transform: scale(0.35);
+  }
+  55% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-check-pop {
+  animation: check-pop 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* last set done: the whole card lifts and rings out a green pulse */
+@keyframes card-cheer {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(65, 194, 119, 0.45);
+  }
+  45% {
+    transform: scale(1.014);
+    box-shadow: 0 0 0 10px rgba(65, 194, 119, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(65, 194, 119, 0);
+  }
+}
+.animate-card-cheer {
+  animation: card-cheer 0.62s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

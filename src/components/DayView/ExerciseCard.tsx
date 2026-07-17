@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { useRestTimer } from '../../state/RestTimer';
 import { setsFor, liftById } from '../../state/store';
@@ -148,6 +148,10 @@ export function ExerciseCard({
   const { state, dispatch } = useStore();
   const rest = useRestTimer();
   const [rpeFor, setRpeFor] = useState<number | null>(null);
+  /** Index of the set that was just checked off, while its pop plays. */
+  const [popped, setPopped] = useState<number | null>(null);
+  const [cheer, setCheer] = useState(false);
+  const wasComplete = useRef(false);
   const freestyle = variant === 'freestyle';
   const lift = liftById(state, block.lift);
   const perLeg = isPerLeg(block, lift.uni);
@@ -177,8 +181,30 @@ export function ExerciseCard({
   function toggleDone(setIndex: number) {
     const wasDone = sets[setIndex]?.done;
     dispatch({ type: 'toggleSetDone', dayKey, index, setIndex });
-    if (!wasDone) rest.start(undefined, cardId); // starting a rest when checking a set off
+    if (!wasDone) {
+      rest.start(undefined, cardId); // starting a rest when checking a set off
+      setPopped(setIndex);
+    }
   }
+
+  // the just-ticked row pops, then the class comes back off so it can fire again
+  useEffect(() => {
+    if (popped === null) return;
+    const t = setTimeout(() => setPopped(null), 380);
+    return () => clearTimeout(t);
+  }, [popped]);
+
+  // the card cheers on the transition into complete — not on every render while
+  // it happens to be complete
+  useEffect(() => {
+    if (complete && !wasComplete.current) {
+      setCheer(true);
+      const t = setTimeout(() => setCheer(false), 660);
+      wasComplete.current = complete;
+      return () => clearTimeout(t);
+    }
+    wasComplete.current = complete;
+  }, [complete]);
 
   return (
     <div
@@ -187,6 +213,7 @@ export function ExerciseCard({
         'relative overflow-hidden scroll-mt-4 rounded-2xl border p-4 shadow-card transition-colors',
         complete ? 'border-green/60 bg-green/[0.06]' : 'border-line bg-surface',
         isResting ? 'border-green/60' : '',
+        cheer ? 'animate-card-cheer' : '',
       ].join(' ')}
     >
       {isResting && (
@@ -266,7 +293,13 @@ export function ExerciseCard({
             <span />
           </div>
           {sets.map((set, si) => (
-            <div key={si} className="grid grid-cols-[2.2rem_1fr_3.25rem_3.5rem_2rem] items-center gap-2">
+            <div
+              key={si}
+              className={[
+                'grid grid-cols-[2.2rem_1fr_3.25rem_3.5rem_2rem] items-center gap-2',
+                popped === si ? 'animate-set-pop' : '',
+              ].join(' ')}
+            >
               <button
                 type="button"
                 onClick={() => toggleDone(si)}
@@ -279,7 +312,11 @@ export function ExerciseCard({
                     : 'bg-surface-2 text-muted-2 hover:bg-surface-3 hover:text-ink',
                 ].join(' ')}
               >
-                {set.done ? <CheckIcon className="h-4 w-4" /> : si + 1}
+                {set.done ? (
+                  <CheckIcon className={`h-4 w-4 ${popped === si ? 'animate-check-pop' : ''}`} />
+                ) : (
+                  si + 1
+                )}
               </button>
               <SetInput
                 value={set.w}
