@@ -1,5 +1,13 @@
-import type { Session, SessionExercise } from './types';
+import type { LoggedSet, Session, SessionExercise } from './types';
 import type { StatsEntry } from './stats';
+
+/**
+ * A set worth keeping in the archive: one that was actually performed — checked
+ * off, or with a weight or reps entered. Blank prefill rows are dropped.
+ */
+export function meaningfulSet(s: LoggedSet): boolean {
+  return !!s.done || parseFloat(s.w) > 0 || parseFloat(s.reps) > 0;
+}
 
 /** Id for a new session. Impure by nature — kept here beside the session type. */
 export function newSessionId(): string {

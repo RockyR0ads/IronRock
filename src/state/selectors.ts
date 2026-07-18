@@ -38,9 +38,14 @@ export function isSetFilled(set: LoggedSet): boolean {
   return parseFloat(set.w) > 0 && parseFloat(set.reps) > 0 && parseFloat(set.rpe) > 0;
 }
 
-/** Number of sets explicitly checked off as done. */
+/** Working (non-warm-up) sets checked off as done — warm-ups never count. */
 export function doneSetCount(sets: LoggedSet[]): number {
-  return sets.filter((s) => s.done).length;
+  return sets.filter((s) => s.done && !s.warmup).length;
+}
+
+/** Working (non-warm-up) sets logged, regardless of done state. */
+export function workingSetCount(sets: LoggedSet[]): number {
+  return sets.filter((s) => !s.warmup).length;
 }
 
 /** A block is complete once at least its prescribed number of sets are checked done. */
@@ -52,6 +57,7 @@ export function isBlockComplete(block: Block, sets: LoggedSet[]): boolean {
 export function dayStats(state: State, dayKey: string): WorkoutStats {
   const entries = effBlocks(state, dayKey).map((block, i) => ({
     name: liftById(state, block.lift).name,
+    // pass everything logged — workoutStats itself ignores warm-ups
     sets: setsFor(state, dayKey, i),
   }));
   return workoutStats(entries, state.inc);

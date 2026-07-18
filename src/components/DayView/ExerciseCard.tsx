@@ -2,12 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { useRestTimer } from '../../state/RestTimer';
 import { setsFor, liftById } from '../../state/store';
-import { blockLoad, doneSetCount, isBlockComplete } from '../../state/selectors';
+import { blockLoad, doneSetCount, workingSetCount, isBlockComplete } from '../../state/selectors';
 import { repLabel, feelLabel, rpeNum, rpeHue, isPerLeg } from '../../domain/format';
+import { feelOption } from '../../domain/feel';
 import { SwapIcon, TrashIcon, PlusIcon, CheckIcon } from '../common/icons';
 import { PlateBar } from '../common/PlateBar';
 import { RpePicker } from './RpePicker';
-import type { Block, BlockClass, LiftHistory, LoggedSet } from '../../domain/types';
+import { FeelPicker } from './FeelPicker';
+import { FEEL_TONE } from '../common/feelTone';
+import { useHoldMenu } from './useHoldMenu';
+import type { Block, BlockClass, LiftHistory, LoggedSet, WarmupFeel } from '../../domain/types';
 
 /** Intensity → dot color. */
 const DOT: Record<BlockClass, string> = {
@@ -23,14 +27,32 @@ const CHIP: Record<BlockClass, string> = {
   'r-iso': 'bg-yellow/15 text-yellow',
 };
 
-/** Suggested values for the next set: carry over last set, else last session, else prescription. */
+/**
+ * The number a quick-step should nudge from: this cell's own value if it has
+ * one, otherwise the previous set's same field (so an empty new set steps off
+ * the last set), otherwise zero.
+ */
+function cellBase(sets: LoggedSet[], si: number, field: 'w' | 'reps' | 'rpe'): number {
+  const own = parseFloat(sets[si]?.[field] ?? '');
+  if (own > 0) return own;
+  // step off the previous set of the same kind (working vs warm-up)
+  const warm = !!sets[si]?.warmup;
+  for (let i = si - 1; i >= 0; i--) {
+    if (!!sets[i].warmup !== warm) continue;
+    const prev = parseFloat(sets[i][field] ?? '');
+    if (prev > 0) return prev;
+  }
+  return 0;
+}
+
+/** Suggested values for the next working set: carry the last one, else last session, else prescription. */
 function prefillSet(
   block: Block,
   sets: LoggedSet[],
   targetLoad: number | null,
   history?: LiftHistory
 ): LoggedSet {
-  const last = sets[sets.length - 1];
+  const last = [...sets].reverse().find((s) => !s.warmup);
   if (last) return { w: last.w, reps: last.reps, rpe: last.rpe, done: false };
   if (history) return { ...history, done: false };
   const reps = Array.isArray(block.reps) ? block.reps[1] : block.reps;
@@ -42,86 +64,158 @@ function prefillSet(
   };
 }
 
-/** One typed value in a logged set. Fills green once the set is checked off. */
+/** A new warm-up row: carry the last warm-up's weight/reps to ladder up, else blank. */
+function prefillWarmup(sets: LoggedSet[]): LoggedSet {
+  const last = [...sets].reverse().find((s) => s.warmup);
+  return { w: last?.w ?? '', reps: last?.reps ?? '', rpe: '', warmup: true, done: false };
+}
+
+/**
+ * One typed value in a logged set. Fills green once the set is checked off.
+ * Tap to type; press and hold to reveal quick-step chips (see useHoldMenu),
+ * so the next set's weight/reps can be nudged off the last without typing.
+ */
 function SetInput({
   value,
   onChange,
   label,
   mode,
-  step,
+  kind,
+  base,
   done,
+  warmup,
 }: {
   value: string;
   onChange: (v: string) => void;
   label: string;
   mode: 'decimal' | 'numeric';
-  step?: string;
+  kind: 'weight' | 'reps';
+  /** Numeric base to step from: this cell's value, else the previous set's. */
+  base: () => number;
   done: boolean;
+  warmup: boolean;
 }) {
+  const hold = useHoldMenu({
+    kind,
+    base,
+    onApply: onChange,
+    onTap: (el) => {
+      (el as HTMLInputElement).focus();
+      (el as HTMLInputElement).select();
+    },
+  });
+
   return (
-    <input
-      type="number"
-      inputMode={mode}
-      step={step}
-      value={value}
-      placeholder="–"
-      aria-label={label}
-      onChange={(e) => onChange(e.target.value)}
-      className={[
-        'h-10 w-full rounded-lg border text-center font-mono text-[15px] transition-colors placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-accent/70',
-        done
-          ? 'border-green/50 bg-green/20 text-green focus:border-green'
-          : 'border-line-2 bg-surface-2 text-ink focus:border-accent',
-      ].join(' ')}
-    />
+    <>
+      <input
+        type="number"
+        inputMode={mode}
+        value={value}
+        placeholder="–"
+        aria-label={label}
+        onChange={(e) => onChange(e.target.value)}
+        {...hold.handlers}
+        className={[
+          'h-10 w-full select-none rounded-lg border text-center font-mono text-[15px] transition-colors placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-accent/70',
+          done && warmup
+            ? 'border-yellow/50 bg-yellow/15 text-yellow focus:border-yellow'
+            : done
+              ? 'border-green/50 bg-green/20 text-green focus:border-green'
+              : 'border-line-2 bg-surface-2 text-ink focus:border-accent',
+        ].join(' ')}
+      />
+      {hold.menu}
+    </>
   );
 }
 
 /**
- * The RPE pill. Opens the scale picker rather than taking free-typed numbers,
- * and takes its hue from the effort itself (green → red), so a hard set reads
- * as hard whether or not it's been ticked.
+ * The RPE pill. A tap opens the scale picker; a press-and-hold reveals the same
+ * quick-step chips as the other cells (±0.5 / +1), for a fast nudge without the
+ * full picker. Its hue comes from the effort itself (green → red), so a hard
+ * set reads as hard whether or not it's been ticked.
  */
 function RpeButton({
   value,
+  base,
   done,
+  warmup,
   label,
   onOpen,
+  onApply,
 }: {
   value: string;
+  base: () => number;
   done: boolean;
+  warmup: boolean;
   label: string;
   onOpen: () => void;
+  onApply: (v: string) => void;
 }) {
   const rpe = parseFloat(value);
   const rated = rpe > 0;
   const hue = rated ? rpeHue(rpe) : 0;
+  const hold = useHoldMenu({ kind: 'rpe', base, onApply, onTap: onOpen });
 
+  return (
+    <>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-label={rated ? `${label}, currently ${value}` : `${label}, not rated`}
+        {...hold.handlers}
+        style={
+          rated
+            ? {
+                backgroundColor: `hsl(${hue} 65% 45% / 0.22)`,
+                borderColor: `hsl(${hue} 65% 55% / 0.55)`,
+                color: `hsl(${hue} 85% 75%)`,
+              }
+            : undefined
+        }
+        className={[
+          'h-10 w-full select-none rounded-lg border text-center font-mono text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-accent/70',
+          rated
+            ? ''
+            : done && warmup
+              ? 'border-yellow/50 bg-yellow/15 text-yellow'
+              : done
+                ? 'border-green/50 bg-green/20 text-green'
+                : 'border-line-2 bg-surface-2 text-muted-2 hover:text-ink',
+        ].join(' ')}
+      >
+        {rated ? value : '–'}
+      </button>
+      {hold.menu}
+    </>
+  );
+}
+
+/**
+ * The warm-up feel cell — the warm-up stand-in for the RPE pill. Shows the feel
+ * code (E/S/H) in its readiness colour, or a dash; tapping opens the chooser.
+ */
+function FeelButton({
+  value,
+  label,
+  onOpen,
+}: {
+  value: WarmupFeel | undefined;
+  label: string;
+  onOpen: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onOpen}
       aria-haspopup="dialog"
-      aria-label={rated ? `${label}, currently ${value}` : `${label}, not rated`}
-      style={
-        rated
-          ? {
-              backgroundColor: `hsl(${hue} 65% 45% / 0.22)`,
-              borderColor: `hsl(${hue} 65% 55% / 0.55)`,
-              color: `hsl(${hue} 85% 75%)`,
-            }
-          : undefined
-      }
+      aria-label={value ? `${label}, currently ${feelOption(value).phrase}` : `${label}, not set`}
       className={[
-        'h-10 w-full rounded-lg border text-center font-mono text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-accent/70',
-        rated
-          ? ''
-          : done
-            ? 'border-green/50 bg-green/20 text-green'
-            : 'border-line-2 bg-surface-2 text-muted-2 hover:text-ink',
+        'h-10 w-full rounded-lg border text-center font-display text-[15px] font-black transition-colors focus:outline-none focus:ring-2 focus:ring-accent/70',
+        value ? FEEL_TONE[value] : 'border-line-2 bg-surface-2 text-muted-2 hover:text-ink',
       ].join(' ')}
     >
-      {rated ? value : '–'}
+      {value ?? '–'}
     </button>
   );
 }
@@ -148,6 +242,7 @@ export function ExerciseCard({
   const { state, dispatch } = useStore();
   const rest = useRestTimer();
   const [rpeFor, setRpeFor] = useState<number | null>(null);
+  const [feelFor, setFeelFor] = useState<number | null>(null);
   /** Index of the set that was just checked off, while its pop plays. */
   const [popped, setPopped] = useState<number | null>(null);
   const [cheer, setCheer] = useState(false);
@@ -158,10 +253,9 @@ export function ExerciseCard({
   const sets = setsFor(state, dayKey, index);
   const target = lift.type === 'computed' ? blockLoad(state, block) : null;
   const history = state.history[block.lift];
-  const done = doneSetCount(sets);
-  const complete = freestyle
-    ? sets.length > 0 && done === sets.length
-    : isBlockComplete(block, sets);
+  const done = doneSetCount(sets); // working sets checked off (warm-ups excluded)
+  const working = workingSetCount(sets);
+  const complete = freestyle ? working > 0 && done === working : isBlockComplete(block, sets);
   const scheme = `${block.sets} × ${repLabel(block.reps)}${perLeg ? '/leg' : ''}`;
   const cardId = `blk-${dayKey}-${index}`;
 
@@ -175,8 +269,8 @@ export function ExerciseCard({
   const isResting = rest.running && rest.ownerId === cardId;
   const restPct = isResting && rest.duration > 0 ? (rest.secondsLeft / rest.duration) * 100 : 0;
 
-  const showBadge = !freestyle || sets.length > 0;
-  const badgeText = freestyle ? `${done}/${sets.length}` : `${done}/${block.sets}`;
+  const showBadge = !freestyle || working > 0;
+  const badgeText = freestyle ? `${done}/${working}` : `${done}/${block.sets}`;
 
   function toggleDone(setIndex: number) {
     const wasDone = sets[setIndex]?.done;
@@ -292,66 +386,104 @@ export function ExerciseCard({
             <span className="text-center">rpe</span>
             <span />
           </div>
-          {sets.map((set, si) => (
-            <div
-              key={si}
-              className={[
-                'grid grid-cols-[2.2rem_1fr_3.25rem_3.5rem_2rem] items-center gap-2',
-                popped === si ? 'animate-set-pop' : '',
-              ].join(' ')}
-            >
-              <button
-                type="button"
-                onClick={() => toggleDone(si)}
-                aria-label={set.done ? `Set ${si + 1} done, tap to undo` : `Mark set ${si + 1} done`}
-                aria-pressed={!!set.done}
-                className={[
-                  'flex h-9 w-9 items-center justify-center rounded-lg font-mono text-[13px] font-bold transition-colors',
-                  set.done
-                    ? 'bg-green text-bg'
-                    : 'bg-surface-2 text-muted-2 hover:bg-surface-3 hover:text-ink',
-                ].join(' ')}
-              >
-                {set.done ? (
-                  <CheckIcon className={`h-4 w-4 ${popped === si ? 'animate-check-pop' : ''}`} />
-                ) : (
-                  si + 1
-                )}
-              </button>
-              <SetInput
-                value={set.w}
-                mode="decimal"
-                done={!!set.done}
-                label={`${lift.name} set ${si + 1} weight`}
-                onChange={(v) =>
-                  dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'w', value: v })
-                }
-              />
-              <SetInput
-                value={set.reps}
-                mode="numeric"
-                done={!!set.done}
-                label={`${lift.name} set ${si + 1} reps`}
-                onChange={(v) =>
-                  dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'reps', value: v })
-                }
-              />
-              <RpeButton
-                value={set.rpe}
-                done={!!set.done}
-                label={`${lift.name} set ${si + 1} RPE`}
-                onOpen={() => setRpeFor(si)}
-              />
-              <button
-                type="button"
-                aria-label={`Remove set ${si + 1}`}
-                onClick={() => dispatch({ type: 'removeSet', dayKey, index, setIndex: si })}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-red transition-colors hover:bg-red/15"
-              >
-                <TrashIcon className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
+          {(() => {
+            let wn = 0;
+            return sets.map((set, si) => {
+              const warm = !!set.warmup;
+              if (!warm) wn += 1;
+              const rowLabel = warm ? 'W' : wn;
+              return (
+                <div
+                  key={si}
+                  className={[
+                    'grid grid-cols-[2.2rem_1fr_3.25rem_3.5rem_2rem] items-center gap-2 rounded-lg',
+                    warm ? '-mx-1 bg-yellow/[0.05] px-1 py-0.5' : '',
+                    popped === si ? 'animate-set-pop' : '',
+                  ].join(' ')}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleDone(si)}
+                    aria-label={
+                      warm
+                        ? `Warm-up set, ${set.done ? 'done, tap to undo' : 'mark done'}`
+                        : set.done
+                          ? `Set ${rowLabel} done, tap to undo`
+                          : `Mark set ${rowLabel} done`
+                    }
+                    aria-pressed={!!set.done}
+                    className={[
+                      'flex h-9 w-9 items-center justify-center rounded-lg font-mono text-[13px] font-bold transition-colors',
+                      set.done && warm
+                        ? 'bg-yellow text-bg'
+                        : set.done
+                          ? 'bg-green text-bg'
+                          : warm
+                            ? 'bg-yellow/15 text-yellow hover:bg-yellow/25'
+                            : 'bg-surface-2 text-muted-2 hover:bg-surface-3 hover:text-ink',
+                    ].join(' ')}
+                  >
+                    {set.done ? (
+                      <CheckIcon className={`h-4 w-4 ${popped === si ? 'animate-check-pop' : ''}`} />
+                    ) : (
+                      rowLabel
+                    )}
+                  </button>
+                  <SetInput
+                    value={set.w}
+                    mode="decimal"
+                    kind="weight"
+                    base={() => cellBase(sets, si, 'w')}
+                    done={!!set.done}
+                    warmup={warm}
+                    label={`${lift.name} ${warm ? 'warm-up' : `set ${rowLabel}`} weight`}
+                    onChange={(v) =>
+                      dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'w', value: v })
+                    }
+                  />
+                  <SetInput
+                    value={set.reps}
+                    mode="numeric"
+                    kind="reps"
+                    base={() => cellBase(sets, si, 'reps')}
+                    done={!!set.done}
+                    warmup={warm}
+                    label={`${lift.name} ${warm ? 'warm-up' : `set ${rowLabel}`} reps`}
+                    onChange={(v) =>
+                      dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'reps', value: v })
+                    }
+                  />
+                  {warm ? (
+                    <FeelButton
+                      value={set.feel}
+                      label={`${lift.name} warm-up feel`}
+                      onOpen={() => setFeelFor(si)}
+                    />
+                  ) : (
+                    <RpeButton
+                      value={set.rpe}
+                      base={() => cellBase(sets, si, 'rpe')}
+                      done={!!set.done}
+                      warmup={warm}
+                      label={`${lift.name} set ${rowLabel} RPE`}
+                      onOpen={() => setRpeFor(si)}
+                      onApply={(v) =>
+                        dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'rpe', value: v })
+                      }
+                    />
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${warm ? 'warm-up' : `set ${rowLabel}`}`}
+                    onClick={() => dispatch({ type: 'removeSet', dayKey, index, setIndex: si })}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-red transition-colors hover:bg-red/15"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            });
+          })()}
         </div>
       )}
 
@@ -362,9 +494,16 @@ export function ExerciseCard({
           onClick={() =>
             dispatch({ type: 'addSet', dayKey, index, set: prefillSet(block, sets, target, history) })
           }
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-3"
+          className="inline-flex flex-[3] items-center justify-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-3"
         >
           <PlusIcon className="h-4 w-4" /> Add set
+        </button>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'addSet', dayKey, index, set: prefillWarmup(sets) })}
+          className="inline-flex flex-[2] items-center justify-center gap-1 rounded-lg border border-yellow/30 bg-yellow/10 px-2 py-2 text-[12px] font-semibold text-yellow transition-colors hover:bg-yellow/20"
+        >
+          <PlusIcon className="h-3.5 w-3.5" /> Warm-up
         </button>
         <button
           type="button"
@@ -404,6 +543,22 @@ export function ExerciseCard({
             setRpeFor(null);
           }}
           onClose={() => setRpeFor(null)}
+        />
+      )}
+
+      {feelFor !== null && sets[feelFor] && (
+        <FeelPicker
+          title={`${lift.name} · warm-up`}
+          value={sets[feelFor].feel ?? null}
+          onPick={(feel) => {
+            dispatch({ type: 'setFeel', dayKey, index, setIndex: feelFor, value: feel });
+            setFeelFor(null);
+          }}
+          onClear={() => {
+            dispatch({ type: 'setFeel', dayKey, index, setIndex: feelFor, value: '' });
+            setFeelFor(null);
+          }}
+          onClose={() => setFeelFor(null)}
         />
       )}
     </div>

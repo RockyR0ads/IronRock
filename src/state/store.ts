@@ -1,7 +1,7 @@
 import { DAYS, defaultDay } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
 import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
-import { doneOnly } from '../domain/session';
+import { meaningfulSet } from '../domain/session';
 import type {
   Block,
   Increment,
@@ -10,6 +10,7 @@ import type {
   LoggedSet,
   RefSet,
   Session,
+  WarmupFeel,
 } from '../domain/types';
 
 /** A user-created exercise. */
@@ -89,6 +90,7 @@ export type Action =
   | { type: 'restoreDay'; dayKey: string }
   | { type: 'addSet'; dayKey: string; index: number; set: LoggedSet }
   | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe'; value: string }
+  | { type: 'setFeel'; dayKey: string; index: number; setIndex: number; value: WarmupFeel | '' }
   | { type: 'toggleSetDone'; dayKey: string; index: number; setIndex: number }
   | { type: 'removeSet'; dayKey: string; index: number; setIndex: number }
   | { type: 'clearDaySets'; dayKey: string }
@@ -241,6 +243,13 @@ export function reducer(state: State, action: Action): State {
       sets[action.setIndex] = { ...sets[action.setIndex], [action.field]: action.value };
       return { ...state, logs: { ...state.logs, [action.dayKey]: log } };
     }
+    case 'setFeel': {
+      const log = cloneDayLog(state, action.dayKey, action.index + 1);
+      const set = log[action.index][action.setIndex];
+      if (!set) return state;
+      log[action.index][action.setIndex] = { ...set, feel: action.value || undefined };
+      return { ...state, logs: { ...state.logs, [action.dayKey]: log } };
+    }
     case 'toggleSetDone': {
       const log = cloneDayLog(state, action.dayKey, action.index + 1);
       const set = log[action.index][action.setIndex];
@@ -248,7 +257,7 @@ export function reducer(state: State, action: Action): State {
       const nowDone = !set.done;
       log[action.index][action.setIndex] = { ...set, done: nowDone };
       let history = state.history;
-      if (nowDone) {
+      if (nowDone && !set.warmup) {
         const liftId = effBlocks(state, action.dayKey)[action.index]?.lift;
         if (liftId) {
           history = { ...history, [liftId]: { w: set.w, reps: set.reps, rpe: set.rpe } };
@@ -269,16 +278,20 @@ export function reducer(state: State, action: Action): State {
     case 'completeWorkout': {
       // Archive what was actually performed: checked-off sets only, with the
       // lift names resolved now so history survives later edits or renames.
+      // Capture the full session — every performed set, warm-ups included, with
+      // its done/warmup flags — so the archive shows exactly what happened. Only
+      // stats treat warm-ups and un-checked sets as not counting.
       const exercises = effBlocks(state, action.dayKey)
         .map((block, i) => ({
           liftId: block.lift,
           name: liftById(state, block.lift).name,
-          sets: doneOnly(setsFor(state, action.dayKey, i)).map((s) => ({ ...s })),
+          sets: setsFor(state, action.dayKey, i).filter(meaningfulSet).map((s) => ({ ...s })),
         }))
         .filter((ex) => ex.sets.length > 0);
-      // nothing checked off — don't archive an empty session, and don't destroy
-      // the half-entered sets sitting on the day
-      if (exercises.length === 0) return state;
+      // require at least one real working set to be checked off — otherwise don't
+      // archive an empty session, and don't destroy the sets sitting on the day
+      const hasWorkingDone = exercises.some((ex) => ex.sets.some((s) => s.done && !s.warmup));
+      if (!hasWorkingDone) return state;
 
       const session: Session = {
         id: action.id,

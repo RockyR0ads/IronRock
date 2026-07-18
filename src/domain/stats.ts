@@ -36,11 +36,11 @@ const num = (s: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-/** A set counts toward stats only once it's been checked off. */
-const isDone = (s: LoggedSet) => !!s.done;
+/** A set counts toward stats only if it's a working set that was checked off. */
+const counts = (s: LoggedSet) => !!s.done && !s.warmup;
 
 function statsForEntry(entry: StatsEntry, inc: Increment): ExerciseStats {
-  const done = entry.sets.filter(isDone);
+  const done = entry.sets.filter(counts);
   let reps = 0;
   let volume = 0;
   let topSet: LoggedSet | null = null;
@@ -83,7 +83,7 @@ export function workoutStats(entries: StatsEntry[], inc: Increment): WorkoutStat
 
   const rpes = entries
     .flatMap((e) => e.sets)
-    .filter(isDone)
+    .filter(counts)
     .map((s) => num(s.rpe))
     .filter((r) => r > 0);
   const avgRpe = rpes.length

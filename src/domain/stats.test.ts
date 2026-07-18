@@ -14,6 +14,23 @@ describe('workoutStats', () => {
     expect(s.volume).toBe(500);
   });
 
+  it('never counts warm-up sets, even when checked off', () => {
+    const s = workoutStats(
+      [
+        {
+          name: 'Bench',
+          sets: [
+            { w: '40', reps: '8', rpe: '', done: true, warmup: true },
+            set('100', '5', '8'),
+          ],
+        },
+      ],
+      2.5
+    );
+    expect(s.sets).toBe(1);
+    expect(s.volume).toBe(500); // warm-up 40×8 ignored
+  });
+
   it('drops exercises with nothing completed', () => {
     const s = workoutStats(
       [

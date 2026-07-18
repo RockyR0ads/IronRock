@@ -11,10 +11,13 @@ import {
 } from './store';
 import { defaultDay } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
-import { isBlockComplete } from './selectors';
+import { isBlockComplete, doneSetCount, workingSetCount } from './selectors';
+import { workoutStats } from '../domain/stats';
+import { sessionEntries } from '../domain/session';
 import type { LoggedSet } from '../domain/types';
 
 const SET = (w: string, reps: string, rpe: string): LoggedSet => ({ w, reps, rpe });
+const WARM = (w: string, reps: string): LoggedSet => ({ w, reps, rpe: '', warmup: true });
 
 /** Fixed archive timestamp, so session tests don't depend on the clock. */
 const AT = '2026-07-17T18:30:00.000Z';
@@ -204,12 +207,22 @@ describe('completeWorkout', () => {
     expect(setsFor(s, 'pushA', 0)).toHaveLength(0);
   });
 
-  it('archives only sets that were checked off', () => {
-    let s = withDoneSet(initialState());
-    s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '4', '9') });
+  it('archives every performed set, keeping its done flag', () => {
+    let s = withDoneSet(initialState()); // 100×5, checked off
+    s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '4', '9') }); // entered, not checked
     s = complete(s, 'pushA');
-    expect(s.sessions[0].exercises[0].sets).toHaveLength(1);
-    expect(s.sessions[0].exercises[0].sets[0]).toMatchObject({ reps: '5' });
+    const sets = s.sessions[0].exercises[0].sets;
+    expect(sets).toHaveLength(2); // both captured — the archive shows everything
+    expect(sets[0]).toMatchObject({ reps: '5', done: true });
+    expect(sets[1]).toMatchObject({ reps: '4' });
+    expect(sets[1].done).toBeFalsy(); // the un-checked set is kept, marked not-done
+  });
+
+  it('drops blank prefill rows that were never touched', () => {
+    let s = withDoneSet(initialState());
+    s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('', '', '') });
+    s = complete(s, 'pushA');
+    expect(s.sessions[0].exercises[0].sets).toHaveLength(1); // the empty row is noise
   });
 
   it('does nothing when no set is checked off, keeping half-entered work', () => {
@@ -265,6 +278,39 @@ describe('completeWorkout', () => {
     let s = complete(withDoneSet(initialState()), 'pushA');
     s = reducer(s, { type: 'clearAll' });
     expect(s.sessions).toEqual([]);
+  });
+});
+
+describe('warm-up sets', () => {
+  const done = (s: LoggedSet): LoggedSet => ({ ...s, done: true });
+
+  it('do not count toward completion or the working-set tally', () => {
+    const block = { ...defaultDay('pushA')!.blocks[0], sets: 2 };
+    const sets = [done(WARM('40', '5')), done(WARM('60', '3')), done(SET('100', '5', '8'))];
+    expect(workingSetCount(sets)).toBe(1);
+    expect(doneSetCount(sets)).toBe(1); // the two done warm-ups are ignored
+    expect(isBlockComplete(block, sets)).toBe(false); // 1 of 2 working sets
+    expect(isBlockComplete(block, [...sets, done(SET('100', '5', '9'))])).toBe(true);
+  });
+
+  it('are archived (so history shows everything) but never counted in stats', () => {
+    let s = reducer(initialState(), { type: 'addSet', dayKey: 'pushA', index: 0, set: WARM('40', '8') });
+    s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 1 });
+    s = reducer(s, { type: 'completeWorkout', dayKey: 'pushA', title: 'Push', at: AT, id: 'sess-w' });
+    const archived = s.sessions[0].exercises[0].sets;
+    expect(archived).toHaveLength(2); // warm-up kept for the record
+    expect(archived.some((x) => x.warmup)).toBe(true);
+    // but it must not inflate the numbers
+    const stats = workoutStats(sessionEntries(s.sessions[0]), s.inc);
+    expect(stats.sets).toBe(1);
+    expect(stats.volume).toBe(500); // 100×5 only, warm-up's 40×8 excluded
+  });
+
+  it('do not overwrite the last-time history hint', () => {
+    let s = reducer(initialState(), { type: 'addSet', dayKey: 'pushA', index: 0, set: WARM('40', '8') });
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0 });
+    expect(s.history.bench).toBeUndefined();
   });
 });
 

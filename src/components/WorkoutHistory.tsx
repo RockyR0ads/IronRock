@@ -3,6 +3,7 @@ import { useStore } from '../state/StoreContext';
 import { workoutStats, volumeParts } from '../domain/stats';
 import { sessionEntries, sessionDayLabel, sessionTimeLabel } from '../domain/session';
 import { rpeHue } from '../domain/format';
+import { FEEL_TONE } from './common/feelTone';
 import { ChevronLeft, ChevronRight, Dumbbell, TrashIcon } from './common/icons';
 import type { Session } from '../domain/types';
 
@@ -68,37 +69,53 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
           <div key={`${ex.liftId}-${i}`} className="rounded-2xl border border-line bg-surface p-4 shadow-card">
             <div className="font-display text-[15px] font-bold tracking-[-0.01em]">{ex.name}</div>
             <div className="mt-2.5 space-y-1.5">
-              {ex.sets.map((set, si) => {
-                const rpe = parseFloat(set.rpe);
-                return (
-                  <div
-                    key={si}
-                    className="grid grid-cols-[1.6rem_1fr_1fr_3.5rem] items-center gap-2 font-mono text-[13px]"
-                  >
-                    <span className="text-muted-2">{si + 1}</span>
-                    <span className="tabular-nums">
-                      {set.w || '–'} <span className="text-[10px] text-muted-2">kg</span>
-                    </span>
-                    <span className="tabular-nums">
-                      {set.reps || '–'} <span className="text-[10px] text-muted-2">reps</span>
-                    </span>
-                    {rpe > 0 ? (
-                      <span
-                        className="rounded-md border px-1 py-0.5 text-center text-[12px] font-bold tabular-nums"
-                        style={{
-                          backgroundColor: `hsl(${rpeHue(rpe)} 65% 45% / 0.22)`,
-                          borderColor: `hsl(${rpeHue(rpe)} 65% 55% / 0.55)`,
-                          color: `hsl(${rpeHue(rpe)} 85% 75%)`,
-                        }}
-                      >
-                        {set.rpe}
+              {(() => {
+                let wn = 0;
+                return ex.sets.map((set, si) => {
+                  const warm = !!set.warmup;
+                  if (!warm) wn += 1;
+                  const rpe = parseFloat(set.rpe);
+                  return (
+                    <div
+                      key={si}
+                      className={[
+                        'grid grid-cols-[1.6rem_1fr_1fr_3.5rem] items-center gap-2 font-mono text-[13px]',
+                        set.done ? '' : 'opacity-50', // logged but not checked off
+                      ].join(' ')}
+                    >
+                      <span className={warm ? 'text-yellow' : 'text-muted-2'}>
+                        {warm ? 'W' : wn}
                       </span>
-                    ) : (
-                      <span className="text-center text-muted-2">–</span>
-                    )}
-                  </div>
-                );
-              })}
+                      <span className="tabular-nums">
+                        {set.w || '–'} <span className="text-[10px] text-muted-2">kg</span>
+                      </span>
+                      <span className="tabular-nums">
+                        {set.reps || '–'} <span className="text-[10px] text-muted-2">reps</span>
+                      </span>
+                      {warm && set.feel ? (
+                        <span
+                          className={`rounded-md border px-1 py-0.5 text-center font-display text-[12px] font-black ${FEEL_TONE[set.feel]}`}
+                        >
+                          {set.feel}
+                        </span>
+                      ) : rpe > 0 ? (
+                        <span
+                          className="rounded-md border px-1 py-0.5 text-center text-[12px] font-bold tabular-nums"
+                          style={{
+                            backgroundColor: `hsl(${rpeHue(rpe)} 65% 45% / 0.22)`,
+                            borderColor: `hsl(${rpeHue(rpe)} 65% 55% / 0.55)`,
+                            color: `hsl(${rpeHue(rpe)} 85% 75%)`,
+                          }}
+                        >
+                          {set.rpe}
+                        </span>
+                      ) : (
+                        <span className="text-center text-muted-2">–</span>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         ))}

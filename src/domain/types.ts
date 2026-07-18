@@ -80,13 +80,28 @@ export interface RefSet {
 /** Rounding increment for computed loads. */
 export type Increment = 1 | 2.5 | 5;
 
-/** A single performed working set, logged against a block. Raw input strings. */
+/**
+ * How a warm-up felt relative to how that weight usually feels — a simple
+ * daily-readiness cue in place of a numeric RPE, which is meaningless on a
+ * warm-up. E = easier than usual, S = same, H = harder than usual.
+ */
+export type WarmupFeel = 'E' | 'S' | 'H';
+
+/** A single performed set, logged against a block. Raw input strings. */
 export interface LoggedSet {
   w: string;
   reps: string;
   rpe: string;
   /** Explicitly checked off as completed. Drives card completion. */
   done?: boolean;
+  /**
+   * A warm-up / ramp-up set: shown for context but excluded from everything
+   * that represents the program — completion, the set count, volume, stats
+   * and the numbers on the archived session.
+   */
+  warmup?: boolean;
+  /** Warm-up readiness feel (warm-up sets only) — replaces RPE for warm-ups. */
+  feel?: WarmupFeel;
 }
 
 /** Last recorded set for a lift, used as a "last time" hint. */
