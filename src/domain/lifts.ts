@@ -110,3 +110,17 @@ export const LIFTS: Record<string, Lift> = {
 export function liftsInCategory(cat: Category): string[] {
   return Object.keys(LIFTS).filter((id) => LIFTS[id].cats.includes(cat));
 }
+
+/**
+ * The 30 lifts worth charting — the big barbell compounds first, then the
+ * common dumbbell, bodyweight and isolation movements. Drives the exercise
+ * charts picker.
+ */
+export const TOP_LIFTS: string[] = [
+  'bench', 'squat', 'deadlift', 'ohp', 'row',
+  'inclinebench', 'frontsquat', 'rdl', 'pendlay', 'pushpress',
+  'cgbench', 'pullup', 'chinup', 'dips', 'dbbench',
+  'dbincline', 'dbohp', 'arnold', 'dbrow', 'csrow',
+  'bss', 'lunge', 'dbcurl', 'ezcurl', 'hammer',
+  'skull', 'latraise', 'reardelt', 'calf', 'seatedcalf',
+];

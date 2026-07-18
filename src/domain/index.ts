@@ -10,3 +10,4 @@ export * from './rpeScale';
 export * from './session';
 export * from './steps';
 export * from './feel';
+export * from './progress';

@@ -96,6 +96,21 @@ export function TrashIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Rising trend line with an arrow head — exercise charts. */
+export function TrendIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M4 15l4.5-4.5 3 3L20 6M20 6h-4.5M20 6v4.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Clock with a counter-clockwise arrow — archived workouts. */
 export function HistoryIcon(props: SVGProps<SVGSVGElement>) {
   return (

@@ -10,6 +10,7 @@ import {
   ChevronDown,
   PlusIcon,
   HistoryIcon,
+  TrendIcon,
 } from './components/common/icons';
 import { SectionHead } from './components/common/SectionHead';
 import { GlobalControls } from './components/GlobalControls';
@@ -20,13 +21,15 @@ import { RestTimerBar } from './components/RestTimerBar';
 import { ReferencePanels } from './components/ReferencePanels';
 import { FreestyleWorkout } from './components/FreestyleWorkout';
 import { WorkoutHistory } from './components/WorkoutHistory';
+import { ExerciseSelector } from './components/ExerciseProgress/ExerciseSelector';
+import { ExerciseDetail } from './components/ExerciseProgress/ExerciseDetail';
 import { sessionDayLabel } from './domain/session';
 import {
   ExercisePicker,
   type PickerRequest,
 } from './components/ExercisePicker/ExercisePicker';
 
-type Page = 'week' | 'reference' | 'freestyle' | 'history';
+type Page = 'week' | 'reference' | 'freestyle' | 'history' | 'progress';
 
 /** What the open picker is doing: swapping a block, or adding a new one. */
 type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
@@ -36,6 +39,8 @@ export default function App() {
   const [page, setPage] = useState<Page>('week');
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
+  /** Lift whose charts are open, when on the progress page. */
+  const [chartLift, setChartLift] = useState<string | null>(null);
 
   // close the day dropdown on Escape
   useEffect(() => {
@@ -77,6 +82,14 @@ export default function App() {
 
   if (page === 'history') {
     return <WorkoutHistory onBack={() => setPage('week')} />;
+  }
+
+  if (page === 'progress') {
+    return chartLift ? (
+      <ExerciseDetail liftId={chartLift} onBack={() => setChartLift(null)} />
+    ) : (
+      <ExerciseSelector onPick={setChartLift} onBack={() => setPage('week')} />
+    );
   }
 
   const refIds = computedInUse(state);
@@ -179,6 +192,29 @@ export default function App() {
                 ? 'Completed workouts land here'
                 : `${state.sessions.length} workout${state.sessions.length === 1 ? '' : 's'} · last ${sessionDayLabel(state.sessions[0].at).toLowerCase()}`}
             </span>
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-2" />
+      </button>
+
+      {/* entry point to the exercise-charts feature */}
+      <button
+        type="button"
+        onClick={() => {
+          setChartLift(null);
+          setPage('progress');
+        }}
+        className="mb-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-accent/50"
+      >
+        <span className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+            <TrendIcon className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block font-display text-[15px] font-bold tracking-[-0.01em]">
+              Exercise charts
+            </span>
+            <span className="text-[12px] text-muted-2">See a lift trend over time</span>
           </span>
         </span>
         <ChevronRight className="h-5 w-5 shrink-0 text-muted-2" />
