@@ -36,6 +36,14 @@ const num = (s: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/**
+ * Total reps for a set: the sum of both sides when logged per side, otherwise
+ * just the reps. This is what volume and rep totals are built on.
+ */
+export function setReps(s: Pick<LoggedSet, 'reps' | 'repsR' | 'perSide'>): number {
+  return s.perSide ? num(s.reps) + num(s.repsR ?? '') : num(s.reps);
+}
+
 /** A set counts toward stats only if it's a working set that was checked off. */
 const counts = (s: LoggedSet) => !!s.done && !s.warmup;
 
@@ -47,14 +55,14 @@ function statsForEntry(entry: StatsEntry, inc: Increment): ExerciseStats {
 
   for (const set of done) {
     const w = num(set.w);
-    const r = num(set.reps);
+    const r = setReps(set);
     reps += r;
     volume += w * r;
     if (!topSet) {
       topSet = set;
     } else {
       const tw = num(topSet.w);
-      if (w > tw || (w === tw && r > num(topSet.reps))) topSet = set;
+      if (w > tw || (w === tw && r > setReps(topSet))) topSet = set;
     }
   }
 

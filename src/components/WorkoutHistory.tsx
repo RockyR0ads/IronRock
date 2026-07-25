@@ -90,7 +90,10 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
                         {set.w || '–'} <span className="text-[10px] text-muted-2">kg</span>
                       </span>
                       <span className="tabular-nums">
-                        {set.reps || '–'} <span className="text-[10px] text-muted-2">reps</span>
+                        {set.perSide
+                          ? `${set.reps || '–'}/${set.repsR || '–'}`
+                          : set.reps || '–'}{' '}
+                        <span className="text-[10px] text-muted-2">reps</span>
                       </span>
                       {warm && set.feel ? (
                         <span

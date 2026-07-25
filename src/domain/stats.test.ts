@@ -1,7 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { workoutStats, volumeLabel } from './stats';
+import { workoutStats, volumeLabel, setReps } from './stats';
 
 const set = (w: string, reps: string, rpe: string, done = true) => ({ w, reps, rpe, done });
+
+describe('setReps', () => {
+  it('returns the reps for a normal set', () => {
+    expect(setReps({ reps: '8' })).toBe(8);
+  });
+
+  it('sums both sides when logged per side', () => {
+    expect(setReps({ reps: '8', repsR: '6', perSide: true })).toBe(14);
+  });
+
+  it('treats a missing right side as zero', () => {
+    expect(setReps({ reps: '8', perSide: true })).toBe(8);
+  });
+
+  it('ignores repsR unless perSide is set', () => {
+    expect(setReps({ reps: '8', repsR: '6' })).toBe(8);
+  });
+});
+
+describe('workoutStats with per-side reps', () => {
+  it('counts both sides toward reps and volume', () => {
+    const s = workoutStats(
+      [{ name: 'Split squat', sets: [{ w: '20', reps: '8', repsR: '7', perSide: true, rpe: '8', done: true }] }],
+      2.5
+    );
+    expect(s.reps).toBe(15); // 8 + 7
+    expect(s.volume).toBe(300); // 20 × 15
+  });
+});
 
 describe('workoutStats', () => {
   it('counts only sets checked off as done', () => {

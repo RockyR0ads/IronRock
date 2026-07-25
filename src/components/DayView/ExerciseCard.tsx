@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useStore } from '../../state/StoreContext';
 import { useRestTimer } from '../../state/RestTimer';
 import { setsFor, liftById } from '../../state/store';
@@ -28,11 +34,149 @@ const CHIP: Record<BlockClass, string> = {
 };
 
 /**
+ * Swipe a set row left to delete it. Engages only on clear horizontal intent so
+ * vertical scrolling still works; once engaged it captures the pointer — even
+ * from a number input — and reveals the red delete zone. Released past the
+ * threshold, the row is removed.
+ */
+function useSwipeRow(onDelete: () => void) {
+  const [dx, setDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const engaged = useRef(false);
+  const offset = useRef(0);
+
+  const ENGAGE = 12;
+  const DELETE_AT = 96;
+  // only a gesture starting in the right part of the row can swipe-to-delete, so
+  // editing the number / weight on the left never triggers an accidental delete
+  const RIGHT_ZONE = 0.6;
+
+  const move = (v: number) => {
+    offset.current = v;
+    setDx(v);
+  };
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.button > 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    if ((e.clientX - rect.left) / rect.width < RIGHT_ZONE) {
+      start.current = null; // started on the left — leave it for tapping/editing
+      return;
+    }
+    start.current = { x: e.clientX, y: e.clientY };
+    engaged.current = false;
+  };
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (!start.current) return;
+    const ddx = e.clientX - start.current.x;
+    const ddy = e.clientY - start.current.y;
+    if (!engaged.current) {
+      if (Math.abs(ddx) > ENGAGE && Math.abs(ddx) > Math.abs(ddy) * 1.3) {
+        engaged.current = true;
+        setDragging(true);
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          /* capture unsupported */
+        }
+      } else if (Math.abs(ddy) > ENGAGE) {
+        start.current = null; // vertical — let the page scroll
+        return;
+      } else {
+        return;
+      }
+    }
+    move(Math.max(-140, Math.min(0, ddx))); // left only, clamped
+  };
+
+  const finish = (e: ReactPointerEvent<HTMLDivElement>) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* nothing captured */
+    }
+    const del = engaged.current && offset.current <= -DELETE_AT;
+    start.current = null;
+    engaged.current = false;
+    setDragging(false);
+    move(0);
+    if (del) onDelete();
+  };
+
+  return {
+    dx,
+    dragging,
+    past: dx <= -DELETE_AT,
+    handlers: {
+      onPointerDown,
+      onPointerMove,
+      onPointerUp: finish,
+      onPointerCancel: finish,
+    },
+  };
+}
+
+/** A set row that slides left over a red delete zone; past the threshold it deletes. */
+function SwipeRow({
+  onDelete,
+  warm,
+  popped,
+  gridCols,
+  children,
+}: {
+  onDelete: () => void;
+  warm: boolean;
+  popped: boolean;
+  gridCols: string;
+  children: ReactNode;
+}) {
+  const swipe = useSwipeRow(onDelete);
+  const swiping = swipe.dx < 0;
+
+  return (
+    <div className="relative overflow-hidden rounded-lg">
+      <div
+        className={[
+          'pointer-events-none absolute inset-0 flex items-center justify-end gap-1.5 rounded-lg pr-4 text-bg transition-colors',
+          swipe.past ? 'bg-red' : 'bg-red/70',
+        ].join(' ')}
+        style={{ opacity: swiping ? 1 : 0 }}
+        aria-hidden
+      >
+        <TrashIcon className="h-5 w-5" />
+        <span className="font-display text-[13px] font-bold uppercase tracking-[-0.01em]">
+          {swipe.past ? 'Release' : 'Delete'}
+        </span>
+      </div>
+      <div
+        {...swipe.handlers}
+        style={{
+          transform: `translateX(${swipe.dx}px)`,
+          transition: swipe.dragging ? 'none' : 'transform 0.2s ease',
+          touchAction: 'pan-y',
+          backgroundColor: swiping ? '#16181C' : undefined,
+        }}
+        className={[
+          'grid items-center gap-2 rounded-lg px-0.5',
+          gridCols,
+          warm ? 'bg-yellow/[0.05]' : '',
+          popped ? 'animate-set-pop' : '',
+        ].join(' ')}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
  * The number a quick-step should nudge from: this cell's own value if it has
  * one, otherwise the previous set's same field (so an empty new set steps off
  * the last set), otherwise zero.
  */
-function cellBase(sets: LoggedSet[], si: number, field: 'w' | 'reps' | 'rpe'): number {
+function cellBase(sets: LoggedSet[], si: number, field: 'w' | 'reps' | 'rpe' | 'repsR'): number {
   const own = parseFloat(sets[si]?.[field] ?? '');
   if (own > 0) return own;
   // step off the previous set of the same kind (working vs warm-up)
@@ -53,7 +197,11 @@ function prefillSet(
   history?: LiftHistory
 ): LoggedSet {
   const last = [...sets].reverse().find((s) => !s.warmup);
-  if (last) return { w: last.w, reps: last.reps, rpe: last.rpe, done: false };
+  if (last) {
+    // a new row inherits the previous set's per-side choice
+    const side = last.perSide ? { perSide: true, repsR: last.repsR ?? '' } : {};
+    return { w: last.w, reps: last.reps, rpe: last.rpe, done: false, ...side };
+  }
   if (history) return { ...history, done: false };
   const reps = Array.isArray(block.reps) ? block.reps[1] : block.reps;
   return {
@@ -67,7 +215,8 @@ function prefillSet(
 /** A new warm-up row: carry the last warm-up's weight/reps to ladder up, else blank. */
 function prefillWarmup(sets: LoggedSet[]): LoggedSet {
   const last = [...sets].reverse().find((s) => s.warmup);
-  return { w: last?.w ?? '', reps: last?.reps ?? '', rpe: '', warmup: true, done: false };
+  const side = last?.perSide ? { perSide: true, repsR: last.repsR ?? '' } : {};
+  return { w: last?.w ?? '', reps: last?.reps ?? '', rpe: '', warmup: true, done: false, ...side };
 }
 
 /**
@@ -84,6 +233,8 @@ function SetInput({
   base,
   done,
   warmup,
+  compact,
+  extra,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -94,6 +245,10 @@ function SetInput({
   base: () => number;
   done: boolean;
   warmup: boolean;
+  /** Narrower styling for the half-width per-side reps inputs. */
+  compact?: boolean;
+  /** Extra menu toggle, e.g. the per-side switch. */
+  extra?: { label: string; on: boolean; onSelect: () => void };
 }) {
   const hold = useHoldMenu({
     kind,
@@ -103,6 +258,7 @@ function SetInput({
       (el as HTMLInputElement).focus();
       (el as HTMLInputElement).select();
     },
+    extra,
   });
 
   return (
@@ -116,16 +272,93 @@ function SetInput({
         onChange={(e) => onChange(e.target.value)}
         {...hold.handlers}
         className={[
-          'h-10 w-full select-none rounded-lg border text-center font-mono text-[15px] transition-colors placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-accent/70',
+          'h-10 w-full select-none rounded-lg border text-center font-mono transition-colors placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-accent/70',
+          compact ? 'px-0 text-[13px]' : 'text-[15px]',
           done && warmup
-            ? 'border-yellow/50 bg-yellow/15 text-yellow focus:border-yellow'
+            ? 'border-yellow bg-yellow/90 text-bg focus:border-yellow'
             : done
-              ? 'border-green/50 bg-green/20 text-green focus:border-green'
+              ? 'border-green bg-green/90 text-bg focus:border-green'
               : 'border-line-2 bg-surface-2 text-ink focus:border-accent',
         ].join(' ')}
       />
       {hold.menu}
     </>
+  );
+}
+
+/**
+ * The reps cell. Normally one input; in per-side mode it splits into two
+ * half-width inputs — left and right. Each input keeps its quick-step menu
+ * (hold to nudge); that menu carries the Split / Merge toggle, so per-side is a
+ * per-set choice reached without losing the reps quick-step.
+ */
+function RepsCell({
+  set,
+  perSide,
+  done,
+  warmup,
+  label,
+  onLeft,
+  onRight,
+  onToggle,
+  baseLeft,
+  baseRight,
+}: {
+  set: LoggedSet;
+  perSide: boolean;
+  done: boolean;
+  warmup: boolean;
+  label: string;
+  onLeft: (v: string) => void;
+  onRight: (v: string) => void;
+  onToggle: () => void;
+  baseLeft: () => number;
+  baseRight: () => number;
+}) {
+  const toggle = { label: 'Per side', on: perSide, onSelect: onToggle };
+
+  if (!perSide) {
+    return (
+      <SetInput
+        value={set.reps}
+        mode="numeric"
+        kind="reps"
+        base={baseLeft}
+        done={done}
+        warmup={warmup}
+        label={`${label} reps`}
+        onChange={onLeft}
+        extra={toggle}
+      />
+    );
+  }
+  return (
+    <div className="flex gap-1">
+      <SetInput
+        value={set.reps}
+        mode="numeric"
+        kind="reps"
+        base={baseLeft}
+        done={done}
+        warmup={warmup}
+        compact
+        label={`${label} left reps`}
+        onChange={onLeft}
+        extra={toggle}
+      />
+      <SetInput
+        value={set.repsR ?? ''}
+        mode="numeric"
+        kind="reps"
+        base={baseRight}
+        done={done}
+        warmup={warmup}
+        compact
+        label={`${label} right reps`}
+        onChange={onRight}
+        extra={toggle}
+      />
+    </div>
   );
 }
 
@@ -166,11 +399,17 @@ function RpeButton({
         {...hold.handlers}
         style={
           rated
-            ? {
-                backgroundColor: `hsl(${hue} 65% 45% / 0.22)`,
-                borderColor: `hsl(${hue} 65% 55% / 0.55)`,
-                color: `hsl(${hue} 85% 75%)`,
-              }
+            ? done
+              ? {
+                  backgroundColor: `hsl(${hue} 60% 52%)`,
+                  borderColor: `hsl(${hue} 60% 52%)`,
+                  color: '#0E0F12',
+                }
+              : {
+                  backgroundColor: `hsl(${hue} 65% 45% / 0.22)`,
+                  borderColor: `hsl(${hue} 65% 55% / 0.55)`,
+                  color: `hsl(${hue} 85% 75%)`,
+                }
             : undefined
         }
         className={[
@@ -178,9 +417,9 @@ function RpeButton({
           rated
             ? ''
             : done && warmup
-              ? 'border-yellow/50 bg-yellow/15 text-yellow'
+              ? 'border-yellow bg-yellow/90 text-bg'
               : done
-                ? 'border-green/50 bg-green/20 text-green'
+                ? 'border-green bg-green/90 text-bg'
                 : 'border-line-2 bg-surface-2 text-muted-2 hover:text-ink',
         ].join(' ')}
       >
@@ -258,6 +497,11 @@ export function ExerciseCard({
   const complete = freestyle ? working > 0 && done === working : isBlockComplete(block, sets);
   const scheme = `${block.sets} × ${repLabel(block.reps)}${perLeg ? '/leg' : ''}`;
   const cardId = `blk-${dayKey}-${index}`;
+  // if any set logs reps per side, widen the reps column and split its header
+  const anyPerSide = sets.some((s) => s.perSide);
+  const gridCols = anyPerSide
+    ? 'grid-cols-[1.9rem_1fr_4.75rem_3.5rem_2.5rem]'
+    : 'grid-cols-[1.9rem_1fr_3.25rem_3.5rem_2.5rem]';
 
   // weight shown on the barbell glyph: the most recent set with a weight
   // entered, else the computed target (so it shows before logging too)
@@ -379,12 +623,20 @@ export function ExerciseCard({
       {/* logged sets */}
       {sets.length > 0 && (
         <div className="relative z-10 mt-3 space-y-1.5">
-          <div className="grid grid-cols-[2.2rem_1fr_3.25rem_3.5rem_2rem] gap-2 px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-2">
+          <div className={`grid ${gridCols} gap-2 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-2`}>
             <span className="text-center">Set</span>
             <span className="text-center">kg</span>
-            <span className="text-center">reps</span>
+            {anyPerSide ? (
+              <span className="flex items-center justify-between px-1">
+                <span className="text-accent">L</span>
+                <span>reps</span>
+                <span className="text-accent">R</span>
+              </span>
+            ) : (
+              <span className="text-center">reps</span>
+            )}
             <span className="text-center">rpe</span>
-            <span />
+            <span className="text-center">done</span>
           </div>
           {(() => {
             let wn = 0;
@@ -393,42 +645,22 @@ export function ExerciseCard({
               if (!warm) wn += 1;
               const rowLabel = warm ? 'W' : wn;
               return (
-                <div
+                <SwipeRow
                   key={si}
-                  className={[
-                    'grid grid-cols-[2.2rem_1fr_3.25rem_3.5rem_2rem] items-center gap-2 rounded-lg',
-                    warm ? '-mx-1 bg-yellow/[0.05] px-1 py-0.5' : '',
-                    popped === si ? 'animate-set-pop' : '',
-                  ].join(' ')}
+                  warm={warm}
+                  popped={popped === si}
+                  gridCols={gridCols}
+                  onDelete={() => dispatch({ type: 'removeSet', dayKey, index, setIndex: si })}
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggleDone(si)}
-                    aria-label={
-                      warm
-                        ? `Warm-up set, ${set.done ? 'done, tap to undo' : 'mark done'}`
-                        : set.done
-                          ? `Set ${rowLabel} done, tap to undo`
-                          : `Mark set ${rowLabel} done`
-                    }
-                    aria-pressed={!!set.done}
+                  <span
                     className={[
-                      'flex h-9 w-9 items-center justify-center rounded-lg font-mono text-[13px] font-bold transition-colors',
-                      set.done && warm
-                        ? 'bg-yellow text-bg'
-                        : set.done
-                          ? 'bg-green text-bg'
-                          : warm
-                            ? 'bg-yellow/15 text-yellow hover:bg-yellow/25'
-                            : 'bg-surface-2 text-muted-2 hover:bg-surface-3 hover:text-ink',
+                      'select-none text-center font-mono text-[13px] font-bold tabular-nums',
+                      warm ? 'text-yellow' : 'text-muted-2',
                     ].join(' ')}
+                    aria-hidden
                   >
-                    {set.done ? (
-                      <CheckIcon className={`h-4 w-4 ${popped === si ? 'animate-check-pop' : ''}`} />
-                    ) : (
-                      rowLabel
-                    )}
-                  </button>
+                    {rowLabel}
+                  </span>
                   <SetInput
                     value={set.w}
                     mode="decimal"
@@ -441,17 +673,21 @@ export function ExerciseCard({
                       dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'w', value: v })
                     }
                   />
-                  <SetInput
-                    value={set.reps}
-                    mode="numeric"
-                    kind="reps"
-                    base={() => cellBase(sets, si, 'reps')}
+                  <RepsCell
+                    set={set}
+                    perSide={!!set.perSide}
                     done={!!set.done}
                     warmup={warm}
-                    label={`${lift.name} ${warm ? 'warm-up' : `set ${rowLabel}`} reps`}
-                    onChange={(v) =>
+                    label={`${lift.name} ${warm ? 'warm-up' : `set ${rowLabel}`}`}
+                    baseLeft={() => cellBase(sets, si, 'reps')}
+                    baseRight={() => cellBase(sets, si, 'repsR')}
+                    onLeft={(v) =>
                       dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'reps', value: v })
                     }
+                    onRight={(v) =>
+                      dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'repsR', value: v })
+                    }
+                    onToggle={() => dispatch({ type: 'toggleSetPerSide', dayKey, index, setIndex: si })}
                   />
                   {warm ? (
                     <FeelButton
@@ -474,13 +710,35 @@ export function ExerciseCard({
                   )}
                   <button
                     type="button"
-                    aria-label={`Remove ${warm ? 'warm-up' : `set ${rowLabel}`}`}
-                    onClick={() => dispatch({ type: 'removeSet', dayKey, index, setIndex: si })}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg text-red transition-colors hover:bg-red/15"
+                    onClick={() => toggleDone(si)}
+                    aria-label={
+                      warm
+                        ? `Warm-up set, ${set.done ? 'done, tap to undo' : 'mark done'}`
+                        : set.done
+                          ? `Set ${rowLabel} done, tap to undo`
+                          : `Mark set ${rowLabel} done`
+                    }
+                    aria-pressed={!!set.done}
+                    className={[
+                      'flex h-9 w-9 items-center justify-center justify-self-center rounded-lg border transition-colors',
+                      set.done && warm
+                        ? 'border-yellow bg-yellow text-bg'
+                        : set.done
+                          ? 'border-green bg-green text-bg'
+                          : warm
+                            ? 'border-yellow/40 bg-surface-2 text-yellow hover:bg-yellow/15'
+                            : 'border-line-2 bg-surface-2 text-muted-2 hover:bg-surface-3 hover:text-ink',
+                    ].join(' ')}
                   >
-                    <TrashIcon className="h-4 w-4" />
+                    <CheckIcon
+                      className={[
+                        'h-4 w-4',
+                        set.done ? (popped === si ? 'animate-check-pop' : '') : 'opacity-40',
+                      ].join(' ')}
+                    />
+
                   </button>
-                </div>
+                </SwipeRow>
               );
             });
           })()}

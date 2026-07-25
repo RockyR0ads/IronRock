@@ -314,6 +314,31 @@ describe('warm-up sets', () => {
   });
 });
 
+describe('per-side reps', () => {
+  it('toggleSetPerSide flips a single set on, then off', () => {
+    let s = reducer(initialState(), { type: 'addSet', dayKey: 'legsB', index: 1, set: SET('20', '5', '8') });
+    s = reducer(s, { type: 'addSet', dayKey: 'legsB', index: 1, set: SET('20', '5', '8') });
+    s = reducer(s, { type: 'toggleSetPerSide', dayKey: 'legsB', index: 1, setIndex: 0 });
+    expect(s.logs.legsB[1][0].perSide).toBe(true);
+    expect(s.logs.legsB[1][1].perSide).toBeUndefined(); // only the one set toggled
+    s = reducer(s, { type: 'toggleSetPerSide', dayKey: 'legsB', index: 1, setIndex: 0 });
+    expect(s.logs.legsB[1][0].perSide).toBeUndefined();
+  });
+
+  it('is a no-op when the set does not exist', () => {
+    const before = initialState();
+    const after = reducer(before, { type: 'toggleSetPerSide', dayKey: 'legsB', index: 1, setIndex: 0 });
+    expect(after).toBe(before); // unchanged reference — nothing to toggle
+  });
+
+  it('updateSet can write the right-side reps', () => {
+    let s = reducer(initialState(), { type: 'addSet', dayKey: 'legsB', index: 1, set: SET('20', '8', '8') });
+    s = reducer(s, { type: 'toggleSetPerSide', dayKey: 'legsB', index: 1, setIndex: 0 });
+    s = reducer(s, { type: 'updateSet', dayKey: 'legsB', index: 1, setIndex: 0, field: 'repsR', value: '6' });
+    expect(s.logs.legsB[1][0]).toMatchObject({ reps: '8', repsR: '6', perSide: true });
+  });
+});
+
 describe('computedInUse', () => {
   it('lists computed lifts in first-use order', () => {
     const ids = computedInUse(initialState());

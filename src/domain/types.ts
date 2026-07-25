@@ -90,8 +90,16 @@ export type WarmupFeel = 'E' | 'S' | 'H';
 /** A single performed set, logged against a block. Raw input strings. */
 export interface LoggedSet {
   w: string;
+  /** Reps. When `perSide` is set this holds the left-side reps. */
   reps: string;
   rpe: string;
+  /**
+   * Reps logged per side (unilateral work). When set, `reps` is the left side
+   * and `repsR` the right; total reps for the set is the sum of the two.
+   */
+  perSide?: boolean;
+  /** Right-side reps, used only when `perSide` is set. */
+  repsR?: string;
   /** Explicitly checked off as completed. Drives card completion. */
   done?: boolean;
   /**

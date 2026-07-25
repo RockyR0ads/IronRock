@@ -89,7 +89,8 @@ export type Action =
   | { type: 'addCustomLift'; id: string; name: string; unit: string; group: string }
   | { type: 'restoreDay'; dayKey: string }
   | { type: 'addSet'; dayKey: string; index: number; set: LoggedSet }
-  | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe'; value: string }
+  | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe' | 'repsR'; value: string }
+  | { type: 'toggleSetPerSide'; dayKey: string; index: number; setIndex: number }
   | { type: 'setFeel'; dayKey: string; index: number; setIndex: number; value: WarmupFeel | '' }
   | { type: 'toggleSetDone'; dayKey: string; index: number; setIndex: number }
   | { type: 'removeSet'; dayKey: string; index: number; setIndex: number }
@@ -241,6 +242,14 @@ export function reducer(state: State, action: Action): State {
       const sets = log[action.index];
       if (!sets[action.setIndex]) return state;
       sets[action.setIndex] = { ...sets[action.setIndex], [action.field]: action.value };
+      return { ...state, logs: { ...state.logs, [action.dayKey]: log } };
+    }
+    case 'toggleSetPerSide': {
+      // flip a single set between one reps value and per-side (left/right)
+      const log = cloneDayLog(state, action.dayKey, action.index + 1);
+      const set = log[action.index]?.[action.setIndex];
+      if (!set) return state;
+      log[action.index][action.setIndex] = { ...set, perSide: set.perSide ? undefined : true };
       return { ...state, logs: { ...state.logs, [action.dayKey]: log } };
     }
     case 'setFeel': {

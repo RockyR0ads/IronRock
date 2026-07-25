@@ -1,4 +1,5 @@
 import { estimate1Rm, round } from './calc';
+import { setReps } from './stats';
 import type { Increment, LoggedSet, Session } from './types';
 
 /**
@@ -64,7 +65,7 @@ export function exerciseSeries(
 
     for (const set of sets) {
       const w = num(set.w);
-      const r = num(set.reps);
+      const r = setReps(set);
       const rp = num(set.rpe);
       volume += w * r;
       if (rp > 0) rpes.push(rp);
@@ -72,7 +73,7 @@ export function exerciseSeries(
         topSet = set;
       } else {
         const tw = num(topSet.w);
-        if (w > tw || (w === tw && r > num(topSet.reps))) topSet = set;
+        if (w > tw || (w === tw && r > setReps(topSet))) topSet = set;
       }
     }
 

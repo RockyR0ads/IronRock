@@ -7,6 +7,12 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import {
+  requestNotify,
+  updateRestNotification,
+  completeRestNotification,
+  clearRestNotification,
+} from '../domain/notify';
 
 /** Default rest between sets, in seconds. */
 export const REST_DEFAULT = 120;
@@ -35,6 +41,11 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
   const [running, setRunning] = useState(false);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const tick = useRef<ReturnType<typeof setInterval> | null>(null);
+  // live mirrors so the visibility listener can read current values
+  const leftRef = useRef(0);
+  const runningRef = useRef(false);
+  leftRef.current = secondsLeft;
+  runningRef.current = running;
 
   const stop = useCallback(() => {
     if (tick.current) {
@@ -49,12 +60,16 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     setSecondsLeft(seconds);
     setOwnerId(owner);
     setRunning(true);
+    // called from a set tap (a user gesture), so it's a valid time to prompt
+    void requestNotify();
+    if (document.hidden) updateRestNotification(seconds);
   }, []);
 
   const skip = useCallback(() => {
     stop();
     setSecondsLeft(0);
     setOwnerId(null);
+    void clearRestNotification();
   }, [stop]);
 
   const addTime = useCallback((delta: number) => {
@@ -72,9 +87,13 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
           if (tick.current) clearInterval(tick.current);
           tick.current = null;
           navigator.vibrate?.(300);
+          if (document.hidden) completeRestNotification();
           return 0;
         }
-        return s - 1;
+        const next = s - 1;
+        // keep the ongoing notification in sync while the app is backgrounded
+        if (document.hidden) updateRestNotification(next);
+        return next;
       });
     }, 1000);
     return () => {
@@ -82,6 +101,20 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
       tick.current = null;
     };
   }, [running]);
+
+  // The in-app bar covers the visible case, so only surface a notification when
+  // the app is backgrounded; clear it the moment the app comes back to front.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) {
+        if (runningRef.current) updateRestNotification(leftRef.current);
+      } else {
+        void clearRestNotification();
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
   return (
     <RestTimerContext.Provider
