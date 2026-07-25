@@ -1,271 +1,43 @@
-import { useEffect, useState } from 'react';
-import { useStore } from './state/StoreContext';
-import { effBlocks, computedInUse } from './state/store';
-import { e1rmFor } from './state/selectors';
-import { defaultDay } from './domain/program';
-import {
-  Dumbbell,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  PlusIcon,
-  HistoryIcon,
-  TrendIcon,
-} from './components/common/icons';
-import { SectionHead } from './components/common/SectionHead';
-import { GlobalControls } from './components/GlobalControls';
+import { useState } from 'react';
+import { ChevronLeft } from './components/common/icons';
 import { ReferenceLifts } from './components/ReferenceLifts/ReferenceLifts';
-import { DayView } from './components/DayView/DayView';
-import { DayNav } from './components/DayView/DayNav';
-import { RestTimerBar } from './components/RestTimerBar';
-import { ReferencePanels } from './components/ReferencePanels';
 import { FreestyleWorkout } from './components/FreestyleWorkout';
 import { WorkoutHistory } from './components/WorkoutHistory';
 import { ExerciseSelector } from './components/ExerciseProgress/ExerciseSelector';
 import { ExerciseDetail } from './components/ExerciseProgress/ExerciseDetail';
-import { sessionDayLabel } from './domain/session';
-import {
-  ExercisePicker,
-  type PickerRequest,
-} from './components/ExercisePicker/ExercisePicker';
+import { ProgramInfo } from './components/ProgramInfo/ProgramInfo';
+import { Home, type HomeDest } from './components/Home';
+import { TrainWeek } from './components/TrainWeek';
 
-type Page = 'week' | 'reference' | 'freestyle' | 'history' | 'progress';
-
-/** What the open picker is doing: swapping a block, or adding a new one. */
-type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
+type Page = 'home' | 'week' | 'reference' | 'freestyle' | 'history' | 'progress' | 'program';
 
 export default function App() {
-  const { state, dispatch } = useStore();
-  const [page, setPage] = useState<Page>('week');
-  const [picker, setPicker] = useState<PickerMode | null>(null);
-  const [dayPickerOpen, setDayPickerOpen] = useState(false);
+  const [page, setPage] = useState<Page>('home');
   /** Lift whose charts are open, when on the progress page. */
   const [chartLift, setChartLift] = useState<string | null>(null);
 
-  // close the day dropdown on Escape
-  useEffect(() => {
-    if (!dayPickerOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDayPickerOpen(false);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [dayPickerOpen]);
+  const home = () => setPage('home');
 
-  function pickerRequest(): PickerRequest | null {
-    if (!picker) return null;
-    if (picker.kind === 'swap') {
-      const block = effBlocks(state, state.day)[picker.index];
-      if (!block) return null;
-      return { title: 'Swap exercise', currentId: block.lift };
-    }
-    return { title: 'Add exercise' };
-  }
-
-  function handlePick(liftId: string) {
-    if (!picker) return;
-    if (picker.kind === 'swap') {
-      dispatch({ type: 'swapBlock', dayKey: state.day, index: picker.index, liftId });
-    } else {
-      dispatch({ type: 'addBlock', dayKey: state.day, liftId });
-    }
-    setPicker(null);
-  }
-
-  if (page === 'reference') {
-    return <ReferencePage onBack={() => setPage('week')} />;
-  }
-
-  if (page === 'freestyle') {
-    return <FreestyleWorkout onBack={() => setPage('week')} />;
-  }
-
-  if (page === 'history') {
-    return <WorkoutHistory onBack={() => setPage('week')} />;
-  }
-
+  if (page === 'week') return <TrainWeek onBack={home} />;
+  if (page === 'reference') return <ReferencePage onBack={home} />;
+  if (page === 'freestyle') return <FreestyleWorkout onBack={home} />;
+  if (page === 'history') return <WorkoutHistory onBack={home} />;
+  if (page === 'program') return <ProgramInfo onBack={home} />;
   if (page === 'progress') {
     return chartLift ? (
       <ExerciseDetail liftId={chartLift} onBack={() => setChartLift(null)} />
     ) : (
-      <ExerciseSelector onPick={setChartLift} onBack={() => setPage('week')} />
+      <ExerciseSelector onPick={setChartLift} onBack={home} />
     );
   }
 
-  const refIds = computedInUse(state);
-  const refsSet = refIds.filter((id) => e1rmFor(state, id) !== null).length;
-  const day = defaultDay(state.day);
-  const dayLetter = day?.variant.split('·')[0].trim();
-
   return (
-    <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6 sm:pb-16">
-      <header className="flex items-center justify-between pb-2 pt-6">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent text-bg shadow-glow">
-            <Dumbbell className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 leading-none">
-            <div className="font-display text-[22px] font-black uppercase tracking-[-0.01em]">
-              IronRock
-            </div>
-            <div className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.14em] text-muted-2">
-              PPL · Cut
-            </div>
-          </div>
-        </div>
-
-        {/* day switcher: opens the day selector dropdown */}
-        <div className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setDayPickerOpen((o) => !o)}
-            aria-haspopup="true"
-            aria-expanded={dayPickerOpen}
-            className="flex items-center gap-2 rounded-full border border-line-2 bg-surface py-2 pl-3.5 pr-2.5 transition-colors hover:border-accent/50"
-          >
-            <span className="font-display text-[14px] font-bold tracking-[-0.01em]">
-              {day?.label}
-            </span>
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-accent">
-              {dayLetter}
-            </span>
-            <ChevronDown
-              className={`h-4 w-4 text-muted transition-transform ${dayPickerOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
-          {dayPickerOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                aria-hidden
-                onClick={() => setDayPickerOpen(false)}
-              />
-              <div className="absolute right-0 top-full z-50 mt-2 w-[min(340px,82vw)] rounded-2xl border border-line-2 bg-surface-2 p-2 shadow-pop animate-fade-in">
-                <DayNav onSelect={() => setDayPickerOpen(false)} />
-              </div>
-            </>
-          )}
-        </div>
-      </header>
-
-      <p className="mb-3 mt-3 max-w-[52ch] text-[14px] leading-relaxed text-muted">
-        Set your reference lifts, then log your working sets for each day. Targets come from your
-        estimated 1RM, and everything saves on this device.
-      </p>
-
-      {/* primary: log a workout unrelated to the program */}
-      <button
-        type="button"
-        onClick={() => setPage('freestyle')}
-        className="mb-3 flex w-full items-center justify-between gap-3 rounded-2xl bg-accent p-4 text-left text-bg shadow-glow transition-transform active:scale-[0.99]"
-      >
-        <span className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg/20">
-            <PlusIcon className="h-5 w-5" />
-          </span>
-          <span>
-            <span className="block font-display text-[15px] font-black uppercase tracking-[-0.01em]">
-              Freestyle workout
-            </span>
-            <span className="text-[12px] text-bg/70">Log any session — no program</span>
-          </span>
-        </span>
-        <ChevronRight className="h-5 w-5 shrink-0 text-bg/70" />
-      </button>
-
-      {/* entry point to the archived-workouts page */}
-      <button
-        type="button"
-        onClick={() => setPage('history')}
-        className="mb-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-accent/50"
-      >
-        <span className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
-            <HistoryIcon className="h-5 w-5" />
-          </span>
-          <span>
-            <span className="block font-display text-[15px] font-bold tracking-[-0.01em]">
-              History
-            </span>
-            <span className="text-[12px] text-muted-2">
-              {state.sessions.length === 0
-                ? 'Completed workouts land here'
-                : `${state.sessions.length} workout${state.sessions.length === 1 ? '' : 's'} · last ${sessionDayLabel(state.sessions[0].at).toLowerCase()}`}
-            </span>
-          </span>
-        </span>
-        <ChevronRight className="h-5 w-5 shrink-0 text-muted-2" />
-      </button>
-
-      {/* entry point to the exercise-charts feature */}
-      <button
-        type="button"
-        onClick={() => {
-          setChartLift(null);
-          setPage('progress');
-        }}
-        className="mb-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-accent/50"
-      >
-        <span className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
-            <TrendIcon className="h-5 w-5" />
-          </span>
-          <span>
-            <span className="block font-display text-[15px] font-bold tracking-[-0.01em]">
-              Exercise charts
-            </span>
-            <span className="text-[12px] text-muted-2">See a lift trend over time</span>
-          </span>
-        </span>
-        <ChevronRight className="h-5 w-5 shrink-0 text-muted-2" />
-      </button>
-
-      {/* entry point to the reference-lifts page */}
-      <button
-        type="button"
-        onClick={() => setPage('reference')}
-        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-accent/50"
-      >
-        <span className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
-            <Dumbbell className="h-5 w-5" />
-          </span>
-          <span>
-            <span className="block font-display text-[15px] font-bold tracking-[-0.01em]">
-              Reference lifts
-            </span>
-            <span className="text-[12px] text-muted-2">
-              {refsSet} of {refIds.length} set · drives your targets
-            </span>
-          </span>
-        </span>
-        <ChevronRight className="h-5 w-5 shrink-0 text-muted-2" />
-      </button>
-
-      <SectionHead n="1" title="The week" hint="Log your sets. Tap a lift to swap it, or add your own." />
-      <DayView
-        onSwap={(index) => setPicker({ kind: 'swap', index })}
-        onAdd={() => setPicker({ kind: 'add' })}
-      />
-
-      <SectionHead n="2" title="Settings" />
-      <GlobalControls />
-
-      <SectionHead n="3" title="Reference" />
-      <ReferencePanels />
-
-      <footer className="mt-10 text-center text-[12px] text-muted-2">
-        Saved locally · refresh-safe · works offline
-      </footer>
-
-      <RestTimerBar />
-
-      <ExercisePicker
-        request={pickerRequest()}
-        onPick={handlePick}
-        onClose={() => setPicker(null)}
-      />
-    </div>
+    <Home
+      onGo={(dest: HomeDest) => {
+        if (dest === 'progress') setChartLift(null);
+        setPage(dest);
+      }}
+    />
   );
 }
 
@@ -276,7 +48,7 @@ function ReferencePage({ onBack }: { onBack: () => void }) {
         <button
           type="button"
           onClick={onBack}
-          aria-label="Back to the week"
+          aria-label="Back home"
           className="flex h-10 w-10 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -305,7 +77,7 @@ function ReferencePage({ onBack }: { onBack: () => void }) {
           onClick={onBack}
           className="inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 font-display text-[14px] font-bold text-bg shadow-glow transition-transform active:scale-[0.98]"
         >
-          <ChevronLeft className="h-4 w-4" /> Back to the week
+          <ChevronLeft className="h-4 w-4" /> Back home
         </button>
       </div>
     </div>

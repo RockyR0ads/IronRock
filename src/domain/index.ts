@@ -11,3 +11,4 @@ export * from './session';
 export * from './steps';
 export * from './feel';
 export * from './progress';
+export * from './programInfo';
