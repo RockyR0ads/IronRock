@@ -5,24 +5,62 @@ import { FreestyleWorkout } from './components/FreestyleWorkout';
 import { WorkoutHistory } from './components/WorkoutHistory';
 import { ExerciseSelector } from './components/ExerciseProgress/ExerciseSelector';
 import { ExerciseDetail } from './components/ExerciseProgress/ExerciseDetail';
+import { ExercisePage } from './components/ExerciseHub/ExercisePage';
 import { ProgramInfo } from './components/ProgramInfo/ProgramInfo';
+import { ProgramMenu } from './components/ProgramInfo/ProgramMenu';
 import { Home, type HomeDest } from './components/Home';
 import { TrainWeek } from './components/TrainWeek';
+import { Wendler531 } from './components/Wendler531/Wendler531';
+import { useStore } from './state/StoreContext';
 
-type Page = 'home' | 'week' | 'reference' | 'freestyle' | 'history' | 'progress' | 'program';
+type Page =
+  | 'home'
+  | 'week'
+  | 'reference'
+  | 'freestyle'
+  | 'history'
+  | 'progress'
+  | 'program'
+  | 'exercises';
 
 export default function App() {
+  const { state } = useStore();
   const [page, setPage] = useState<Page>('home');
   /** Lift whose charts are open, when on the progress page. */
   const [chartLift, setChartLift] = useState<string | null>(null);
+  /** Lift whose exercise page is open, when on the exercises hub. */
+  const [exerciseLift, setExerciseLift] = useState<string | null>(null);
+  /** Program whose details are open, when on the program menu. */
+  const [programView, setProgramView] = useState<string | null>(null);
 
   const home = () => setPage('home');
 
-  if (page === 'week') return <TrainWeek onBack={home} />;
+  // An open exercise page overlays any page, so tapping a lift from the week or
+  // freestyle and then going Back returns you to that workout — not the hub.
+  if (exerciseLift) {
+    return <ExercisePage liftId={exerciseLift} onBack={() => setExerciseLift(null)} />;
+  }
+
+  if (page === 'week')
+    return state.activeProgram === 'wendler-531' ? (
+      <Wendler531
+        onBack={home}
+        onOpenExercise={setExerciseLift}
+        onOpenReference={() => setPage('reference')}
+      />
+    ) : (
+      <TrainWeek onBack={home} onOpenExercise={setExerciseLift} />
+    );
   if (page === 'reference') return <ReferencePage onBack={home} />;
-  if (page === 'freestyle') return <FreestyleWorkout onBack={home} />;
+  if (page === 'freestyle') return <FreestyleWorkout onBack={home} onOpenExercise={setExerciseLift} />;
   if (page === 'history') return <WorkoutHistory onBack={home} />;
-  if (page === 'program') return <ProgramInfo onBack={home} />;
+  if (page === 'program') {
+    return programView ? (
+      <ProgramInfo onBack={() => setProgramView(null)} />
+    ) : (
+      <ProgramMenu onBack={home} onOpen={setProgramView} />
+    );
+  }
   if (page === 'progress') {
     return chartLift ? (
       <ExerciseDetail liftId={chartLift} onBack={() => setChartLift(null)} />
@@ -30,11 +68,24 @@ export default function App() {
       <ExerciseSelector onPick={setChartLift} onBack={home} />
     );
   }
+  if (page === 'exercises') {
+    return (
+      <ExerciseSelector
+        onPick={setExerciseLift}
+        onBack={home}
+        title="Exercises"
+        subtitle="Tune each lift"
+        blurb="Pick an exercise to see its history and records, and to set how it's trained — rest between sets, the bar it's loaded on, and more."
+      />
+    );
+  }
 
   return (
     <Home
       onGo={(dest: HomeDest) => {
         if (dest === 'progress') setChartLift(null);
+        if (dest === 'exercises') setExerciseLift(null);
+        if (dest === 'program') setProgramView(null);
         setPage(dest);
       }}
     />

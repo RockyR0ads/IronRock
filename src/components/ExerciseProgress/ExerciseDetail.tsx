@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { liftById } from '../../state/store';
 import { exerciseSeries } from '../../domain/progress';
+import { isBodyweightLoaded } from '../../domain/exerciseConfig';
 import { sessionDayLabel } from '../../domain/session';
 import { ChevronLeft } from '../common/icons';
 import { ExerciseCharts } from './ExerciseCharts';
@@ -13,7 +14,10 @@ export function ExerciseDetail({ liftId, onBack }: { liftId: string; onBack: () 
   const { state } = useStore();
   const [tab, setTab] = useState<Tab>('charts');
   const lift = liftById(state, liftId);
-  const series = exerciseSeries(state.sessions, liftId, state.inc);
+  const cfg = state.exerciseConfig[liftId];
+  const addWeight =
+    cfg?.includeBw && isBodyweightLoaded(lift.unit) ? parseFloat(state.bw) || 0 : 0;
+  const series = exerciseSeries(state.sessions, liftId, state.inc, { addWeight });
 
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6">

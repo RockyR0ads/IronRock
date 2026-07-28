@@ -36,8 +36,8 @@ function Plate({ kg }: { kg: number }) {
  * the available width: plates are loaded at each end (heaviest by the collar)
  * with the bar spanning the gap. A sub-bar weight shows a bare bar.
  */
-export function PlateBar({ weight }: { weight: number }) {
-  const perSide = platesPerSide(weight);
+export function PlateBar({ weight, bar }: { weight: number; bar?: number }) {
+  const perSide = platesPerSide(weight, bar);
   const left = [...perSide].reverse(); // outer → inner: lightest ... heaviest
 
   return (

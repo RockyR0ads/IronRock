@@ -18,7 +18,13 @@ type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
  * The PPL program week: the day switcher, the day's exercise cards, settings and
  * the reference panels. Owns the swap/add exercise picker for the active day.
  */
-export function TrainWeek({ onBack }: { onBack: () => void }) {
+export function TrainWeek({
+  onBack,
+  onOpenExercise,
+}: {
+  onBack: () => void;
+  onOpenExercise?: (liftId: string) => void;
+}) {
   const { state, dispatch } = useStore();
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
@@ -110,6 +116,7 @@ export function TrainWeek({ onBack }: { onBack: () => void }) {
       <DayView
         onSwap={(index) => setPicker({ kind: 'swap', index })}
         onAdd={() => setPicker({ kind: 'add' })}
+        onOpenExercise={onOpenExercise}
       />
 
       <SectionHead n="2" title="Settings" />

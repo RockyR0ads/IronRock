@@ -11,8 +11,11 @@ import { setsFor, liftById } from '../../state/store';
 import { blockLoad, doneSetCount, workingSetCount, isBlockComplete } from '../../state/selectors';
 import { repLabel, feelLabel, rpeNum, rpeHue, isPerLeg } from '../../domain/format';
 import { feelOption } from '../../domain/feel';
-import { SwapIcon, TrashIcon, PlusIcon, CheckIcon } from '../common/icons';
+import { SwapIcon, TrashIcon, PlusIcon, CheckIcon, ChevronRight } from '../common/icons';
 import { PlateBar } from '../common/PlateBar';
+import { heatColor } from '../common/warmupHeat';
+import { barWeight as emptyBarWeight, autoRestOn, warmupSets } from '../../domain/exerciseConfig';
+import { round } from '../../domain/calc';
 import { RpePicker } from './RpePicker';
 import { FeelPicker } from './FeelPicker';
 import { FEEL_TONE } from '../common/feelTone';
@@ -194,7 +197,8 @@ function prefillSet(
   block: Block,
   sets: LoggedSet[],
   targetLoad: number | null,
-  history?: LiftHistory
+  history?: LiftHistory,
+  perSideDefault = false
 ): LoggedSet {
   const last = [...sets].reverse().find((s) => !s.warmup);
   if (last) {
@@ -202,20 +206,26 @@ function prefillSet(
     const side = last.perSide ? { perSide: true, repsR: last.repsR ?? '' } : {};
     return { w: last.w, reps: last.reps, rpe: last.rpe, done: false, ...side };
   }
-  if (history) return { ...history, done: false };
+  const side = perSideDefault ? { perSide: true, repsR: '' } : {};
+  if (history) return { ...history, done: false, ...side };
   const reps = Array.isArray(block.reps) ? block.reps[1] : block.reps;
   return {
     w: targetLoad !== null ? String(targetLoad) : '',
     reps: String(reps),
     rpe: String(rpeNum(block.rpe)),
     done: false,
+    ...side,
   };
 }
 
 /** A new warm-up row: carry the last warm-up's weight/reps to ladder up, else blank. */
-function prefillWarmup(sets: LoggedSet[]): LoggedSet {
+function prefillWarmup(sets: LoggedSet[], perSideDefault = false): LoggedSet {
   const last = [...sets].reverse().find((s) => s.warmup);
-  const side = last?.perSide ? { perSide: true, repsR: last.repsR ?? '' } : {};
+  const side = last?.perSide
+    ? { perSide: true, repsR: last.repsR ?? '' }
+    : perSideDefault
+      ? { perSide: true, repsR: '' }
+      : {};
   return { w: last?.w ?? '', reps: last?.reps ?? '', rpe: '', warmup: true, done: false, ...side };
 }
 
@@ -233,6 +243,7 @@ function SetInput({
   base,
   done,
   warmup,
+  warmTone,
   compact,
   extra,
 }: {
@@ -245,6 +256,8 @@ function SetInput({
   base: () => number;
   done: boolean;
   warmup: boolean;
+  /** Warm-up heat colour (hex) for this set's position in the ramp. */
+  warmTone?: string;
   /** Narrower styling for the half-width per-side reps inputs. */
   compact?: boolean;
   /** Extra menu toggle, e.g. the per-side switch. */
@@ -261,6 +274,15 @@ function SetInput({
     extra,
   });
 
+  // warm-up rows carry their heat colour: a solid fill once done, a soft border
+  // tint before, so the ramp reads even on empty cells
+  const warm = warmup && warmTone;
+  const warmStyle = warm
+    ? done
+      ? { backgroundColor: warmTone, borderColor: warmTone }
+      : { borderColor: `${warmTone}66` }
+    : undefined;
+
   return (
     <>
       <input
@@ -271,11 +293,14 @@ function SetInput({
         aria-label={label}
         onChange={(e) => onChange(e.target.value)}
         {...hold.handlers}
+        style={warmStyle}
         className={[
-          'h-10 w-full select-none rounded-lg border text-center font-mono transition-colors placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-accent/70',
+          'h-10 w-full select-none rounded-lg border text-center font-mono font-bold transition-colors placeholder:font-normal placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-accent/70',
           compact ? 'px-0 text-[13px]' : 'text-[15px]',
-          done && warmup
-            ? 'border-yellow bg-yellow/90 text-bg focus:border-yellow'
+          warm
+            ? done
+              ? 'text-bg'
+              : 'bg-surface-2 text-ink'
             : done
               ? 'border-green bg-green/90 text-bg focus:border-green'
               : 'border-line-2 bg-surface-2 text-ink focus:border-accent',
@@ -297,6 +322,7 @@ function RepsCell({
   perSide,
   done,
   warmup,
+  warmTone,
   label,
   onLeft,
   onRight,
@@ -308,6 +334,7 @@ function RepsCell({
   perSide: boolean;
   done: boolean;
   warmup: boolean;
+  warmTone?: string;
   label: string;
   onLeft: (v: string) => void;
   onRight: (v: string) => void;
@@ -326,6 +353,7 @@ function RepsCell({
         base={baseLeft}
         done={done}
         warmup={warmup}
+        warmTone={warmTone}
         label={`${label} reps`}
         onChange={onLeft}
         extra={toggle}
@@ -341,6 +369,7 @@ function RepsCell({
         base={baseLeft}
         done={done}
         warmup={warmup}
+        warmTone={warmTone}
         compact
         label={`${label} left reps`}
         onChange={onLeft}
@@ -353,6 +382,7 @@ function RepsCell({
         base={baseRight}
         done={done}
         warmup={warmup}
+        warmTone={warmTone}
         compact
         label={`${label} right reps`}
         onChange={onRight}
@@ -413,7 +443,7 @@ function RpeButton({
             : undefined
         }
         className={[
-          'h-10 w-full select-none rounded-lg border text-center font-mono text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-accent/70',
+          'h-10 w-full select-none rounded-lg border text-center font-mono text-[15px] font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-accent/70',
           rated
             ? ''
             : done && warmup
@@ -470,12 +500,15 @@ export function ExerciseCard({
   index,
   dayKey,
   onSwap,
+  onOpenExercise,
   variant = 'program',
 }: {
   block: Block;
   index: number;
   dayKey: string;
   onSwap: (index: number) => void;
+  /** Open this lift's exercise page (history, records, settings). */
+  onOpenExercise?: (liftId: string) => void;
   variant?: 'program' | 'freestyle';
 }) {
   const { state, dispatch } = useStore();
@@ -506,8 +539,18 @@ export function ExerciseCard({
   // weight shown on the barbell glyph: the most recent set with a weight
   // entered, else the computed target (so it shows before logging too)
   const isBarbell = lift.unit === 'kg on bar';
+  const cfg = state.exerciseConfig[block.lift];
+  const emptyBar = emptyBarWeight(cfg);
+  const cfgInc = cfg?.inc ?? state.inc;
+  const perSideDefault = !!cfg?.perSideDefault && isPerLeg(block, lift.uni);
   const lastFilled = [...sets].reverse().find((s) => parseFloat(s.w) > 0);
   const barWeight = lastFilled ? parseFloat(lastFilled.w) : (target ?? 0);
+  // a configured warm-up ramp can fill the warm-up sets in one tap, before any
+  // warm-ups have been added
+  const rampSets =
+    cfg?.warmupRamp && !sets.some((s) => s.warmup)
+      ? warmupSets(cfg.warmupRamp, barWeight, (w) => round(w, cfgInc))
+      : [];
 
   // rest countdown owned by this card → drain a green fill behind it
   const isResting = rest.running && rest.ownerId === cardId;
@@ -519,8 +562,9 @@ export function ExerciseCard({
   function toggleDone(setIndex: number) {
     const wasDone = sets[setIndex]?.done;
     dispatch({ type: 'toggleSetDone', dayKey, index, setIndex });
-    if (!wasDone) {
-      rest.start(undefined, cardId); // starting a rest when checking a set off
+    if (!wasDone && autoRestOn(cfg)) {
+      rest.start(cfg?.restSeconds, cardId); // per-exercise rest, or the default
+
       setPopped(setIndex);
     }
   }
@@ -575,12 +619,26 @@ export function ExerciseCard({
           ) : (
             <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[block.cls]}`} aria-hidden />
           )}
-          <span className="min-w-0 shrink truncate font-display text-[16px] font-bold tracking-[-0.01em]">
-            {lift.name}
-          </span>
+          {onOpenExercise ? (
+            <button
+              type="button"
+              onClick={() => onOpenExercise(block.lift)}
+              aria-label={`Open ${lift.name} exercise page`}
+              className="group flex min-w-0 shrink items-center gap-1 text-left"
+            >
+              <span className="min-w-0 truncate font-display text-[16px] font-bold tracking-[-0.01em] transition-colors group-hover:text-accent">
+                {lift.name}
+              </span>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-2 transition-colors group-hover:text-accent" />
+            </button>
+          ) : (
+            <span className="min-w-0 shrink truncate font-display text-[16px] font-bold tracking-[-0.01em]">
+              {lift.name}
+            </span>
+          )}
           {isBarbell && barWeight > 0 ? (
             <span className="min-w-[48px] flex-1">
-              <PlateBar weight={barWeight} />
+              <PlateBar weight={barWeight} bar={emptyBar} />
             </span>
           ) : (
             <span className="flex-1" />
@@ -640,10 +698,14 @@ export function ExerciseCard({
           </div>
           {(() => {
             let wn = 0;
+            let warmN = 0;
             return sets.map((set, si) => {
               const warm = !!set.warmup;
               if (!warm) wn += 1;
+              else warmN += 1;
               const rowLabel = warm ? 'W' : wn;
+              // each warm-up set gets its colour from the heating-up ramp
+              const warmTone = warm ? heatColor(warmN - 1) : undefined;
               return (
                 <SwipeRow
                   key={si}
@@ -655,8 +717,9 @@ export function ExerciseCard({
                   <span
                     className={[
                       'select-none text-center font-mono text-[13px] font-bold tabular-nums',
-                      warm ? 'text-yellow' : 'text-muted-2',
+                      warm ? '' : 'text-muted-2',
                     ].join(' ')}
+                    style={warm ? { color: warmTone } : undefined}
                     aria-hidden
                   >
                     {rowLabel}
@@ -668,6 +731,7 @@ export function ExerciseCard({
                     base={() => cellBase(sets, si, 'w')}
                     done={!!set.done}
                     warmup={warm}
+                    warmTone={warmTone}
                     label={`${lift.name} ${warm ? 'warm-up' : `set ${rowLabel}`} weight`}
                     onChange={(v) =>
                       dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'w', value: v })
@@ -678,6 +742,7 @@ export function ExerciseCard({
                     perSide={!!set.perSide}
                     done={!!set.done}
                     warmup={warm}
+                    warmTone={warmTone}
                     label={`${lift.name} ${warm ? 'warm-up' : `set ${rowLabel}`}`}
                     baseLeft={() => cellBase(sets, si, 'reps')}
                     baseRight={() => cellBase(sets, si, 'repsR')}
@@ -719,15 +784,22 @@ export function ExerciseCard({
                           : `Mark set ${rowLabel} done`
                     }
                     aria-pressed={!!set.done}
+                    style={
+                      warm
+                        ? set.done
+                          ? { backgroundColor: warmTone, borderColor: warmTone }
+                          : { borderColor: `${warmTone}66`, color: warmTone }
+                        : undefined
+                    }
                     className={[
                       'flex h-9 w-9 items-center justify-center justify-self-center rounded-lg border transition-colors',
-                      set.done && warm
-                        ? 'border-yellow bg-yellow text-bg'
+                      warm
+                        ? set.done
+                          ? 'text-bg'
+                          : 'bg-surface-2'
                         : set.done
                           ? 'border-green bg-green text-bg'
-                          : warm
-                            ? 'border-yellow/40 bg-surface-2 text-yellow hover:bg-yellow/15'
-                            : 'border-line-2 bg-surface-2 text-muted-2 hover:bg-surface-3 hover:text-ink',
+                          : 'border-line-2 bg-surface-2 text-muted-2 hover:bg-surface-3 hover:text-ink',
                     ].join(' ')}
                   >
                     <CheckIcon
@@ -750,19 +822,52 @@ export function ExerciseCard({
           type="button"
           id={`addset-${dayKey}-${index}`}
           onClick={() =>
-            dispatch({ type: 'addSet', dayKey, index, set: prefillSet(block, sets, target, history) })
+            dispatch({
+              type: 'addSet',
+              dayKey,
+              index,
+              set: prefillSet(block, sets, target, history, perSideDefault),
+            })
           }
           className="inline-flex flex-[3] items-center justify-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-3"
         >
           <PlusIcon className="h-4 w-4" /> Add set
         </button>
-        <button
-          type="button"
-          onClick={() => dispatch({ type: 'addSet', dayKey, index, set: prefillWarmup(sets) })}
-          className="inline-flex flex-[2] items-center justify-center gap-1 rounded-lg border border-yellow/30 bg-yellow/10 px-2 py-2 text-[12px] font-semibold text-yellow transition-colors hover:bg-yellow/20"
-        >
-          <PlusIcon className="h-3.5 w-3.5" /> Warm-up
-        </button>
+        {rampSets.length > 0 ? (
+          <button
+            type="button"
+            onClick={() =>
+              rampSets.forEach((r) =>
+                dispatch({
+                  type: 'addSet',
+                  dayKey,
+                  index,
+                  set: {
+                    w: String(r.w),
+                    reps: String(r.reps),
+                    rpe: '',
+                    warmup: true,
+                    done: false,
+                    ...(perSideDefault ? { perSide: true, repsR: '' } : {}),
+                  },
+                })
+              )
+            }
+            className="inline-flex flex-[2] items-center justify-center gap-1 rounded-lg border border-yellow/30 bg-yellow/10 px-2 py-2 text-[12px] font-semibold text-yellow transition-colors hover:bg-yellow/20"
+          >
+            <PlusIcon className="h-3.5 w-3.5" /> Ramp up
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() =>
+              dispatch({ type: 'addSet', dayKey, index, set: prefillWarmup(sets, perSideDefault) })
+            }
+            className="inline-flex flex-[2] items-center justify-center gap-1 rounded-lg border border-yellow/30 bg-yellow/10 px-2 py-2 text-[12px] font-semibold text-yellow transition-colors hover:bg-yellow/20"
+          >
+            <PlusIcon className="h-3.5 w-3.5" /> Warm-up
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onSwap(index)}

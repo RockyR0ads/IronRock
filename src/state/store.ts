@@ -2,6 +2,8 @@ import { DAYS, defaultDay } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
 import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
 import { meaningfulSet } from '../domain/session';
+import { DEFAULT_PROGRAM } from '../domain/programs';
+import type { ExerciseConfig } from '../domain/exerciseConfig';
 import type {
   Block,
   Increment,
@@ -27,6 +29,8 @@ export interface State {
   manual: Record<string, string>;
   /** User-created exercises, keyed by id. */
   customLifts: Record<string, CustomLift>;
+  /** Per-exercise settings (rest, bar type, …), keyed by lift id. */
+  exerciseConfig: Record<string, ExerciseConfig>;
   /** Per-day overrides; absence means "use the default day". */
   customDays: Record<string, Block[]>;
   /** Logged working sets per day, aligned to the day's block order. */
@@ -41,6 +45,10 @@ export interface State {
   inc: Increment;
   /** Active day key. */
   day: string;
+  /** ISO date the current program block started, for progression tracking. */
+  programStart?: string;
+  /** Id of the currently selected training program. */
+  activeProgram: string;
 }
 
 export const STORAGE_KEY = 'ironrock-loadsheet-v1';
@@ -53,6 +61,7 @@ export function initialState(): State {
     refs: {},
     manual: {},
     customLifts: {},
+    exerciseConfig: {},
     customDays: {},
     logs: {},
     history: {},
@@ -60,6 +69,7 @@ export function initialState(): State {
     bw: '',
     inc: 2.5,
     day: 'pushA',
+    activeProgram: DEFAULT_PROGRAM,
   };
 }
 
@@ -87,6 +97,7 @@ export type Action =
   | { type: 'removeBlock'; dayKey: string; index: number }
   | { type: 'addBlock'; dayKey: string; liftId: string }
   | { type: 'addCustomLift'; id: string; name: string; unit: string; group: string }
+  | { type: 'setExerciseConfig'; id: string; patch: Partial<ExerciseConfig> }
   | { type: 'restoreDay'; dayKey: string }
   | { type: 'addSet'; dayKey: string; index: number; set: LoggedSet }
   | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe' | 'repsR'; value: string }
@@ -97,6 +108,10 @@ export type Action =
   | { type: 'clearDaySets'; dayKey: string }
   | { type: 'completeWorkout'; dayKey: string; title: string; at: string; id: string }
   | { type: 'removeSession'; id: string }
+  | { type: 'setActiveProgram'; id: string }
+  | { type: 'archiveSession'; session: Session }
+  | { type: 'startProgram'; at: string }
+  | { type: 'resetProgram' }
   | { type: 'resetWeek' }
   | { type: 'clearAll' };
 
@@ -225,6 +240,13 @@ export function reducer(state: State, action: Action): State {
           [action.id]: { name: action.name, unit: action.unit, group: action.group },
         },
       };
+    case 'setExerciseConfig': {
+      const prev = state.exerciseConfig[action.id] ?? {};
+      return {
+        ...state,
+        exerciseConfig: { ...state.exerciseConfig, [action.id]: { ...prev, ...action.patch } },
+      };
+    }
     case 'restoreDay': {
       const customDays = { ...state.customDays };
       delete customDays[action.dayKey];
@@ -320,6 +342,19 @@ export function reducer(state: State, action: Action): State {
     }
     case 'removeSession':
       return { ...state, sessions: state.sessions.filter((s) => s.id !== action.id) };
+    case 'setActiveProgram':
+      return { ...state, activeProgram: action.id };
+    case 'archiveSession':
+      // a fully-formed session archived directly (used by programs that build
+      // their own workout, e.g. 5/3/1), newest first
+      return { ...state, sessions: [action.session, ...state.sessions] };
+    case 'startProgram':
+      return { ...state, programStart: action.at };
+    case 'resetProgram': {
+      const next = { ...state };
+      delete next.programStart;
+      return next;
+    }
     case 'resetWeek': {
       // Start a fresh training week: drop every program day's logged sets, but
       // keep references, swapped exercises, history, and the freestyle workout.
@@ -344,6 +379,7 @@ export function loadState(): State {
       ...base,
       ...parsed,
       customLifts: parsed.customLifts ?? {},
+      exerciseConfig: parsed.exerciseConfig ?? {},
       customDays: parsed.customDays ?? {},
       logs: parsed.logs ?? {},
       history: parsed.history ?? {},

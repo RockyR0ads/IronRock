@@ -30,6 +30,8 @@ export interface Lift {
   cats: Category[];
   /** Unilateral (per-leg) lift. */
   uni?: boolean;
+  /** Library exercise id, linking to its how-to guide (photos, instructions). */
+  lib?: string;
 }
 
 /** A fixed rep target or an inclusive [lo, hi] range. */

@@ -17,7 +17,13 @@ type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
  * ExerciseCard, ExercisePicker and rest timer, backed by a dedicated
  * "freestyle" day in the store.
  */
-export function FreestyleWorkout({ onBack }: { onBack: () => void }) {
+export function FreestyleWorkout({
+  onBack,
+  onOpenExercise,
+}: {
+  onBack: () => void;
+  onOpenExercise?: (liftId: string) => void;
+}) {
   const { state, dispatch } = useStore();
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [summary, setSummary] = useState<WorkoutStats | null>(null);
@@ -104,6 +110,7 @@ export function FreestyleWorkout({ onBack }: { onBack: () => void }) {
               dayKey={FREESTYLE_KEY}
               variant="freestyle"
               onSwap={(index) => setPicker({ kind: 'swap', index })}
+              onOpenExercise={onOpenExercise}
             />
           ))}
         </div>

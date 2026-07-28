@@ -48,8 +48,12 @@ export function shortDate(at: string): string {
 export function exerciseSeries(
   sessions: Session[],
   liftId: string,
-  inc: Increment
+  inc: Increment,
+  opts: { addWeight?: number } = {}
 ): ProgressPoint[] {
+  // Bodyweight-loaded lifts (pull-up, dip) count added weight *over* bodyweight,
+  // so the effective load is the entered weight plus the lifter's bodyweight.
+  const add = opts.addWeight ?? 0;
   const points: ProgressPoint[] = [];
 
   for (const session of sessions) {
@@ -64,7 +68,7 @@ export function exerciseSeries(
     const rpes: number[] = [];
 
     for (const set of sets) {
-      const w = num(set.w);
+      const w = num(set.w) + add;
       const r = setReps(set);
       const rp = num(set.rpe);
       volume += w * r;
@@ -73,11 +77,11 @@ export function exerciseSeries(
         topSet = set;
       } else {
         const tw = num(topSet.w);
-        if (w > tw || (w === tw && r > setReps(topSet))) topSet = set;
+        if (num(set.w) > tw || (num(set.w) === tw && r > setReps(topSet))) topSet = set;
       }
     }
 
-    const tw = num(topSet!.w);
+    const tw = num(topSet!.w) + add;
     const tr = num(topSet!.reps);
     const raw = estimate1Rm(tw, tr, num(topSet!.rpe));
 

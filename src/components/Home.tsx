@@ -4,6 +4,8 @@ import { effBlocks, setsFor, liftById, computedInUse } from '../state/store';
 import { doneSetCount, e1rmFor } from '../state/selectors';
 import { defaultDay } from '../domain/program';
 import { sessionDayLabel } from '../domain/session';
+import { programMeta } from '../domain/programs';
+import { cycleWeek, WAVE_LABEL, CYCLE_WEEKS } from '../domain/wendler531';
 import {
   Dumbbell,
   ChevronRight,
@@ -12,10 +14,18 @@ import {
   TrendIcon,
   BookIcon,
   BendingBarbell,
+  GearIcon,
 } from './common/icons';
 
 /** Where a home tile can take you. */
-export type HomeDest = 'week' | 'freestyle' | 'history' | 'progress' | 'program' | 'reference';
+export type HomeDest =
+  | 'week'
+  | 'freestyle'
+  | 'history'
+  | 'progress'
+  | 'program'
+  | 'reference'
+  | 'exercises';
 
 /**
  * The landing hub. Leads with the program's current session, then routes out to
@@ -33,6 +43,22 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
   const refIds = computedInUse(state);
   const refsSet = refIds.filter((id) => e1rmFor(state, id) !== null).length;
 
+  // the hero adapts to the active program (only the PPL cut runs its day engine)
+  const prog = programMeta(state.activeProgram);
+  const isPpl = state.activeProgram === 'ppl-cut';
+  const is531 = state.activeProgram === 'wendler-531';
+  const week531 = is531 ? cycleWeek(state.programStart) : 0;
+  const heroKicker = isPpl ? (done > 0 ? 'Continue training' : "Today's session") : 'Active program';
+  const heroLabel = isPpl ? (day?.label ?? 'Train') : (prog?.name ?? 'Train');
+  const heroVariant = isPpl ? day?.variant : is531 ? WAVE_LABEL[week531] : undefined;
+  const heroSub = isPpl
+    ? leadLift
+      ? `${leadLift} first`
+      : 'Log your working sets'
+    : is531
+      ? `Cycle week ${week531} of ${CYCLE_WEEKS}`
+      : (prog?.tagline ?? '');
+
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6 sm:pb-16">
       <header className="flex items-center gap-3 pb-2 pt-8">
@@ -44,7 +70,7 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
             IronRock
           </div>
           <div className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
-            PPL · Cut
+            {prog?.name ?? 'Training'}
           </div>
         </div>
       </header>
@@ -62,22 +88,20 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
 
         <span className="relative z-10 flex min-w-0 max-w-[56%] flex-col justify-center">
           <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-bg/70">
-            {done > 0 ? 'Continue training' : "Today's session"}
+            {heroKicker}
           </span>
           <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-display text-[26px] font-black uppercase leading-none tracking-[-0.01em]">
-              {day?.label ?? 'Train'}
+              {heroLabel}
             </span>
-            {day?.variant && (
+            {heroVariant && (
               <span className="rounded-md bg-bg/25 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em]">
-                {day.variant}
+                {heroVariant}
               </span>
             )}
           </span>
-          <span className="mt-2 text-[13px] leading-snug text-bg/80">
-            {leadLift ? `${leadLift} first` : 'Log your working sets'}
-          </span>
-          {prescribed > 0 && (
+          <span className="mt-2 text-[13px] leading-snug text-bg/80">{heroSub}</span>
+          {isPpl && prescribed > 0 && (
             <span className="mt-1 font-mono text-[12px] font-medium text-bg/70">
               {done} / {prescribed} sets done
             </span>
@@ -111,6 +135,12 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
           sub="See a lift trend over time"
           onClick={() => onGo('progress')}
         />
+        <Tile
+          icon={<GearIcon className="h-5 w-5" />}
+          title="Exercises"
+          sub="History, records & per-lift settings"
+          onClick={() => onGo('exercises')}
+        />
       </div>
 
       <div className="mb-2 mt-7 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
@@ -120,7 +150,7 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
         <Tile
           icon={<BookIcon className="h-5 w-5" />}
           title="The program"
-          sub="Philosophy, rules & the full split"
+          sub="Choose your plan · rules & the split"
           onClick={() => onGo('program')}
         />
         <Tile

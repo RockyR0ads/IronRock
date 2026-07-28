@@ -11,20 +11,31 @@ interface Row {
 }
 
 /**
- * Exercise picker for the charts feature: the top 30 lifts, with the ones you've
- * actually logged surfaced first.
+ * Shared exercise picker: the top 30 lifts, with the ones you've actually logged
+ * surfaced first. Reused by the charts feature and the exercise hub — the header
+ * copy is passed in so each entry point reads right.
  */
 export function ExerciseSelector({
   onPick,
   onBack,
+  title = 'Exercise charts',
+  subtitle = 'Track a lift over time',
+  blurb = "Pick an exercise to see how it's trending across your logged workouts — estimated 1RM, top set or volume, with a detailed breakdown a tap away.",
+  onlyIds,
 }: {
   onPick: (liftId: string) => void;
   onBack: () => void;
+  title?: string;
+  subtitle?: string;
+  blurb?: string;
+  /** Restrict the list to these lift ids (e.g. a single lift during rollout). */
+  onlyIds?: string[];
 }) {
   const { state } = useStore();
 
   const { tracked, rest } = useMemo(() => {
-    const rows: Row[] = TOP_LIFTS.filter((id) => LIFTS[id]).map((id) => ({
+    const ids = (onlyIds ?? TOP_LIFTS).filter((id) => LIFTS[id]);
+    const rows: Row[] = ids.map((id) => ({
       id,
       name: LIFTS[id].name,
       sessions: exerciseSeries(state.sessions, id, state.inc).length,
@@ -33,7 +44,7 @@ export function ExerciseSelector({
       tracked: rows.filter((r) => r.sessions > 0).sort((a, b) => b.sessions - a.sessions),
       rest: rows.filter((r) => r.sessions === 0),
     };
-  }, [state.sessions, state.inc]);
+  }, [state.sessions, state.inc, onlyIds]);
 
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6">
@@ -48,18 +59,15 @@ export function ExerciseSelector({
         </button>
         <div className="min-w-0 leading-none">
           <div className="truncate font-display text-[22px] font-black uppercase tracking-[-0.01em]">
-            Exercise charts
+            {title}
           </div>
           <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
-            Track a lift over time
+            {subtitle}
           </div>
         </div>
       </header>
 
-      <p className="mb-5 mt-3 max-w-[52ch] text-[14px] leading-relaxed text-muted">
-        Pick an exercise to see how it's trending across your logged workouts — estimated 1RM, top
-        set or volume, with a detailed breakdown a tap away.
-      </p>
+      <p className="mb-5 mt-3 max-w-[52ch] text-[14px] leading-relaxed text-muted">{blurb}</p>
 
       {tracked.length > 0 && (
         <>

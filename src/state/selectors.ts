@@ -30,7 +30,8 @@ export function displayE1rm(state: State, liftId: string): number | null {
 export function blockLoad(state: State, block: Block): number | null {
   const e1rm = e1rmFor(state, block.lift);
   if (e1rm === null) return null;
-  return calcTargetLoad(e1rm, midReps(block.reps), rpeNum(block.rpe), state.inc);
+  const inc = state.exerciseConfig[block.lift]?.inc ?? state.inc;
+  return calcTargetLoad(e1rm, midReps(block.reps), rpeNum(block.rpe), inc);
 }
 
 /** A logged set has all three values entered. */

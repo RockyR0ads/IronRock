@@ -2,6 +2,7 @@ import { useStore } from '../../state/StoreContext';
 import { computedInUse } from '../../state/store';
 import { displayE1rm } from '../../state/selectors';
 import { LIFTS } from '../../domain/lifts';
+import { W531_LIFTS } from '../../domain/wendler531';
 import type { RefSet } from '../../domain/types';
 
 /** A reference set is max effort by definition, so there's no RPE to record. */
@@ -77,7 +78,10 @@ function RefCard({ id }: { id: string }) {
 
 export function ReferenceLifts() {
   const { state } = useStore();
-  const ids = computedInUse(state);
+  // the lifts the active program needs a max for — the 5/3/1 mains up front when
+  // it's active, then whatever the PPL week uses
+  const extra = state.activeProgram === 'wendler-531' ? W531_LIFTS : [];
+  const ids = [...new Set([...extra, ...computedInUse(state)])];
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

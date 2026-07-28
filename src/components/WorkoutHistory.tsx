@@ -4,6 +4,7 @@ import { workoutStats, volumeParts } from '../domain/stats';
 import { sessionEntries, sessionDayLabel, sessionTimeLabel } from '../domain/session';
 import { rpeHue } from '../domain/format';
 import { FEEL_TONE } from './common/feelTone';
+import { heatColor } from './common/warmupHeat';
 import { ChevronLeft, ChevronRight, Dumbbell, TrashIcon } from './common/icons';
 import type { Session } from '../domain/types';
 
@@ -71,9 +72,12 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
             <div className="mt-2.5 space-y-1.5">
               {(() => {
                 let wn = 0;
+                let warmN = 0;
                 return ex.sets.map((set, si) => {
                   const warm = !!set.warmup;
                   if (!warm) wn += 1;
+                  else warmN += 1;
+                  const warmTone = warm ? heatColor(warmN - 1) : undefined;
                   const rpe = parseFloat(set.rpe);
                   return (
                     <div
@@ -83,17 +87,20 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
                         set.done ? '' : 'opacity-50', // logged but not checked off
                       ].join(' ')}
                     >
-                      <span className={warm ? 'text-yellow' : 'text-muted-2'}>
+                      <span
+                        className={warm ? 'font-bold' : 'text-muted-2'}
+                        style={warm ? { color: warmTone } : undefined}
+                      >
                         {warm ? 'W' : wn}
                       </span>
-                      <span className="tabular-nums">
-                        {set.w || '–'} <span className="text-[10px] text-muted-2">kg</span>
+                      <span className="font-bold tabular-nums">
+                        {set.w || '–'} <span className="text-[10px] font-normal text-muted-2">kg</span>
                       </span>
-                      <span className="tabular-nums">
+                      <span className="font-bold tabular-nums">
                         {set.perSide
                           ? `${set.reps || '–'}/${set.repsR || '–'}`
                           : set.reps || '–'}{' '}
-                        <span className="text-[10px] text-muted-2">reps</span>
+                        <span className="text-[10px] font-normal text-muted-2">reps</span>
                       </span>
                       {warm && set.feel ? (
                         <span

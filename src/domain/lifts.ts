@@ -106,6 +106,46 @@ export const LIFTS: Record<string, Lift> = {
   singlecalf: { id: 'singlecalf', name: 'Single-leg calf raise', type: 'manual', unit: 'kg', cats: ['calf'], uni: true },
 };
 
+/**
+ * Curated lift id → free-exercise-db id, linking a catalogue lift to its how-to
+ * guide (photos + instructions) on the exercise page's About tab. Only the lifts
+ * with a sensible match are mapped; the rest simply show no About tab.
+ */
+const LIFT_LIB: Record<string, string> = {
+  bench: 'Barbell_Bench_Press_-_Medium_Grip',
+  squat: 'Barbell_Full_Squat',
+  deadlift: 'Barbell_Deadlift',
+  ohp: 'Barbell_Shoulder_Press',
+  row: 'Bent_Over_Barbell_Row',
+  inclinebench: 'Barbell_Incline_Bench_Press_-_Medium_Grip',
+  frontsquat: 'Front_Barbell_Squat',
+  rdl: 'Romanian_Deadlift',
+  pendlay: 'Bent_Over_Barbell_Row',
+  pushpress: 'Push_Press',
+  cgbench: 'Close-Grip_Barbell_Bench_Press',
+  pullup: 'Pullups',
+  chinup: 'Chin-Up',
+  dips: 'Dips_-_Triceps_Version',
+  dbbench: 'Dumbbell_Bench_Press',
+  dbincline: 'Incline_Dumbbell_Press',
+  dbohp: 'Seated_Dumbbell_Press',
+  arnold: 'Arnold_Dumbbell_Press',
+  dbrow: 'One-Arm_Dumbbell_Row',
+  csrow: 'Dumbbell_Incline_Row',
+  lunge: 'Bodyweight_Walking_Lunge',
+  dbcurl: 'Dumbbell_Bicep_Curl',
+  ezcurl: 'EZ-Bar_Curl',
+  hammer: 'Hammer_Curls',
+  skull: 'EZ-Bar_Skullcrusher',
+  latraise: 'Side_Lateral_Raise',
+  reardelt: 'Bent_Over_Dumbbell_Rear_Delt_Raise_With_Head_On_Bench',
+  calf: 'Standing_Calf_Raises',
+  seatedcalf: 'Seated_Calf_Raise',
+};
+for (const [id, lib] of Object.entries(LIFT_LIB)) {
+  if (LIFTS[id]) LIFTS[id].lib = lib;
+}
+
 /** Lift ids whose `cats` include the given category. */
 export function liftsInCategory(cat: Category): string[] {
   return Object.keys(LIFTS).filter((id) => LIFTS[id].cats.includes(cat));

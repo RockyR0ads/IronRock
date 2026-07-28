@@ -16,9 +16,11 @@ const prefersReducedMotion = () =>
 export function DayView({
   onSwap,
   onAdd,
+  onOpenExercise,
 }: {
   onSwap: (index: number) => void;
   onAdd: () => void;
+  onOpenExercise?: (liftId: string) => void;
 }) {
   const { state, dispatch } = useStore();
   const [summary, setSummary] = useState<WorkoutStats | null>(null);
@@ -109,6 +111,7 @@ export function DayView({
             index={i}
             dayKey={state.day}
             onSwap={onSwap}
+            onOpenExercise={onOpenExercise}
           />
         ))}
       </div>

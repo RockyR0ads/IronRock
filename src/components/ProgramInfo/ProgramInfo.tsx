@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { DAYS } from '../../domain/program';
 import { LIFTS } from '../../domain/lifts';
 import { repLabel, feelLabel, rpeNum, isPerLeg, rpeHue } from '../../domain/format';
@@ -15,6 +15,7 @@ import {
   type InfoRule,
 } from '../../domain/programInfo';
 import { ChevronLeft } from '../common/icons';
+import { ProgramTracker } from './ProgramTracker';
 
 /** A mono uppercase section label with its content below. */
 function Section({ label, children }: { label: string; children: ReactNode }) {
@@ -47,7 +48,18 @@ function RuleCard({ rule, accent }: { rule: InfoRule; accent?: boolean }) {
  * The program reference: the philosophy, rules and protocols behind the plan,
  * plus the full day-by-day prescription rendered live from the program itself.
  */
+type Tab = 'progress' | 'rules' | 'days' | 'protocols';
+
+const TABS: [Tab, string][] = [
+  ['progress', 'Progress'],
+  ['rules', 'Rules'],
+  ['days', 'Days'],
+  ['protocols', 'Protocols'],
+];
+
 export function ProgramInfo({ onBack }: { onBack: () => void }) {
+  const [tab, setTab] = useState<Tab>('progress');
+
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6">
       <header className="flex items-center gap-3 pb-2 pt-6">
@@ -69,22 +81,52 @@ export function ProgramInfo({ onBack }: { onBack: () => void }) {
         </div>
       </header>
 
-      {/* profile */}
-      <div className="mt-4 rounded-2xl border border-line bg-surface p-4 shadow-card">
-        <div className="font-display text-[15px] font-bold tracking-[-0.01em]">
-          {PROGRAM_PROFILE.tagline}
-        </div>
-        <ul className="m-0 mt-2.5 flex flex-col gap-1.5 p-0">
-          {PROGRAM_PROFILE.points.map((p) => (
-            <li key={p} className="flex gap-2 text-[13px] leading-relaxed text-muted">
-              <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent" />
-              <span>{p}</span>
-            </li>
-          ))}
-        </ul>
+      {/* tab bar */}
+      <div className="mt-3 flex gap-6 border-b border-line">
+        {TABS.map(([key, label]) => {
+          const on = tab === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={[
+                '-mb-px border-b-2 pb-2.5 font-display text-[14px] font-bold tracking-[-0.01em] transition-colors',
+                on ? 'border-accent text-ink' : 'border-transparent text-muted-2 hover:text-muted',
+              ].join(' ')}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
-      <Section label="The two rules on a cut">
+      {tab === 'progress' && (
+        <>
+          {/* profile */}
+          <div className="mt-4 rounded-2xl border border-line bg-surface p-4 shadow-card">
+            <div className="font-display text-[15px] font-bold tracking-[-0.01em]">
+              {PROGRAM_PROFILE.tagline}
+            </div>
+            <ul className="m-0 mt-2.5 flex flex-col gap-1.5 p-0">
+              {PROGRAM_PROFILE.points.map((p) => (
+                <li key={p} className="flex gap-2 text-[13px] leading-relaxed text-muted">
+                  <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent" />
+                  <span>{p}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <Section label="This block">
+            <ProgramTracker />
+          </Section>
+        </>
+      )}
+
+      {tab === 'rules' && (
+        <>
+          <Section label="The two rules on a cut">
         <div className="flex flex-col gap-2">
           {CORE_RULES.map((r) => (
             <RuleCard key={r.title} rule={r} accent />
@@ -141,7 +183,10 @@ export function ProgramInfo({ onBack }: { onBack: () => void }) {
           </p>
         </div>
       </Section>
+        </>
+      )}
 
+      {tab === 'days' && (
       <Section label="The days">
         <div className="flex flex-col gap-2">
           {DAYS.map((day) => (
@@ -196,7 +241,10 @@ export function ProgramInfo({ onBack }: { onBack: () => void }) {
           ))}
         </div>
       </Section>
+      )}
 
+      {tab === 'protocols' && (
+        <>
       <Section label="Picking starting loads">
         <div className="flex flex-col gap-2">
           {STARTING_LOADS.map((r) => (
@@ -239,6 +287,8 @@ export function ProgramInfo({ onBack }: { onBack: () => void }) {
           ))}
         </ul>
       </Section>
+        </>
+      )}
     </div>
   );
 }
