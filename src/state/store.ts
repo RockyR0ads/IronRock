@@ -4,6 +4,8 @@ import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
 import { meaningfulSet } from '../domain/session';
 import { DEFAULT_PROGRAM } from '../domain/programs';
 import type { ExerciseConfig } from '../domain/exerciseConfig';
+import type { WeighIn, WeightGoal } from '../domain/weightTracker';
+import type { Profile } from '../domain/calories';
 import type {
   Block,
   Increment,
@@ -41,6 +43,8 @@ export interface State {
   sessions: Session[];
   /** Bodyweight (raw input). */
   bw: string;
+  /** When `bw` was last set (ISO), to resolve against the latest weigh-in. */
+  bwAt?: string;
   /** Rounding increment. */
   inc: Increment;
   /** Active day key. */
@@ -49,6 +53,12 @@ export interface State {
   programStart?: string;
   /** Id of the currently selected training program. */
   activeProgram: string;
+  /** Body-weight weigh-ins for goal tracking (date + kg). */
+  weighIns: WeighIn[];
+  /** Weight-loss goal (target weight & date). */
+  weightGoal: WeightGoal;
+  /** Personal details for calorie estimates (height, age, sex, activity). */
+  profile: Profile;
 }
 
 export const STORAGE_KEY = 'ironrock-loadsheet-v1';
@@ -70,6 +80,9 @@ export function initialState(): State {
     inc: 2.5,
     day: 'pushA',
     activeProgram: DEFAULT_PROGRAM,
+    weighIns: [],
+    weightGoal: {},
+    profile: {},
   };
 }
 
@@ -110,6 +123,10 @@ export type Action =
   | { type: 'removeSession'; id: string }
   | { type: 'setActiveProgram'; id: string }
   | { type: 'archiveSession'; session: Session }
+  | { type: 'logWeight'; at: string; kg: number }
+  | { type: 'removeWeighIn'; at: string }
+  | { type: 'setWeightGoal'; patch: Partial<WeightGoal> }
+  | { type: 'setProfile'; patch: Partial<Profile> }
   | { type: 'startProgram'; at: string }
   | { type: 'resetProgram' }
   | { type: 'resetWeek' }
@@ -184,7 +201,7 @@ export function reducer(state: State, action: Action): State {
     case 'setManual':
       return { ...state, manual: { ...state.manual, [action.id]: action.value } };
     case 'setBw':
-      return { ...state, bw: action.value };
+      return { ...state, bw: action.value, bwAt: new Date().toISOString() };
     case 'setInc':
       return { ...state, inc: action.value };
     case 'setDay':
@@ -348,6 +365,20 @@ export function reducer(state: State, action: Action): State {
       // a fully-formed session archived directly (used by programs that build
       // their own workout, e.g. 5/3/1), newest first
       return { ...state, sessions: [action.session, ...state.sessions] };
+    case 'logWeight': {
+      // one weigh-in per day: replace any existing entry for that date
+      const rest = state.weighIns.filter((w) => w.at !== action.at);
+      const weighIns = [...rest, { at: action.at, kg: action.kg }].sort((a, b) =>
+        a.at.localeCompare(b.at)
+      );
+      return { ...state, weighIns };
+    }
+    case 'removeWeighIn':
+      return { ...state, weighIns: state.weighIns.filter((w) => w.at !== action.at) };
+    case 'setWeightGoal':
+      return { ...state, weightGoal: { ...state.weightGoal, ...action.patch } };
+    case 'setProfile':
+      return { ...state, profile: { ...state.profile, ...action.patch } };
     case 'startProgram':
       return { ...state, programStart: action.at };
     case 'resetProgram': {
@@ -380,6 +411,9 @@ export function loadState(): State {
       ...parsed,
       customLifts: parsed.customLifts ?? {},
       exerciseConfig: parsed.exerciseConfig ?? {},
+      weighIns: parsed.weighIns ?? [],
+      weightGoal: parsed.weightGoal ?? {},
+      profile: parsed.profile ?? {},
       customDays: parsed.customDays ?? {},
       logs: parsed.logs ?? {},
       history: parsed.history ?? {},

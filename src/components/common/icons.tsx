@@ -172,6 +172,21 @@ export function HistoryIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** A downward trend — weight-loss tracking. */
+export function TrendDownIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M4 9l4.5 4.5 3-3L20 18M20 18h-4.5M20 18v-4.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** A gear — per-exercise settings. */
 export function GearIcon(props: SVGProps<SVGSVGElement>) {
   return (

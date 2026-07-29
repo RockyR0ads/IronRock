@@ -12,6 +12,7 @@ import {
   PlusIcon,
   HistoryIcon,
   TrendIcon,
+  TrendDownIcon,
   BookIcon,
   BendingBarbell,
   GearIcon,
@@ -25,7 +26,9 @@ export type HomeDest =
   | 'progress'
   | 'program'
   | 'reference'
-  | 'exercises';
+  | 'exercises'
+  | 'weight'
+  | 'settings';
 
 /**
  * The landing hub. Leads with the program's current session, then routes out to
@@ -65,7 +68,7 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-bg shadow-glow">
           <Dumbbell className="h-6 w-6" />
         </span>
-        <div className="min-w-0 leading-none">
+        <div className="min-w-0 flex-1 leading-none">
           <div className="font-display text-[26px] font-black uppercase tracking-[-0.01em]">
             IronRock
           </div>
@@ -73,6 +76,14 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
             {prog?.name ?? 'Training'}
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => onGo('settings')}
+          aria-label="Settings"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-muted transition-colors hover:border-accent/50 hover:text-ink"
+        >
+          <GearIcon className="h-5 w-5" />
+        </button>
       </header>
 
       {/* primary: today's programmed session */}
@@ -140,6 +151,12 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
           title="Exercises"
           sub="History, records & per-lift settings"
           onClick={() => onGo('exercises')}
+        />
+        <Tile
+          icon={<TrendDownIcon className="h-5 w-5" />}
+          title="Weight"
+          sub="Track weigh-ins toward a goal"
+          onClick={() => onGo('weight')}
         />
       </div>
 

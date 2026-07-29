@@ -13,8 +13,10 @@ import {
   WAVE_LABEL,
   CYCLE_WEEKS,
   tmFromOneRm,
+  tmIncrement,
   type W531Set,
 } from '../../domain/wendler531';
+import { completedCycles } from '../../domain/percentProgram';
 import type { LoggedSet, Session } from '../../domain/types';
 import { ChevronLeft, ChevronRight, CheckIcon } from '../common/icons';
 
@@ -34,11 +36,14 @@ export function Wendler531({
 }) {
   const { state, dispatch } = useStore();
   const inc = state.inc;
+  // 5/3/1 bumps the Training Max every cycle (+2.5 kg upper / +5 kg lower); that
+  // rise is derived from how many cycles have elapsed since the start date.
+  const cyclesDone = completedCycles(state.programStart, CYCLE_WEEKS);
 
-  /** Training Max for a lift: 90% of its reference-set 1RM, or 0 if unset. */
+  /** Training Max: 90% of the reference-set 1RM, plus each cycle's auto-bump. */
   const tmFor = (liftId: string) => {
     const e = e1rmFor(state, liftId);
-    return e === null ? 0 : tmFromOneRm(e, inc);
+    return e === null ? 0 : tmFromOneRm(e, inc) + cyclesDone * tmIncrement(liftId);
   };
   const missing = W531_LIFTS.filter((id) => tmFor(id) <= 0);
 
@@ -174,7 +179,12 @@ export function Wendler531({
                 </span>
                 <ChevronRight className="h-4 w-4 text-muted-2 transition-colors group-hover:text-accent" />
               </button>
-              <span className="font-mono text-[11px] text-muted-2">TM {tm} kg</span>
+              <span className="font-mono text-[11px] text-muted-2">
+                TM {tm} kg
+                {cyclesDone > 0 && (
+                  <span className="ml-1 text-green">+{cyclesDone * tmIncrement(day.lift)}</span>
+                )}
+              </span>
             </div>
 
             <div className="mt-1 font-mono text-[11px] text-muted-2">
@@ -234,8 +244,8 @@ export function Wendler531({
           </button>
 
           <p className="mt-4 text-center text-[12px] leading-relaxed text-muted-2">
-            Training Maxes come from your Reference lifts. To progress, bump the reference set as you
-            get stronger.
+            Training Maxes start from your Reference lifts (90% of 1RM) and rise automatically each
+            cycle — +2.5 kg upper, +5 kg lower. Restart the cycle to reset the climb.
           </p>
         </>
       )}

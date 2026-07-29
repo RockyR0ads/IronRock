@@ -26,6 +26,27 @@ export function displayE1rm(state: State, liftId: string): number | null {
   return e1rm === null ? null : round(e1rm, state.inc);
 }
 
+/**
+ * The lifter's current bodyweight, resolving the Settings figure against the
+ * weigh-in log: the Settings value wins only when it was set more recently than
+ * the latest weigh-in. Returns 0 when neither is set.
+ */
+export function currentBodyweight(state: State): number {
+  const bw = parseFloat(state.bw);
+  const bwOk = bw > 0;
+  const latest = state.weighIns.length
+    ? [...state.weighIns].sort((a, b) => a.at.localeCompare(b.at))[state.weighIns.length - 1]
+    : null;
+
+  if (bwOk && latest) {
+    const bwTime = state.bwAt ? new Date(state.bwAt).getTime() : 0;
+    const weighTime = new Date(latest.at).getTime();
+    return bwTime >= weighTime ? bw : latest.kg;
+  }
+  if (bwOk) return bw;
+  return latest ? latest.kg : 0;
+}
+
 /** Working load for a programmed (computed) block, or null if no reference yet. */
 export function blockLoad(state: State, block: Block): number | null {
   const e1rm = e1rmFor(state, block.lift);

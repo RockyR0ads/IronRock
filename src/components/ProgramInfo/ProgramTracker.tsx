@@ -13,11 +13,30 @@ function fmtDate(iso: string): string {
  * how the block cycles toward its deload, and how consistently you're training.
  * Anchored to a start date the lifter sets, with counts read from the archive.
  */
-export function ProgramTracker() {
+export function ProgramTracker({ programId }: { programId: string }) {
   const { state, dispatch } = useStore();
-  const cycle = programCycle(state.activeProgram);
-  const is531 = state.activeProgram === 'wendler-531';
+  const cycle = programCycle(programId);
+  const is531 = programId === 'wendler-531';
   const cycleLabel = is531 ? 'cycle' : 'block';
+
+  // the tracker only makes sense for the program you're actually running
+  if (state.activeProgram !== programId) {
+    return (
+      <div className="mt-4 rounded-2xl border border-dashed border-line-2 bg-surface/40 p-4 text-center">
+        <div className="font-display text-[15px] font-bold tracking-[-0.01em]">Not your active program</div>
+        <p className="mx-auto mt-1 max-w-[40ch] text-[13px] leading-relaxed text-muted-2">
+          Set this as your active program to track your {cycleLabel}-to-{cycleLabel} progress here.
+        </p>
+        <button
+          type="button"
+          onClick={() => dispatch({ type: 'setActiveProgram', id: programId })}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2.5 font-display text-[14px] font-bold text-bg shadow-glow transition-transform active:scale-[0.98]"
+        >
+          Set as active
+        </button>
+      </div>
+    );
+  }
 
   if (!state.programStart) {
     return (

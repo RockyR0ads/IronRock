@@ -54,7 +54,7 @@ export const WAVE_LABEL: Record<number, string> = {
 };
 
 // The main-lift scheme for each wave week — three sets, top set AMRAP (except deload).
-const WAVE: Record<number, SetSpec[]> = {
+export const WAVE: Record<number, SetSpec[]> = {
   1: [{ pct: 65, reps: 5 }, { pct: 75, reps: 5 }, { pct: 85, reps: 5, amrap: true }],
   2: [{ pct: 70, reps: 3 }, { pct: 80, reps: 3 }, { pct: 90, reps: 3, amrap: true }],
   3: [{ pct: 75, reps: 5 }, { pct: 85, reps: 3 }, { pct: 95, reps: 1, amrap: true }],

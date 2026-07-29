@@ -62,3 +62,14 @@ export function cycleWeek(
   const elapsed = Math.max(0, now.getTime() - new Date(startISO).getTime());
   return (Math.floor(elapsed / WEEK_MS) % cycleLength) + 1;
 }
+
+/** How many full cycles have elapsed since the start date (0 during the first). */
+export function completedCycles(
+  startISO: string | undefined,
+  cycleLength: number,
+  now: Date = new Date()
+): number {
+  if (!startISO) return 0;
+  const elapsed = Math.max(0, now.getTime() - new Date(startISO).getTime());
+  return Math.floor(Math.floor(elapsed / WEEK_MS) / cycleLength);
+}

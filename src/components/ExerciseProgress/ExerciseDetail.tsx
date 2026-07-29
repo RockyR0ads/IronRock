@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { liftById } from '../../state/store';
+import { currentBodyweight } from '../../state/selectors';
 import { exerciseSeries } from '../../domain/progress';
 import { isBodyweightLoaded } from '../../domain/exerciseConfig';
 import { sessionDayLabel } from '../../domain/session';
@@ -16,7 +17,7 @@ export function ExerciseDetail({ liftId, onBack }: { liftId: string; onBack: () 
   const lift = liftById(state, liftId);
   const cfg = state.exerciseConfig[liftId];
   const addWeight =
-    cfg?.includeBw && isBodyweightLoaded(lift.unit) ? parseFloat(state.bw) || 0 : 0;
+    cfg?.includeBw && isBodyweightLoaded(lift.unit) ? currentBodyweight(state) : 0;
   const series = exerciseSeries(state.sessions, liftId, state.inc, { addWeight });
 
   return (

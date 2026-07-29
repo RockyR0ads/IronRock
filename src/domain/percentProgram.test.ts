@@ -5,6 +5,7 @@ import {
   straightSets,
   trainingMax,
   cycleWeek,
+  completedCycles,
 } from './percentProgram';
 
 describe('percentProgram', () => {
@@ -44,5 +45,16 @@ describe('percentProgram', () => {
     expect(cycleWeek(start, 4, at(28))).toBe(1);
     expect(cycleWeek(start, 3, at(21))).toBe(1); // 3-week cycle
     expect(cycleWeek(undefined, 4)).toBe(1);
+  });
+
+  it('counts completed cycles', () => {
+    const DAY = 864e5;
+    const start = '2026-01-01T00:00:00Z';
+    const at = (d: number) => new Date(new Date(start).getTime() + d * DAY);
+    expect(completedCycles(start, 4, at(0))).toBe(0);
+    expect(completedCycles(start, 4, at(21))).toBe(0); // still in cycle 1
+    expect(completedCycles(start, 4, at(28))).toBe(1); // cycle 2 begins
+    expect(completedCycles(start, 4, at(56))).toBe(2);
+    expect(completedCycles(undefined, 4)).toBe(0);
   });
 });

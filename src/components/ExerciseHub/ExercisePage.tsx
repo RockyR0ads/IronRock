@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { liftById } from '../../state/store';
+import { currentBodyweight } from '../../state/selectors';
 import { exerciseSeries, type ProgressPoint } from '../../domain/progress';
 import { sessionDayLabel } from '../../domain/session';
 import {
@@ -38,7 +39,7 @@ export function ExercisePage({ liftId, onBack }: { liftId: string; onBack: () =>
   const [tab, setTab] = useState<Tab>(hasAbout ? 'about' : 'history');
   // bodyweight-loaded lifts can fold bodyweight into the plotted load
   const addWeight =
-    cfg?.includeBw && isBodyweightLoaded(lift.unit) ? parseFloat(state.bw) || 0 : 0;
+    cfg?.includeBw && isBodyweightLoaded(lift.unit) ? currentBodyweight(state) : 0;
   const series = useMemo(
     () => exerciseSeries(state.sessions, liftId, state.inc, { addWeight }),
     [state.sessions, liftId, state.inc, addWeight]

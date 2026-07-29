@@ -11,6 +11,8 @@ import { ProgramMenu } from './components/ProgramInfo/ProgramMenu';
 import { Home, type HomeDest } from './components/Home';
 import { TrainWeek } from './components/TrainWeek';
 import { Wendler531 } from './components/Wendler531/Wendler531';
+import { WeightTracker } from './components/WeightTracker/WeightTracker';
+import { Settings } from './components/Settings/Settings';
 import { useStore } from './state/StoreContext';
 
 type Page =
@@ -21,7 +23,9 @@ type Page =
   | 'history'
   | 'progress'
   | 'program'
-  | 'exercises';
+  | 'exercises'
+  | 'weight'
+  | 'settings';
 
 export default function App() {
   const { state } = useStore();
@@ -54,9 +58,12 @@ export default function App() {
   if (page === 'reference') return <ReferencePage onBack={home} />;
   if (page === 'freestyle') return <FreestyleWorkout onBack={home} onOpenExercise={setExerciseLift} />;
   if (page === 'history') return <WorkoutHistory onBack={home} />;
+  if (page === 'weight')
+    return <WeightTracker onBack={home} onOpenSettings={() => setPage('settings')} />;
+  if (page === 'settings') return <Settings onBack={home} />;
   if (page === 'program') {
     return programView ? (
-      <ProgramInfo onBack={() => setProgramView(null)} />
+      <ProgramInfo programId={programView} onBack={() => setProgramView(null)} />
     ) : (
       <ProgramMenu onBack={home} onOpen={setProgramView} />
     );

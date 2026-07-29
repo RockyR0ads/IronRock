@@ -62,6 +62,10 @@ export function GlobalControls() {
         </div>
       </div>
 
+      <p className="m-0 mt-2 text-[11px] leading-relaxed text-muted-2">
+        Used for bodyweight lifts. A more recent weigh-in on the Weight page takes over.
+      </p>
+
       <div className="mt-3 flex items-center gap-4">
         <button
           type="button"

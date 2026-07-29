@@ -4,7 +4,6 @@ import { effBlocks } from '../state/store';
 import { defaultDay } from '../domain/program';
 import { ChevronLeft, ChevronDown } from './common/icons';
 import { SectionHead } from './common/SectionHead';
-import { GlobalControls } from './GlobalControls';
 import { DayView } from './DayView/DayView';
 import { DayNav } from './DayView/DayNav';
 import { RestTimerBar } from './RestTimerBar';
@@ -119,10 +118,7 @@ export function TrainWeek({
         onOpenExercise={onOpenExercise}
       />
 
-      <SectionHead n="2" title="Settings" />
-      <GlobalControls />
-
-      <SectionHead n="3" title="Reference" />
+      <SectionHead n="2" title="Reference" />
       <ReferencePanels />
 
       <footer className="mt-10 text-center text-[12px] text-muted-2">
