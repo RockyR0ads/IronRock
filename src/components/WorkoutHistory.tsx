@@ -32,7 +32,7 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
           type="button"
           onClick={onBack}
           aria-label="Back to history"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -167,7 +167,7 @@ export function WorkoutHistory({ onBack }: { onBack: () => void }) {
               type="button"
               onClick={onBack}
               aria-label="Back home"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -183,7 +183,7 @@ export function WorkoutHistory({ onBack }: { onBack: () => void }) {
 
           {state.sessions.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-dashed border-line-2 bg-surface/40 px-6 py-12 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/15 text-accent">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/15 text-secondary">
                 <Dumbbell className="h-6 w-6" />
               </div>
               <p className="m-0 font-display text-[16px] font-bold">No workouts yet</p>
@@ -199,7 +199,7 @@ export function WorkoutHistory({ onBack }: { onBack: () => void }) {
                   key={s.id}
                   type="button"
                   onClick={() => setOpenId(s.id)}
-                  className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-accent/50"
+                  className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-secondary/50"
                 >
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline gap-2">

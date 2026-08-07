@@ -24,7 +24,7 @@ export function GlobalControls() {
               placeholder="90"
               value={state.bw}
               onChange={(e) => dispatch({ type: 'setBw', value: e.target.value })}
-              className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 pl-3 pr-9 font-mono text-[15px] text-ink transition-colors focus:border-accent focus:outline-none"
+              className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 pl-3 pr-9 font-mono text-[15px] text-ink transition-colors focus:border-secondary focus:outline-none"
             />
             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-2">
               kg

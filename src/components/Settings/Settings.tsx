@@ -1,5 +1,12 @@
 import { useStore } from '../../state/StoreContext';
 import { ACTIVITY_LEVELS, type Sex, type Profile } from '../../domain/calories';
+import {
+  PRIMARY,
+  SECONDARY,
+  type PrimaryKey,
+  type SecondaryKey,
+  type Swatch,
+} from '../../domain/theme';
 import { ChevronLeft } from '../common/icons';
 import { GlobalControls } from '../GlobalControls';
 
@@ -16,7 +23,7 @@ export function Settings({ onBack }: { onBack: () => void }) {
           type="button"
           onClick={onBack}
           aria-label="Back home"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -113,11 +120,87 @@ export function Settings({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
+      {/* appearance — themeable brand colours */}
+      <div className="mb-2 mt-6 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
+        Appearance
+      </div>
+      <div className="rounded-2xl border border-line bg-surface p-4 shadow-card">
+        <SwatchRow
+          label="Primary colour"
+          hint="Buttons, logging & key actions"
+          options={PRIMARY}
+          selected={state.theme.primary}
+          onPick={(k) => dispatch({ type: 'setTheme', patch: { primary: k as PrimaryKey } })}
+        />
+        <div className="my-4 border-t border-line" />
+        <SwatchRow
+          label="Secondary colour"
+          hint="Navigation, structure & accents"
+          options={SECONDARY}
+          selected={state.theme.secondary}
+          onPick={(k) => dispatch({ type: 'setTheme', patch: { secondary: k as SecondaryKey } })}
+        />
+      </div>
+
       {/* training preferences (moved out of the week view) */}
       <div className="mb-2 mt-6 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
         Training & data
       </div>
       <GlobalControls />
+    </div>
+  );
+}
+
+function SwatchRow({
+  label,
+  hint,
+  options,
+  selected,
+  onPick,
+}: {
+  label: string;
+  hint: string;
+  options: Record<string, Swatch>;
+  selected: string;
+  onPick: (key: string) => void;
+}) {
+  return (
+    <div>
+      <span className="block font-display text-[14px] font-bold tracking-[-0.01em]">{label}</span>
+      <span className="mt-0.5 block text-[12px] text-muted-2">{hint}</span>
+      <div className="mt-3 flex gap-2">
+        {Object.entries(options).map(([key, sw]) => {
+          const on = selected === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onPick(key)}
+              className={[
+                'flex flex-1 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors',
+                on ? 'border-line-2 bg-surface-2' : 'border-line bg-surface hover:border-line-2',
+              ].join(' ')}
+            >
+              <span
+                className="h-6 w-6 shrink-0 rounded-full ring-2 ring-inset ring-white/10"
+                style={{ backgroundColor: sw.hex }}
+              />
+              <span className="min-w-0 flex-1 truncate font-display text-[13px] font-bold tracking-[-0.01em]">
+                {sw.label}
+              </span>
+              {on && (
+                <span
+                  className="shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide"
+                  style={{ backgroundColor: `${sw.hex}22`, color: sw.hex }}
+                >
+                  On
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -144,7 +227,7 @@ function Field({
           placeholder="–"
           aria-label={label}
           onChange={(e) => onChange(e.target.value)}
-          className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 pl-3 pr-10 font-mono text-[15px] text-ink placeholder:text-muted-2 focus:border-accent focus:outline-none"
+          className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 pl-3 pr-10 font-mono text-[15px] text-ink placeholder:text-muted-2 focus:border-secondary focus:outline-none"
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[12px] text-muted-2">
           {unit}

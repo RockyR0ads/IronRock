@@ -60,7 +60,9 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     setSecondsLeft(seconds);
     setOwnerId(owner);
     setRunning(true);
-    // called from a set tap (a user gesture), so it's a valid time to prompt
+    // called from a set tap (a user gesture), so it's a valid time to prompt.
+    // The in-app bar covers the foreground case; the tray countdown is for when
+    // the app is backgrounded.
     void requestNotify();
     if (document.hidden) updateRestNotification(seconds);
   }, []);
@@ -91,7 +93,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
           return 0;
         }
         const next = s - 1;
-        // keep the ongoing notification in sync while the app is backgrounded
+        // live tick — silent, so redrawing each second doesn't ping
         if (document.hidden) updateRestNotification(next);
         return next;
       });

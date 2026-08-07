@@ -100,7 +100,7 @@ export function Wendler531({
           type="button"
           onClick={onBack}
           aria-label="Back home"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -312,7 +312,7 @@ function SetRow({
           onChange={(e) => onAmrap(e.target.value)}
           placeholder={`${set.reps}+`}
           aria-label="AMRAP reps achieved"
-          className="h-9 w-16 rounded-lg border border-line-2 bg-surface-2 text-center font-mono text-[15px] font-bold text-ink placeholder:font-normal placeholder:text-muted-2 focus:border-accent focus:outline-none"
+          className="h-9 w-16 rounded-lg border border-line-2 bg-surface-2 text-center font-mono text-[15px] font-bold text-ink placeholder:font-normal placeholder:text-muted-2 focus:border-secondary focus:outline-none"
         />
       )}
       <DoneButton done={done} onToggle={onToggle} />

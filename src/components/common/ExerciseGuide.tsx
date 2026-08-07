@@ -11,6 +11,37 @@ function cap(s: string) {
 }
 
 /**
+ * Shown when an exercise has neither a sketch nor CDN photos: a hand-authored
+ * line drawing of the movement if one exists, otherwise a generic dumbbell.
+ */
+function NoPhoto({ name }: { name: string }) {
+  return (
+    <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 bg-gradient-to-b from-surface-2 to-surface px-6 text-center">
+      <svg
+        viewBox="0 0 48 48"
+        className="h-12 w-12 text-muted-2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        {/* a stylised dumbbell */}
+        <path d="M6 24h4M38 24h4" />
+        <rect x="10" y="18" width="5" height="12" rx="1.5" />
+        <rect x="33" y="18" width="5" height="12" rx="1.5" />
+        <path d="M15 24h18" />
+      </svg>
+      <span className="text-[12px] font-medium text-muted-2">Illustration coming soon</span>
+      <span className="max-w-[80%] truncate font-display text-[13px] font-bold tracking-[-0.01em] text-muted">
+        {name}
+      </span>
+    </div>
+  );
+}
+
+/**
  * The how-to body for a library exercise: an auto-flipping illustration/photo
  * (a pseudo-gif), equipment/muscle tags, and the step-by-step instructions.
  * Presentational only — shared by the swap picker and the exercise page's
@@ -58,9 +89,7 @@ export function ExerciseGuide({ ex }: { ex: LibraryExercise }) {
             style={useSketch ? { backgroundColor: '#f4efe3' } : undefined}
           />
         ) : (
-          <div className="flex aspect-[4/3] w-full items-center justify-center text-[12px] text-muted-2">
-            No photo available
-          </div>
+          <NoPhoto name={ex.name} />
         )}
       </div>
 

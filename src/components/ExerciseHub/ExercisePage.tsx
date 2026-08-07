@@ -30,7 +30,9 @@ type Tab = 'about' | 'history' | 'records' | 'settings';
 export function ExercisePage({ liftId, onBack }: { liftId: string; onBack: () => void }) {
   const { state } = useStore();
   const lift = liftById(state, liftId);
-  const guide = lift.lib ? LIBRARY_BY_ID[lift.lib] : undefined;
+  // A curated lift points at its library entry via `.lib`; a raw library
+  // exercise opened from search *is* its own library id — resolve either.
+  const guide = LIBRARY_BY_ID[lift.lib ?? liftId];
   const cfg = state.exerciseConfig[liftId];
   // About holds the how-to guide and/or your own tempo & notes — show it if
   // either exists, so the settings that promise to appear here actually can.
@@ -59,7 +61,7 @@ export function ExercisePage({ liftId, onBack }: { liftId: string; onBack: () =>
           type="button"
           onClick={onBack}
           aria-label="Back to exercises"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -83,7 +85,7 @@ export function ExercisePage({ liftId, onBack }: { liftId: string; onBack: () =>
               onClick={() => setTab(key)}
               className={[
                 '-mb-px border-b-2 pb-2.5 font-display text-[14px] font-bold tracking-[-0.01em] transition-colors',
-                on ? 'border-accent text-ink' : 'border-transparent text-muted-2 hover:text-muted',
+                on ? 'border-secondary text-ink' : 'border-transparent text-muted-2 hover:text-muted',
               ].join(' ')}
             >
               {label}
@@ -380,7 +382,7 @@ function SettingsTab({ lift }: { lift: Lift }) {
                   onClick={() => set({ barType: bar.id })}
                   className={[
                     'flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left transition-colors',
-                    on ? 'border-accent bg-accent/10' : 'border-line bg-surface hover:border-accent/50',
+                    on ? 'border-accent bg-accent/10' : 'border-line bg-surface hover:border-secondary/50',
                   ].join(' ')}
                 >
                   <span className="font-display text-[14px] font-bold tracking-[-0.01em]">{bar.label}</span>
@@ -431,7 +433,7 @@ function SettingsTab({ lift }: { lift: Lift }) {
           value={config.tempo ?? ''}
           onChange={(e) => set({ tempo: e.target.value || undefined })}
           placeholder="e.g. 3-1-1"
-          className="w-full rounded-xl border border-line-2 bg-surface-2 px-3.5 py-2.5 font-mono text-[14px] text-ink placeholder:text-muted-2 focus:border-accent focus:outline-none"
+          className="w-full rounded-xl border border-line-2 bg-surface-2 px-3.5 py-2.5 font-mono text-[14px] text-ink placeholder:text-muted-2 focus:border-secondary focus:outline-none"
         />
       </Section>
 
@@ -441,7 +443,7 @@ function SettingsTab({ lift }: { lift: Lift }) {
           onChange={(e) => set({ notes: e.target.value || undefined })}
           placeholder="e.g. tuck elbows, drive with legs, pause on chest"
           rows={3}
-          className="w-full resize-y rounded-xl border border-line-2 bg-surface-2 px-3.5 py-2.5 text-[14px] leading-relaxed text-ink placeholder:text-muted-2 focus:border-accent focus:outline-none"
+          className="w-full resize-y rounded-xl border border-line-2 bg-surface-2 px-3.5 py-2.5 text-[14px] leading-relaxed text-ink placeholder:text-muted-2 focus:border-secondary focus:outline-none"
         />
       </Section>
     </div>

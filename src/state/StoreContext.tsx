@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react';
 import { loadState, reducer, saveState, type Action, type State } from './store';
+import { applyTheme } from '../domain/theme';
 
 interface StoreValue {
   state: State;
@@ -14,6 +15,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     saveState(state);
   }, [state]);
+
+  // re-tint the whole app whenever the chosen palette changes
+  useEffect(() => {
+    applyTheme(state.theme);
+  }, [state.theme]);
 
   return <StoreContext.Provider value={{ state, dispatch }}>{children}</StoreContext.Provider>;
 }

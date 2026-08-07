@@ -16,9 +16,12 @@ export default {
         ink: '#F2F1EC',
         muted: '#9AA0A8',
         'muted-2': '#646A73',
-        // brand accent — energetic "iron" red, used for primary actions
-        accent: '#FF5247',
-        'accent-deep': '#CA463B',
+        // brand accent — primary actions; themeable via --accent (default iron red)
+        accent: 'rgb(var(--accent) / <alpha-value>)',
+        'accent-deep': 'rgb(var(--accent-deep) / <alpha-value>)',
+        // secondary — structure/navigation/info; themeable via --secondary (default teal)
+        secondary: 'rgb(var(--secondary) / <alpha-value>)',
+        'secondary-deep': 'rgb(var(--secondary-deep) / <alpha-value>)',
         // intensity / plate accents
         red: '#FF5247', // heavy compound
         blue: '#4C8DF0', // volume lead
@@ -36,7 +39,7 @@ export default {
       boxShadow: {
         card: '0 1px 2px rgba(0,0,0,0.35), 0 4px 16px -8px rgba(0,0,0,0.5)',
         pop: '0 -8px 40px -12px rgba(0,0,0,0.7)',
-        glow: '0 6px 24px -10px rgba(255,82,71,0.55)',
+        glow: '0 6px 24px -10px rgb(var(--accent) / 0.55)',
       },
     },
   },

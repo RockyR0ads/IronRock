@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import { effBlocks } from '../state/store';
-import { defaultDay } from '../domain/program';
+import { defaultDay, DAYS } from '../domain/program';
+import { programProgress, programCycle } from '../domain/programTracker';
 import { ChevronLeft, ChevronDown } from './common/icons';
-import { SectionHead } from './common/SectionHead';
 import { DayView } from './DayView/DayView';
 import { DayNav } from './DayView/DayNav';
 import { RestTimerBar } from './RestTimerBar';
-import { ReferencePanels } from './ReferencePanels';
 import { ExercisePicker, type PickerRequest } from './ExercisePicker/ExercisePicker';
 
 /** What the open picker is doing: swapping a block, or adding a new one. */
@@ -60,6 +59,14 @@ export function TrainWeek({
 
   const day = defaultDay(state.day);
   const dayLetter = day?.variant.split('·')[0].trim();
+  // this day's position in the program week (1-based), for the switcher pill
+  const dayNum = DAYS.findIndex((d) => d.key === state.day) + 1;
+
+  // Where the lifter is in the block, so the header can name the week.
+  const prog = state.programStart
+    ? programProgress(state.sessions, state.programStart, programCycle(state.activeProgram))
+    : null;
+  const weekLabel = prog ? (prog.isDeload ? 'Deload week' : `Week ${prog.weekInBlock}`) : 'Week 1';
 
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6 sm:pb-16">
@@ -69,13 +76,13 @@ export function TrainWeek({
             type="button"
             onClick={onBack}
             aria-label="Back home"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 leading-none">
             <div className="truncate font-display text-[22px] font-black uppercase tracking-[-0.01em]">
-              The week
+              {weekLabel}
             </div>
             <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
               PPL · Cut
@@ -90,10 +97,12 @@ export function TrainWeek({
             onClick={() => setDayPickerOpen((o) => !o)}
             aria-haspopup="true"
             aria-expanded={dayPickerOpen}
-            className="flex items-center gap-2 rounded-full border border-line-2 bg-surface py-2 pl-3.5 pr-2.5 transition-colors hover:border-accent/50"
+            className="flex items-center gap-2 rounded-full border border-line-2 bg-surface py-2 pl-3.5 pr-2.5 transition-colors hover:border-secondary/50"
           >
-            <span className="font-display text-[14px] font-bold tracking-[-0.01em]">{day?.label}</span>
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-accent">
+            <span className="font-display text-[14px] font-bold tracking-[-0.01em]">
+              {dayNum > 0 ? `Day ${dayNum}` : day?.label}
+            </span>
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-secondary">
               {dayLetter}
             </span>
             <ChevronDown
@@ -111,15 +120,14 @@ export function TrainWeek({
         </div>
       </header>
 
-      <SectionHead n="1" title="The week" hint="Log your sets. Tap a lift to swap it, or add your own." />
+      <p className="mb-4 text-[13px] text-muted-2">
+        Log your sets. Tap a lift to swap it, or add your own.
+      </p>
       <DayView
         onSwap={(index) => setPicker({ kind: 'swap', index })}
         onAdd={() => setPicker({ kind: 'add' })}
         onOpenExercise={onOpenExercise}
       />
-
-      <SectionHead n="2" title="Reference" />
-      <ReferencePanels />
 
       <footer className="mt-10 text-center text-[12px] text-muted-2">
         Saved locally · refresh-safe · works offline

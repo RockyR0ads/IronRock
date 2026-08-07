@@ -6,6 +6,7 @@ import { DEFAULT_PROGRAM } from '../domain/programs';
 import type { ExerciseConfig } from '../domain/exerciseConfig';
 import type { WeighIn, WeightGoal } from '../domain/weightTracker';
 import type { Profile } from '../domain/calories';
+import { DEFAULT_THEME, type ThemeChoice } from '../domain/theme';
 import type {
   Block,
   Increment,
@@ -59,6 +60,8 @@ export interface State {
   weightGoal: WeightGoal;
   /** Personal details for calorie estimates (height, age, sex, activity). */
   profile: Profile;
+  /** Chosen brand colours (primary + secondary). */
+  theme: ThemeChoice;
 }
 
 export const STORAGE_KEY = 'ironrock-loadsheet-v1';
@@ -83,6 +86,7 @@ export function initialState(): State {
     weighIns: [],
     weightGoal: {},
     profile: {},
+    theme: DEFAULT_THEME,
   };
 }
 
@@ -108,6 +112,7 @@ export type Action =
   | { type: 'setDay'; key: string }
   | { type: 'swapBlock'; dayKey: string; index: number; liftId: string }
   | { type: 'removeBlock'; dayKey: string; index: number }
+  | { type: 'moveBlock'; dayKey: string; from: number; to: number }
   | { type: 'addBlock'; dayKey: string; liftId: string }
   | { type: 'addCustomLift'; id: string; name: string; unit: string; group: string }
   | { type: 'setExerciseConfig'; id: string; patch: Partial<ExerciseConfig> }
@@ -127,6 +132,7 @@ export type Action =
   | { type: 'removeWeighIn'; at: string }
   | { type: 'setWeightGoal'; patch: Partial<WeightGoal> }
   | { type: 'setProfile'; patch: Partial<Profile> }
+  | { type: 'setTheme'; patch: Partial<ThemeChoice> }
   | { type: 'startProgram'; at: string }
   | { type: 'resetProgram' }
   | { type: 'resetWeek' }
@@ -231,6 +237,25 @@ export function reducer(state: State, action: Action): State {
         (_, i) => i !== action.index
       );
       const log = cloneDayLog(state, action.dayKey).filter((_, i) => i !== action.index);
+      return {
+        ...state,
+        customDays: { ...state.customDays, [action.dayKey]: blocks },
+        logs: { ...state.logs, [action.dayKey]: log },
+      };
+    }
+    case 'moveBlock': {
+      const blocks = (state.customDays[action.dayKey] ?? cloneDefaultBlocks(action.dayKey)).map(
+        (b) => ({ ...b })
+      );
+      const { from, to } = action;
+      if (from === to || from < 0 || to < 0 || from >= blocks.length || to >= blocks.length)
+        return state;
+      // move the block and its logged sets together, so logs stay index-aligned
+      const log = cloneDayLog(state, action.dayKey, blocks.length);
+      const [movedBlock] = blocks.splice(from, 1);
+      blocks.splice(to, 0, movedBlock);
+      const [movedLog] = log.splice(from, 1);
+      log.splice(to, 0, movedLog);
       return {
         ...state,
         customDays: { ...state.customDays, [action.dayKey]: blocks },
@@ -379,6 +404,8 @@ export function reducer(state: State, action: Action): State {
       return { ...state, weightGoal: { ...state.weightGoal, ...action.patch } };
     case 'setProfile':
       return { ...state, profile: { ...state.profile, ...action.patch } };
+    case 'setTheme':
+      return { ...state, theme: { ...state.theme, ...action.patch } };
     case 'startProgram':
       return { ...state, programStart: action.at };
     case 'resetProgram': {
@@ -414,6 +441,7 @@ export function loadState(): State {
       weighIns: parsed.weighIns ?? [],
       weightGoal: parsed.weightGoal ?? {},
       profile: parsed.profile ?? {},
+      theme: { ...DEFAULT_THEME, ...(parsed.theme ?? {}) },
       customDays: parsed.customDays ?? {},
       logs: parsed.logs ?? {},
       history: parsed.history ?? {},

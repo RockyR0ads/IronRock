@@ -48,6 +48,9 @@ function useSwipeRow(onDelete: () => void) {
   const start = useRef<{ x: number; y: number } | null>(null);
   const engaged = useRef(false);
   const offset = useRef(0);
+  // did the gesture start on a button/input? if so the control already captured
+  // the pointer — we must NOT steal it, or the control's tap never fires
+  const onControl = useRef(false);
 
   const ENGAGE = 12;
   const DELETE_AT = 96;
@@ -69,6 +72,7 @@ function useSwipeRow(onDelete: () => void) {
     }
     start.current = { x: e.clientX, y: e.clientY };
     engaged.current = false;
+    onControl.current = !!(e.target as HTMLElement).closest('button, input');
   };
 
   const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -79,10 +83,14 @@ function useSwipeRow(onDelete: () => void) {
       if (Math.abs(ddx) > ENGAGE && Math.abs(ddx) > Math.abs(ddy) * 1.3) {
         engaged.current = true;
         setDragging(true);
-        try {
-          e.currentTarget.setPointerCapture(e.pointerId);
-        } catch {
-          /* capture unsupported */
+        // only take capture when the gesture didn't begin on a control; when it
+        // did, the control holds capture and the row still gets bubbled moves
+        if (!onControl.current) {
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          } catch {
+            /* capture unsupported */
+          }
         }
       } else if (Math.abs(ddy) > ENGAGE) {
         start.current = null; // vertical — let the page scroll
@@ -274,12 +282,13 @@ function SetInput({
     extra,
   });
 
-  // warm-up rows carry their heat colour: a solid fill once done, a soft border
-  // tint before, so the ramp reads even on empty cells
+  // warm-up rows carry their heat colour: a soft tint once done (matching the
+  // working-set treatment), a fainter border tint before, so the ramp reads
+  // even on empty cells
   const warm = warmup && warmTone;
   const warmStyle = warm
     ? done
-      ? { backgroundColor: warmTone, borderColor: warmTone }
+      ? { backgroundColor: `${warmTone}4D`, borderColor: 'transparent', color: warmTone }
       : { borderColor: `${warmTone}66` }
     : undefined;
 
@@ -299,11 +308,11 @@ function SetInput({
           compact ? 'px-0 text-[13px]' : 'text-[15px]',
           warm
             ? done
-              ? 'text-bg'
+              ? '' // colour comes from warmStyle (tinted)
               : 'bg-surface-2 text-ink'
             : done
-              ? 'border-green bg-green/90 text-bg focus:border-green'
-              : 'border-line-2 bg-surface-2 text-ink focus:border-accent',
+              ? 'border-transparent bg-green/30 text-green focus:border-green'
+              : 'border-line-2 bg-surface-2 text-ink focus:border-secondary',
         ].join(' ')}
       />
       {hold.menu}
@@ -431,14 +440,14 @@ function RpeButton({
           rated
             ? done
               ? {
-                  backgroundColor: `hsl(${hue} 60% 52%)`,
-                  borderColor: `hsl(${hue} 60% 52%)`,
-                  color: '#0E0F12',
+                  backgroundColor: `hsl(${hue} 65% 50% / 0.3)`,
+                  borderColor: `hsl(${hue} 65% 55% / 0.6)`,
+                  color: `hsl(${hue} 90% 78%)`,
                 }
               : {
-                  backgroundColor: `hsl(${hue} 65% 45% / 0.22)`,
-                  borderColor: `hsl(${hue} 65% 55% / 0.55)`,
-                  color: `hsl(${hue} 85% 75%)`,
+                  backgroundColor: `hsl(${hue} 60% 45% / 0.12)`,
+                  borderColor: `hsl(${hue} 60% 50% / 0.38)`,
+                  color: `hsl(${hue} 70% 68%)`,
                 }
             : undefined
         }
@@ -447,9 +456,9 @@ function RpeButton({
           rated
             ? ''
             : done && warmup
-              ? 'border-yellow bg-yellow/90 text-bg'
+              ? 'border-transparent bg-yellow/30 text-yellow'
               : done
-                ? 'border-green bg-green/90 text-bg'
+                ? 'border-transparent bg-green/30 text-green'
                 : 'border-line-2 bg-surface-2 text-muted-2 hover:text-ink',
         ].join(' ')}
       >
@@ -626,10 +635,10 @@ export function ExerciseCard({
               aria-label={`Open ${lift.name} exercise page`}
               className="group flex min-w-0 shrink items-center gap-1 text-left"
             >
-              <span className="min-w-0 truncate font-display text-[16px] font-bold tracking-[-0.01em] transition-colors group-hover:text-accent">
+              <span className="min-w-0 truncate font-display text-[16px] font-bold tracking-[-0.01em] transition-colors group-hover:text-secondary">
                 {lift.name}
               </span>
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-2 transition-colors group-hover:text-accent" />
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-2 transition-colors group-hover:text-secondary" />
             </button>
           ) : (
             <span className="min-w-0 shrink truncate font-display text-[16px] font-bold tracking-[-0.01em]">
@@ -829,7 +838,7 @@ export function ExerciseCard({
               set: prefillSet(block, sets, target, history, perSideDefault),
             })
           }
-          className="inline-flex flex-[3] items-center justify-center gap-1.5 rounded-lg bg-surface-2 px-3 py-2 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-3"
+          className="inline-flex flex-[3] items-center justify-center gap-1.5 rounded-lg bg-secondary/15 px-3 py-2 text-[13px] font-semibold text-secondary transition-colors hover:bg-secondary/25"
         >
           <PlusIcon className="h-4 w-4" /> Add set
         </button>

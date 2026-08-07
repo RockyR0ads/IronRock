@@ -54,7 +54,7 @@ function RefCard({ id }: { id: string }) {
               onChange={(e) =>
                 dispatch({ type: 'setRef', id, field: f.key, value: e.target.value })
               }
-              className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 text-center font-mono text-[16px] text-ink transition-colors placeholder:text-muted-2 focus:border-accent focus:outline-none"
+              className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 text-center font-mono text-[16px] text-ink transition-colors placeholder:text-muted-2 focus:border-secondary focus:outline-none"
             />
           </label>
         ))}

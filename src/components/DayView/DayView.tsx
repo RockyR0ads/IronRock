@@ -35,6 +35,19 @@ export function DayView({
   const allDone = blocks.length > 0 && completion.every(Boolean);
   const prev = useRef<{ day: string; comp: boolean[] } | null>(null);
 
+  // --- hold-to-drag reordering ---------------------------------------------
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const drag = useRef<{
+    from: number;
+    pointerId: number;
+    offset: number; // pointer Y minus dragged card's top, at grab time
+    rects: { top: number; height: number }[];
+    shift: number; // px to move siblings by (dragged height + gap)
+    target: number;
+    el: HTMLDivElement;
+  } | null>(null);
+
   useEffect(() => {
     const before = prev.current;
     prev.current = { day: state.day, comp: completion };
@@ -64,6 +77,128 @@ export function DayView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completionKey, state.day]);
 
+  const GAP = 12; // matches gap-3 between cards
+
+  function applyTransforms(pointerY: number) {
+    const d = drag.current;
+    if (!d) return;
+    const top = pointerY - d.offset;
+    const center = top + d.rects[d.from].height / 2;
+    // where would the dragged card land?
+    let target = d.from;
+    for (let i = 0; i < d.rects.length; i++) {
+      if (i === d.from) continue;
+      const mid = d.rects[i].top + d.rects[i].height / 2;
+      if (i < d.from && center < mid) target = Math.min(target, i);
+      if (i > d.from && center > mid) target = Math.max(target, i);
+    }
+    d.target = target;
+    d.el.style.transform = `translateY(${top - d.rects[d.from].top}px) scale(1.02)`;
+    d.el.style.zIndex = '30';
+    d.el.style.boxShadow = '0 12px 28px rgba(0,0,0,0.45)';
+    for (let i = 0; i < d.rects.length; i++) {
+      const el = itemRefs.current[i];
+      if (!el || i === d.from) continue;
+      let dy = 0;
+      if (target > d.from && i > d.from && i <= target) dy = -d.shift;
+      else if (target < d.from && i < d.from && i >= target) dy = d.shift;
+      el.style.transform = dy ? `translateY(${dy}px)` : '';
+    }
+  }
+
+  function endDrag() {
+    const d = drag.current;
+    window.removeEventListener('pointermove', onDragMove);
+    window.removeEventListener('pointerup', endDrag);
+    window.removeEventListener('pointercancel', endDrag);
+    document.body.style.userSelect = '';
+    if (d) {
+      for (let i = 0; i < d.rects.length; i++) {
+        const el = itemRefs.current[i];
+        if (!el) continue;
+        el.style.transform = '';
+        el.style.zIndex = '';
+        el.style.boxShadow = '';
+        el.style.transition = '';
+      }
+      if (d.target !== d.from) dispatch({ type: 'moveBlock', dayKey: state.day, from: d.from, to: d.target });
+    }
+    drag.current = null;
+    setDragFrom(null);
+  }
+
+  function onDragMove(e: PointerEvent) {
+    if (!drag.current || e.pointerId !== drag.current.pointerId) return;
+    e.preventDefault(); // suppress page scroll while dragging
+    applyTransforms(e.clientY);
+  }
+
+  function beginDrag(index: number, pointerId: number, pointerY: number) {
+    const el = itemRefs.current[index];
+    if (!el) return;
+    const rects = itemRefs.current.map((n) => {
+      const r = n?.getBoundingClientRect();
+      return { top: r?.top ?? 0, height: r?.height ?? 0 };
+    });
+    drag.current = {
+      from: index,
+      pointerId,
+      offset: pointerY - rects[index].top,
+      rects,
+      shift: rects[index].height + GAP,
+      target: index,
+      el,
+    };
+    setDragFrom(index);
+    document.body.style.userSelect = 'none';
+    navigator.vibrate?.(12);
+    // siblings ease into their gaps; the dragged card follows the finger 1:1
+    itemRefs.current.forEach((n, i) => {
+      if (n && i !== index) n.style.transition = 'transform 180ms ease';
+    });
+    window.addEventListener('pointermove', onDragMove, { passive: false });
+    window.addEventListener('pointerup', endDrag);
+    window.addEventListener('pointercancel', endDrag);
+    applyTransforms(pointerY);
+  }
+
+  const HOLD_MS = 280;
+  const SLOP = 8;
+
+  function onItemPointerDown(e: React.PointerEvent, index: number) {
+    if (e.button && e.button !== 0) return;
+    const t = e.target as HTMLElement;
+    // let controls (inputs, buttons, swipe rows) keep their own gestures
+    if (t.closest('button, input, select, textarea, a, [data-nodrag]')) return;
+    if (blocks.length < 2) return;
+    const pointerId = e.pointerId;
+    const startY = e.clientY;
+    const startX = e.clientX;
+    let holdTimer: number | null = window.setTimeout(() => {
+      holdTimer = null;
+      itemRefs.current[index]?.setPointerCapture?.(pointerId);
+      beginDrag(index, pointerId, lastY);
+    }, HOLD_MS);
+    let lastY = startY;
+    const preMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
+      lastY = ev.clientY;
+      // a real drag/scroll before the hold fires cancels reordering
+      if (holdTimer && (Math.abs(ev.clientY - startY) > SLOP || Math.abs(ev.clientX - startX) > SLOP))
+        cancelPre();
+    };
+    const cancelPre = () => {
+      if (holdTimer) clearTimeout(holdTimer);
+      holdTimer = null;
+      window.removeEventListener('pointermove', preMove);
+      window.removeEventListener('pointerup', cancelPre);
+      window.removeEventListener('pointercancel', cancelPre);
+    };
+    window.addEventListener('pointermove', preMove, { passive: true });
+    window.addEventListener('pointerup', cancelPre);
+    window.addEventListener('pointercancel', cancelPre);
+  }
+
   if (!day) return null;
 
   return (
@@ -72,7 +207,7 @@ export function DayView({
         <div>
           <h3 className="m-0 font-display text-[24px] font-black tracking-[-0.01em]">
             {day.label}
-            <span className="ml-2 align-middle text-[14px] font-semibold uppercase tracking-[0.08em] text-accent">
+            <span className="ml-2 align-middle text-[14px] font-semibold uppercase tracking-[0.08em] text-secondary">
               {day.variant}
             </span>
           </h3>
@@ -105,14 +240,25 @@ export function DayView({
 
       <div className="flex flex-col gap-3">
         {blocks.map((block, i) => (
-          <ExerciseCard
+          <div
             key={`${block.lift}-${i}`}
-            block={block}
-            index={i}
-            dayKey={state.day}
-            onSwap={onSwap}
-            onOpenExercise={onOpenExercise}
-          />
+            ref={(el) => {
+              itemRefs.current[i] = el;
+            }}
+            onPointerDown={(e) => onItemPointerDown(e, i)}
+            className={[
+              'touch-pan-y rounded-2xl',
+              dragFrom === i ? 'relative select-none' : '',
+            ].join(' ')}
+          >
+            <ExerciseCard
+              block={block}
+              index={i}
+              dayKey={state.day}
+              onSwap={onSwap}
+              onOpenExercise={onOpenExercise}
+            />
+          </div>
         ))}
       </div>
 

@@ -2,7 +2,8 @@ import { estimate1Rm, targetLoad as calcTargetLoad, midReps, round } from '../do
 import { rpeNum } from '../domain/format';
 import { workoutStats, type WorkoutStats } from '../domain/stats';
 import type { Block, LoggedSet } from '../domain/types';
-import { effBlocks, liftById, setsFor, type State } from './store';
+import { defaultDay } from '../domain/program';
+import { effBlocks, liftById, setsFor, FREESTYLE_KEY, type State } from './store';
 
 /** Reference sets are taken to failure, so they always score as maximum effort. */
 const MAX_EFFORT_RPE = 10;
@@ -73,6 +74,46 @@ export function workingSetCount(sets: LoggedSet[]): number {
 /** A block is complete once at least its prescribed number of sets are checked done. */
 export function isBlockComplete(block: Block, sets: LoggedSet[]): boolean {
   return block.sets > 0 && doneSetCount(sets) >= block.sets;
+}
+
+/** A workout with logged sets sitting unfinished, for the resume banner. */
+export interface ActiveWorkout {
+  dayKey: string;
+  title: string;
+  done: number;
+  total: number;
+  freestyle: boolean;
+}
+
+/**
+ * The workout currently in progress (has logged sets but isn't archived), or
+ * null. Freestyle takes precedence, then the active program day.
+ */
+export function activeWorkout(state: State): ActiveWorkout | null {
+  const fs = state.logs[FREESTYLE_KEY];
+  if (fs && fs.some((sets) => sets.length > 0)) {
+    let done = 0;
+    let total = 0;
+    fs.forEach((sets) => {
+      done += doneSetCount(sets);
+      total += workingSetCount(sets);
+    });
+    return { dayKey: FREESTYLE_KEY, title: 'Freestyle', done, total, freestyle: true };
+  }
+
+  const dayKey = state.day;
+  const log = state.logs[dayKey];
+  if (log && log.some((sets) => sets.length > 0)) {
+    const blocks = effBlocks(state, dayKey);
+    let done = 0;
+    let total = 0;
+    blocks.forEach((b, i) => {
+      done += doneSetCount(setsFor(state, dayKey, i));
+      total += b.sets;
+    });
+    return { dayKey, title: defaultDay(dayKey)?.label ?? 'Workout', done, total, freestyle: false };
+  }
+  return null;
 }
 
 /** Summary of everything checked off on a day — powers the finish-workout screen. */

@@ -83,7 +83,7 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
           <button
             type="button"
             onClick={() => setDetail(true)}
-            className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-surface-2 py-2.5 font-display text-[13px] font-bold text-ink transition-colors hover:border-accent/50"
+            className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl border border-line bg-surface-2 py-2.5 font-display text-[13px] font-bold text-ink transition-colors hover:border-secondary/50"
           >
             Details
             <ChevronRight className="h-4 w-4 text-muted-2" />

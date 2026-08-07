@@ -1,8 +1,10 @@
 /**
  * Rest-timer notifications. On mobile the app is usually backgrounded or the
- * screen is locked during a rest, so a silent, live-updating notification shows
- * the time remaining, and an alerting one fires when the rest is up. All calls
- * are no-ops unless permission is granted, so callers don't need to guard.
+ * screen is locked during a rest, so a live countdown is shown in the tray and
+ * an alerting one fires when it's up. The countdown is redrawn each second but
+ * kept SILENT (`silent: true`) and replaces itself in place (`renotify: false`,
+ * same `tag`), so updating it never sounds or vibrates — only the completion
+ * notification alerts.
  *
  * Android Chrome only allows notifications via the service worker registration
  * (`new Notification()` throws), so we prefer `registration.showNotification`
@@ -62,7 +64,11 @@ async function show(title: string, options: RestNotifyOptions) {
   }
 }
 
-/** Silent, in-place update of the ongoing rest notification. */
+/**
+ * Redraw the live rest countdown. Silent + renotify:false + a stable tag means
+ * it replaces the previous notification in place without any sound or vibration,
+ * so it can tick every second without pinging.
+ */
 export function updateRestNotification(secondsLeft: number) {
   void show('Resting', {
     tag: TAG,

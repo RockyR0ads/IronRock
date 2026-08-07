@@ -216,7 +216,7 @@ export function useHoldMenu({
                   close();
                 }}
                 style={{ height: EXTRA_H, marginTop: GAP }}
-                className="flex w-full items-center justify-between gap-2 rounded-xl border border-line-2 bg-surface-3 px-3 transition-colors hover:border-accent/50"
+                className="flex w-full items-center justify-between gap-2 rounded-xl border border-line-2 bg-surface-3 px-3 transition-colors hover:border-secondary/50"
               >
                 <span className="font-mono text-[12px] font-bold text-ink">{extra.label}</span>
                 <span

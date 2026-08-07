@@ -5,6 +5,11 @@
 @layer base {
   :root {
     color-scheme: dark;
+    /* themeable brand colours as "R G B" triples (see domain/theme.ts) */
+    --accent: 255 82 71;
+    --accent-deep: 202 70 59;
+    --secondary: 45 212 191;
+    --secondary-deep: 20 184 166;
   }
 
   html {

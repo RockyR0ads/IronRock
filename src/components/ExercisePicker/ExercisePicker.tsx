@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import {
+  EQUIP_OPTIONS,
   GROUP_ORDER,
   libraryInGroup,
   searchLibrary,
+  type EquipKey,
   type LibraryExercise,
   type MuscleGroup,
 } from '../../domain/library';
@@ -54,6 +56,7 @@ export function ExercisePicker({
 
   const [query, setQuery] = useState('');
   const [group, setGroup] = useState<MuscleGroup | 'My'>('Chest');
+  const [equip, setEquip] = useState<EquipKey | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: '', group: 'Chest' as MuscleGroup, unit: 'kg on bar' });
@@ -65,6 +68,7 @@ export function ExercisePicker({
     if (!open) return;
     setQuery('');
     setGroup('Chest');
+    setEquip(null);
     setDetailId(null);
     setCreating(false);
     setForm({ name: '', group: 'Chest', unit: 'kg on bar' });
@@ -96,10 +100,13 @@ export function ExercisePicker({
 
   let rows: Row[];
   if (q) {
-    const custom = customEntries
-      .filter(([, c]) => c.name.toLowerCase().includes(q))
-      .map(([id, c]) => ({ id, name: c.name, sub: c.unit || 'Custom', hasDetail: false }));
-    rows = [...custom, ...searchLibrary(query).map(libRow)];
+    // Custom lifts carry no dataset equipment, so hide them when filtering by it.
+    const custom = equip
+      ? []
+      : customEntries
+          .filter(([, c]) => c.name.toLowerCase().includes(q))
+          .map(([id, c]) => ({ id, name: c.name, sub: c.unit || 'Custom', hasDetail: false }));
+    rows = [...custom, ...searchLibrary(query, equip).map(libRow)];
   } else if (group === 'My') {
     rows = customEntries.map(([id, c]) => ({
       id,
@@ -108,7 +115,12 @@ export function ExercisePicker({
       hasDetail: false,
     }));
   } else {
-    rows = libraryInGroup(group).map(libRow);
+    rows = libraryInGroup(group, equip).map(libRow);
+  }
+
+  function startCreate(prefillName = '') {
+    setForm({ name: prefillName, group: group === 'My' ? 'Chest' : group, unit: 'kg on bar' });
+    setCreating(true);
   }
 
   function createCustom() {
@@ -171,7 +183,7 @@ export function ExercisePicker({
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Landmine press"
-                  className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3 text-[15px] text-ink placeholder:text-muted-2 focus:border-accent focus:outline-none"
+                  className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3 text-[15px] text-ink placeholder:text-muted-2 focus:border-secondary focus:outline-none"
                 />
               </label>
               <label className="block">
@@ -179,7 +191,7 @@ export function ExercisePicker({
                 <select
                   value={form.group}
                   onChange={(e) => setForm((f) => ({ ...f, group: e.target.value as MuscleGroup }))}
-                  className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3 text-[15px] text-ink focus:border-accent focus:outline-none"
+                  className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3 text-[15px] text-ink focus:border-secondary focus:outline-none"
                 >
                   {GROUP_ORDER.map((g) => (
                     <option key={g} value={g}>
@@ -193,7 +205,7 @@ export function ExercisePicker({
                 <select
                   value={form.unit}
                   onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3 text-[15px] text-ink focus:border-accent focus:outline-none"
+                  className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3 text-[15px] text-ink focus:border-secondary focus:outline-none"
                 >
                   {EQUIPMENT.map((eq) => (
                     <option key={eq.label} value={eq.unit}>
@@ -238,15 +250,43 @@ export function ExercisePicker({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search 870+ exercises…"
                 aria-label="Search exercises"
-                className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3.5 text-[15px] text-ink placeholder:text-muted-2 focus:border-accent focus:outline-none"
+                className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3.5 text-[15px] text-ink placeholder:text-muted-2 focus:border-secondary focus:outline-none"
               />
             </div>
 
-            {!q && (
+            {group !== 'My' && (
               <div className="mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
                 <button
                   type="button"
-                  onClick={() => setCreating(true)}
+                  onClick={() => setEquip(null)}
+                  className={[
+                    'shrink-0 rounded-full px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors',
+                    equip === null ? 'bg-blue text-bg' : 'bg-surface-2 text-muted hover:text-ink',
+                  ].join(' ')}
+                >
+                  All gear
+                </button>
+                {EQUIP_OPTIONS.map((eq) => (
+                  <button
+                    key={eq}
+                    type="button"
+                    onClick={() => setEquip((cur) => (cur === eq ? null : eq))}
+                    className={[
+                      'shrink-0 rounded-full px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors',
+                      equip === eq ? 'bg-blue text-bg' : 'bg-surface-2 text-muted hover:text-ink',
+                    ].join(' ')}
+                  >
+                    {eq}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!q && (
+              <div className="mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1">
+                <button
+                  type="button"
+                  onClick={() => startCreate()}
                   className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-accent/60 px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide text-accent"
                 >
                   <PlusIcon className="h-3.5 w-3.5" /> New
@@ -282,9 +322,21 @@ export function ExercisePicker({
             )}
 
             <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-auto px-4 pb-6 pb-safe pt-1">
-              {rows.length === 0 && (
+              {q && (
+                <button
+                  type="button"
+                  onClick={() => startCreate(query.trim())}
+                  className="flex w-full items-center gap-2 rounded-xl border border-dashed border-accent/60 bg-accent/5 px-3.5 py-2.5 text-left transition-colors hover:bg-accent/10"
+                >
+                  <PlusIcon className="h-4 w-4 shrink-0 text-accent" />
+                  <span className="min-w-0 truncate font-display text-[14px] font-bold tracking-[-0.01em] text-accent">
+                    Create “{query.trim()}”
+                  </span>
+                </button>
+              )}
+              {rows.length === 0 && !q && (
                 <p className="px-1 py-6 text-center text-[13px] text-muted-2">
-                  No exercises found. Try another search, or create your own.
+                  Pick a group above, search, or create your own.
                 </p>
               )}
               {rows.map((row) => (

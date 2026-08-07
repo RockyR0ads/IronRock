@@ -27,7 +27,7 @@ export function ExerciseDetail({ liftId, onBack }: { liftId: string; onBack: () 
           type="button"
           onClick={onBack}
           aria-label="Back to exercises"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -57,7 +57,7 @@ export function ExerciseDetail({ liftId, onBack }: { liftId: string; onBack: () 
               onClick={() => setTab(key)}
               className={[
                 '-mb-px border-b-2 pb-2.5 font-display text-[14px] font-bold tracking-[-0.01em] transition-colors',
-                on ? 'border-accent text-ink' : 'border-transparent text-muted-2 hover:text-muted',
+                on ? 'border-secondary text-ink' : 'border-transparent text-muted-2 hover:text-muted',
               ].join(' ')}
             >
               {label}

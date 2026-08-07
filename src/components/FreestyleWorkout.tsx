@@ -58,7 +58,7 @@ export function FreestyleWorkout({
             type="button"
             onClick={onBack}
             aria-label="Back home"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -92,7 +92,7 @@ export function FreestyleWorkout({
 
       {blocks.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-2 bg-surface/40 px-6 py-12 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/15 text-accent">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/15 text-secondary">
             <PlusIcon className="h-6 w-6" />
           </div>
           <p className="m-0 font-display text-[16px] font-bold">No exercises yet</p>

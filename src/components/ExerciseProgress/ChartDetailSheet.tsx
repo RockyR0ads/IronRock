@@ -71,7 +71,7 @@ export function ChartDetailSheet({
             type="button"
             onClick={onClose}
             aria-label="Close details"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>

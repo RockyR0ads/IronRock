@@ -80,7 +80,7 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
           type="button"
           onClick={() => onGo('settings')}
           aria-label="Settings"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-muted transition-colors hover:border-accent/50 hover:text-ink"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-muted transition-colors hover:border-secondary/50 hover:text-ink"
         >
           <GearIcon className="h-5 w-5" />
         </button>
@@ -200,10 +200,10 @@ function Tile({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-accent/50"
+      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-secondary/50"
     >
       <span className="flex items-center gap-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/15 text-secondary">
           {icon}
         </span>
         <span className="min-w-0">

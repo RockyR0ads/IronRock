@@ -43,7 +43,7 @@ export function WeightTracker({
           type="button"
           onClick={onBack}
           aria-label="Back home"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
@@ -70,7 +70,7 @@ export function WeightTracker({
             onChange={(e) => setEntry(e.target.value)}
             placeholder="–"
             aria-label="Today's weight in kg"
-            className="h-12 flex-1 rounded-xl border border-line-2 bg-surface-2 text-center font-mono text-[18px] font-bold text-ink placeholder:font-normal placeholder:text-muted-2 focus:border-accent focus:outline-none"
+            className="h-12 flex-1 rounded-xl border border-line-2 bg-surface-2 text-center font-mono text-[18px] font-bold text-ink placeholder:font-normal placeholder:text-muted-2 focus:border-secondary focus:outline-none"
           />
           <span className="font-mono text-[13px] text-muted-2">kg</span>
           <button
@@ -210,7 +210,7 @@ export function WeightTracker({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="mt-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-dashed border-line-2 bg-surface/40 px-4 py-3 text-left transition-colors hover:border-accent/50"
+              className="mt-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-dashed border-line-2 bg-surface/40 px-4 py-3 text-left transition-colors hover:border-secondary/50"
             >
               <span>
                 <span className="block font-display text-[14px] font-bold tracking-[-0.01em]">

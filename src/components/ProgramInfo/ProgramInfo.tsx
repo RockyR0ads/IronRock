@@ -18,6 +18,7 @@ import { W531_DAYS, WAVE, WAVE_LABEL } from '../../domain/wendler531';
 import { programMeta } from '../../domain/programs';
 import { ChevronLeft } from '../common/icons';
 import { ProgramTracker } from './ProgramTracker';
+import { ReferencePanels } from '../ReferencePanels';
 
 /** Route the details page to the opened program's own content. */
 export function ProgramInfo({ programId, onBack }: { programId: string; onBack: () => void }) {
@@ -42,7 +43,7 @@ function InfoHeader({
         type="button"
         onClick={onBack}
         aria-label="Back"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-accent/50"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-ink transition-colors hover:border-secondary/50"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
@@ -79,7 +80,7 @@ function TabBar<T extends string>({
             onClick={() => setTab(key)}
             className={[
               '-mb-px border-b-2 pb-2.5 font-display text-[14px] font-bold tracking-[-0.01em] transition-colors',
-              on ? 'border-accent text-ink' : 'border-transparent text-muted-2 hover:text-muted',
+              on ? 'border-secondary text-ink' : 'border-transparent text-muted-2 hover:text-muted',
             ].join(' ')}
           >
             {label}
@@ -219,6 +220,10 @@ function PplInfo({ onBack }: { onBack: () => void }) {
             {SCHEDULE.leadNote}
           </p>
         </div>
+      </Section>
+
+      <Section label="Reference">
+        <ReferencePanels />
       </Section>
         </>
       )}
