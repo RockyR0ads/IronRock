@@ -11,12 +11,13 @@ import { setsFor, liftById } from '../../state/store';
 import { blockLoad, doneSetCount, workingSetCount, isBlockComplete } from '../../state/selectors';
 import { repLabel, feelLabel, rpeNum, rpeHue, isPerLeg } from '../../domain/format';
 import { feelOption } from '../../domain/feel';
-import { SwapIcon, TrashIcon, PlusIcon, CheckIcon, ChevronRight } from '../common/icons';
+import { SwapIcon, TrashIcon, PlusIcon, CheckIcon, ChevronRight, NoteIcon } from '../common/icons';
 import { PlateBar } from '../common/PlateBar';
 import { heatColor } from '../common/warmupHeat';
 import { barWeight as emptyBarWeight, autoRestOn, warmupSets } from '../../domain/exerciseConfig';
 import { round } from '../../domain/calc';
 import { RpePicker } from './RpePicker';
+import { NoteSheet } from './NoteSheet';
 import { FeelPicker } from './FeelPicker';
 import { FEEL_TONE } from '../common/feelTone';
 import { useHoldMenu } from './useHoldMenu';
@@ -524,6 +525,7 @@ export function ExerciseCard({
   const rest = useRestTimer();
   const [rpeFor, setRpeFor] = useState<number | null>(null);
   const [feelFor, setFeelFor] = useState<number | null>(null);
+  const [noteFor, setNoteFor] = useState<number | null>(null);
   /** Index of the set that was just checked off, while its pop plays. */
   const [popped, setPopped] = useState<number | null>(null);
   const [cheer, setCheer] = useState(false);
@@ -542,8 +544,8 @@ export function ExerciseCard({
   // if any set logs reps per side, widen the reps column and split its header
   const anyPerSide = sets.some((s) => s.perSide);
   const gridCols = anyPerSide
-    ? 'grid-cols-[1.9rem_1fr_4.75rem_3.5rem_2.5rem]'
-    : 'grid-cols-[1.9rem_1fr_3.25rem_3.5rem_2.5rem]';
+    ? 'grid-cols-[1.9rem_1.6rem_1fr_4.75rem_3.5rem_2.5rem]'
+    : 'grid-cols-[1.9rem_1.6rem_1fr_3.25rem_3.5rem_2.5rem]';
 
   // weight shown on the barbell glyph: the most recent set with a weight
   // entered, else the computed target (so it shows before logging too)
@@ -692,6 +694,7 @@ export function ExerciseCard({
         <div className="relative z-10 mt-3 space-y-1.5">
           <div className={`grid ${gridCols} gap-2 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-2`}>
             <span className="text-center">Set</span>
+            <span aria-hidden />
             <span className="text-center">kg</span>
             {anyPerSide ? (
               <span className="flex items-center justify-between px-1">
@@ -733,6 +736,23 @@ export function ExerciseCard({
                   >
                     {rowLabel}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setNoteFor(si)}
+                    aria-label={
+                      set.note
+                        ? `Edit note for ${warm ? 'warm-up' : `set ${rowLabel}`}`
+                        : `Add a note to ${warm ? 'warm-up' : `set ${rowLabel}`}`
+                    }
+                    className={[
+                      'flex h-10 items-center justify-center rounded-lg transition-colors',
+                      set.note
+                        ? 'text-secondary hover:text-secondary-deep'
+                        : 'text-muted-2 hover:text-muted',
+                    ].join(' ')}
+                  >
+                    <NoteIcon lines={!!set.note} className="h-[18px] w-[18px]" />
+                  </button>
                   <SetInput
                     value={set.w}
                     mode="decimal"
@@ -915,6 +935,18 @@ export function ExerciseCard({
             setRpeFor(null);
           }}
           onClose={() => setRpeFor(null)}
+        />
+      )}
+
+      {noteFor !== null && sets[noteFor] && (
+        <NoteSheet
+          title={`${lift.name} · set ${noteFor + 1}`}
+          value={sets[noteFor].note ?? ''}
+          onSave={(note) => {
+            dispatch({ type: 'updateSet', dayKey, index, setIndex: noteFor, field: 'note', value: note });
+            setNoteFor(null);
+          }}
+          onClose={() => setNoteFor(null)}
         />
       )}
 

@@ -112,6 +112,8 @@ export interface LoggedSet {
   warmup?: boolean;
   /** Warm-up readiness feel (warm-up sets only) — replaces RPE for warm-ups. */
   feel?: WarmupFeel;
+  /** Free-text note about how the set went (form cue, pain, drop set, …). */
+  note?: string;
 }
 
 /** Last recorded set for a lift, used as a "last time" hint. */

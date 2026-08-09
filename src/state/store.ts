@@ -118,7 +118,7 @@ export type Action =
   | { type: 'setExerciseConfig'; id: string; patch: Partial<ExerciseConfig> }
   | { type: 'restoreDay'; dayKey: string }
   | { type: 'addSet'; dayKey: string; index: number; set: LoggedSet }
-  | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe' | 'repsR'; value: string }
+  | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe' | 'repsR' | 'note'; value: string }
   | { type: 'toggleSetPerSide'; dayKey: string; index: number; setIndex: number }
   | { type: 'setFeel'; dayKey: string; index: number; setIndex: number; value: WarmupFeel | '' }
   | { type: 'toggleSetDone'; dayKey: string; index: number; setIndex: number }

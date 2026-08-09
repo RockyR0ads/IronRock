@@ -5,7 +5,7 @@ import { sessionEntries, sessionDayLabel, sessionTimeLabel } from '../domain/ses
 import { rpeHue } from '../domain/format';
 import { FEEL_TONE } from './common/feelTone';
 import { heatColor } from './common/warmupHeat';
-import { ChevronLeft, ChevronRight, Dumbbell, TrashIcon } from './common/icons';
+import { ChevronLeft, ChevronRight, Dumbbell, TrashIcon, NoteIcon } from './common/icons';
 import type { Session } from '../domain/types';
 
 /** Compact totals line shared by the list row and the detail header. */
@@ -80,8 +80,8 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
                   const warmTone = warm ? heatColor(warmN - 1) : undefined;
                   const rpe = parseFloat(set.rpe);
                   return (
+                    <div key={si}>
                     <div
-                      key={si}
                       className={[
                         'grid grid-cols-[1.6rem_1fr_1fr_3.5rem] items-center gap-2 font-mono text-[13px]',
                         set.done ? '' : 'opacity-50', // logged but not checked off
@@ -122,6 +122,13 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
                       ) : (
                         <span className="text-center text-muted-2">–</span>
                       )}
+                    </div>
+                    {set.note && (
+                      <p className="mb-1 mt-1 flex items-start gap-1.5 pl-[1.85rem] pr-1 text-[12px] leading-snug text-muted">
+                        <NoteIcon lines className="mt-[3px] h-3.5 w-3.5 shrink-0 text-secondary" />
+                        <span>{set.note}</span>
+                      </p>
+                    )}
                     </div>
                   );
                 });

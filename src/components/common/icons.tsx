@@ -81,6 +81,28 @@ export function CheckIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Speech-bubble note glyph; shows lines inside once a note has been written. */
+export function NoteIcon({ lines, ...props }: SVGProps<SVGSVGElement> & { lines?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <path
+        d="M5 4h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H10l-4 3v-3H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      {lines && (
+        <path
+          d="M7.5 8.5h9M7.5 11.5h5.5"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      )}
+    </svg>
+  );
+}
+
 /** Small trash glyph for remove actions. */
 export function TrashIcon(props: SVGProps<SVGSVGElement>) {
   return (
