@@ -1,10 +1,14 @@
 /**
- * Rest-timer notifications. On mobile the app is usually backgrounded or the
- * screen is locked during a rest, so a live countdown is shown in the tray and
- * an alerting one fires when it's up. The countdown is redrawn each second but
- * kept SILENT (`silent: true`) and replaces itself in place (`renotify: false`,
- * same `tag`), so updating it never sounds or vibrates — only the completion
- * notification alerts.
+ * Rest-timer notifications. On mobile the app is usually backgrounded during a
+ * rest, so a single tray notification is posted showing the *absolute* finish
+ * time (which stays accurate without any updates), and an alerting one fires
+ * when it's up.
+ *
+ * We deliberately do NOT redraw a per-second countdown: re-posting the same tag
+ * every second makes paired wearables (Wear OS / watchOS) buzz on every update,
+ * even with `silent: true` / `renotify: false`, because the phone→watch bridge
+ * treats each re-post as a fresh arrival. The live second-by-second countdown
+ * lives in the in-app bar instead; the tray just says when the rest ends.
  *
  * Android Chrome only allows notifications via the service worker registration
  * (`new Notification()` throws), so we prefer `registration.showNotification`
@@ -50,6 +54,10 @@ function fmt(s: number): string {
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
 
+function clockTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+}
+
 async function show(title: string, options: RestNotifyOptions) {
   if (notifyPermission() !== 'granted') return;
   const reg = await swReg();
@@ -65,14 +73,15 @@ async function show(title: string, options: RestNotifyOptions) {
 }
 
 /**
- * Redraw the live rest countdown. Silent + renotify:false + a stable tag means
- * it replaces the previous notification in place without any sound or vibration,
- * so it can tick every second without pinging.
+ * Post the rest notification once. Shows the absolute finish time so it stays
+ * accurate without any per-second updates (see the file header for why we don't
+ * redraw it). Silent, so posting it doesn't buzz.
  */
-export function updateRestNotification(secondsLeft: number) {
+export function showRestNotification(secondsLeft: number) {
+  const end = new Date(Date.now() + secondsLeft * 1000);
   void show('Resting', {
     tag: TAG,
-    body: `${fmt(secondsLeft)} until your next set`,
+    body: `Next set at ${clockTime(end)} · ${fmt(secondsLeft)} to go`,
     icon: ICON,
     badge: ICON,
     silent: true,

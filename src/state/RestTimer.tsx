@@ -9,7 +9,7 @@ import {
 } from 'react';
 import {
   requestNotify,
-  updateRestNotification,
+  showRestNotification,
   completeRestNotification,
   clearRestNotification,
 } from '../domain/notify';
@@ -64,7 +64,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     // The in-app bar covers the foreground case; the tray countdown is for when
     // the app is backgrounded.
     void requestNotify();
-    if (document.hidden) updateRestNotification(seconds);
+    if (document.hidden) showRestNotification(seconds);
   }, []);
 
   const skip = useCallback(() => {
@@ -92,10 +92,10 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
           if (document.hidden) completeRestNotification();
           return 0;
         }
-        const next = s - 1;
-        // live tick — silent, so redrawing each second doesn't ping
-        if (document.hidden) updateRestNotification(next);
-        return next;
+        // No per-second tray update: re-posting each second buzzes paired
+        // watches. The tray shows a static finish time; the live countdown is
+        // the in-app bar.
+        return s - 1;
       });
     }, 1000);
     return () => {
@@ -109,7 +109,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onVis = () => {
       if (document.hidden) {
-        if (runningRef.current) updateRestNotification(leftRef.current);
+        if (runningRef.current) showRestNotification(leftRef.current);
       } else {
         void clearRestNotification();
       }
