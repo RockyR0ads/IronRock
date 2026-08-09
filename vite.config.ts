@@ -43,6 +43,9 @@ export default defineConfig(({ command }) => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // adds a notificationclick handler so tapping a rest notification
+        // focuses/opens the app (imported relative to the generated sw.js)
+        importScripts: ['notification-sw.js'],
         // exercise illustrations are cached on demand, not precached
         globIgnores: ['**/sketches/**'],
         runtimeCaching: [

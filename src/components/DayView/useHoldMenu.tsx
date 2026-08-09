@@ -15,6 +15,26 @@ const KIND_LABEL: Record<StepKind, string> = { weight: 'Weight', reps: 'Reps', r
 
 const buzz = (ms: number) => navigator.vibrate?.(ms);
 
+/**
+ * Swallow the single "ghost" click the browser fires ~300ms after a touch
+ * pointerup. Because we open pickers on pointerup, by the time that click
+ * arrives an overlay/backdrop may sit where the cell was — the stray click would
+ * land on it and dismiss what we just opened. One capture-phase listener eats it.
+ */
+function swallowNextClick() {
+  const handler = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    cleanup();
+  };
+  const cleanup = () => {
+    document.removeEventListener('click', handler, true);
+    clearTimeout(t);
+  };
+  const t = window.setTimeout(cleanup, 600);
+  document.addEventListener('click', handler, true);
+}
+
 interface OpenState {
   left: number;
   top: number;
@@ -123,6 +143,7 @@ export function useHoldMenu({
       held.current = false; // menu stays open for a tap; nothing to apply yet
     } else if (el.current && maxMove.current <= DRAG_SLOP) {
       onTap(el.current); // a tap (allowing finger wobble), not the end of a drag
+      swallowNextClick(); // don't let the trailing ghost-click dismiss what opened
     }
     downXY.current = null;
     suppressClick.current = true; // swallow the click the browser fires after
