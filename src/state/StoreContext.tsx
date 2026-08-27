@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react';
 import { loadState, reducer, saveState, type Action, type State } from './store';
 import { applyTheme } from '../domain/theme';
+import { requestPersistentStorage } from '../domain/backup';
 
 interface StoreValue {
   state: State;
@@ -20,6 +21,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyTheme(state.theme);
   }, [state.theme]);
+
+  // ask the browser not to evict our data (localStorage is the only copy)
+  useEffect(() => {
+    void requestPersistentStorage();
+  }, []);
 
   return <StoreContext.Provider value={{ state, dispatch }}>{children}</StoreContext.Provider>;
 }
