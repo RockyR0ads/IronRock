@@ -17,6 +17,48 @@ export async function requestPersistentStorage(): Promise<boolean> {
   return false;
 }
 
+const LAST_BACKUP_KEY = 'ironrock-last-backup';
+
+interface LastBackup {
+  at: number;
+  sessions: number;
+}
+
+/** Record that a backup was just taken (for the "time to back up" nudge). */
+export function recordBackup(sessionCount: number): void {
+  try {
+    localStorage.setItem(LAST_BACKUP_KEY, JSON.stringify({ at: Date.now(), sessions: sessionCount }));
+  } catch {
+    /* best effort */
+  }
+}
+
+function getLastBackup(): LastBackup | null {
+  try {
+    const raw = localStorage.getItem(LAST_BACKUP_KEY);
+    return raw ? (JSON.parse(raw) as LastBackup) : null;
+  } catch {
+    return null;
+  }
+}
+
+const NUDGE_SESSIONS = 5;
+const NUDGE_DAYS = 14;
+
+/**
+ * Whether to nudge the user to export: several new workouts since the last
+ * backup, or it's been a couple of weeks with new activity. Never nudges an
+ * empty app.
+ */
+export function shouldNudgeBackup(sessionCount: number): boolean {
+  if (sessionCount === 0) return false;
+  const last = getLastBackup();
+  if (!last) return sessionCount >= 3; // has data, never backed up
+  const newSessions = sessionCount - last.sessions;
+  const days = (Date.now() - last.at) / 86_400_000;
+  return newSessions >= NUDGE_SESSIONS || (newSessions > 0 && days >= NUDGE_DAYS);
+}
+
 /** Download the current data as a timestamped JSON backup file. */
 export function exportBackup(): boolean {
   const raw = localStorage.getItem(STORAGE_KEY);

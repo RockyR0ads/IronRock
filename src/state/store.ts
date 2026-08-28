@@ -7,6 +7,7 @@ import type { ExerciseConfig } from '../domain/exerciseConfig';
 import type { WeighIn, WeightGoal } from '../domain/weightTracker';
 import type { Profile } from '../domain/calories';
 import { DEFAULT_THEME, type ThemeChoice } from '../domain/theme';
+import { getStorageHealth, markLoadFailed, markQuotaFailed } from './storageHealth';
 import type {
   Block,
   Increment,
@@ -429,9 +430,15 @@ export function reducer(state: State, action: Action): State {
 /** Load persisted state, merged over defaults. Degrades to defaults on failure. */
 export function loadState(): State {
   const base = initialState();
+  const raw = (() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  })();
+  if (!raw) return base; // genuinely a fresh start — safe to save over
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return base;
     const parsed = JSON.parse(raw) as Partial<State>;
     return {
       ...base,
@@ -448,15 +455,35 @@ export function loadState(): State {
       sessions: parsed.sessions ?? [],
     };
   } catch {
+    // Data was there but unreadable. Quarantine the raw bytes and flag the
+    // failure so saveState refuses to overwrite the original with an empty
+    // state — a corrupt read must never become a permanent wipe.
+    try {
+      localStorage.setItem(`${STORAGE_KEY}-corrupt-${Date.now()}`, raw);
+    } catch {
+      /* best effort */
+    }
+    markLoadFailed();
     return base;
   }
 }
 
-/** Persist state; failure is swallowed so the app keeps working in memory. */
+function isQuotaError(e: unknown): boolean {
+  return (
+    e instanceof DOMException &&
+    (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22)
+  );
+}
+
+/** Persist state; failure is surfaced (not silently swallowed) so data loss is visible. */
 export function saveState(state: State): void {
+  // If the saved data couldn't be read this session, don't clobber it — the
+  // original may still be recoverable (transient corruption, a bad migration).
+  if (getStorageHealth().loadFailed) return;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    /* storage unavailable — degrade to in-memory only */
+  } catch (e) {
+    if (isQuotaError(e)) markQuotaFailed();
+    /* else: storage unavailable — degrade to in-memory only */
   }
 }

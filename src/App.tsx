@@ -14,6 +14,7 @@ import { Wendler531 } from './components/Wendler531/Wendler531';
 import { WeightTracker } from './components/WeightTracker/WeightTracker';
 import { Settings } from './components/Settings/Settings';
 import { ActiveWorkoutBar } from './components/ActiveWorkoutBar';
+import { DataBanner } from './components/DataBanner';
 import { activeWorkout } from './state/selectors';
 import { useStore } from './state/StoreContext';
 
@@ -75,6 +76,7 @@ export default function App() {
 
   return (
     <>
+      <DataBanner />
       {workout && !onWorkoutPage && (
         <ActiveWorkoutBar
           workout={workout}

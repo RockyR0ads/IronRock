@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import type { Increment } from '../domain/types';
-import { exportBackup, importBackup } from '../domain/backup';
+import { exportBackup, importBackup, recordBackup } from '../domain/backup';
 
 const INCREMENTS: Increment[] = [1, 2.5, 5];
 
@@ -93,8 +93,12 @@ export function GlobalControls() {
           <button
             type="button"
             onClick={() => {
-              if (!exportBackup()) setStatus('Nothing to export yet.');
-              else setStatus('Backup downloaded.');
+              if (!exportBackup()) {
+                setStatus('Nothing to export yet.');
+              } else {
+                recordBackup(state.sessions.length);
+                setStatus('Backup downloaded.');
+              }
             }}
             className="flex-1 rounded-xl bg-secondary/15 py-2.5 font-display text-[13px] font-bold text-secondary transition-colors hover:bg-secondary/25"
           >
