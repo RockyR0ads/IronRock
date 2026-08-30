@@ -6,7 +6,20 @@ import { rpeHue } from '../domain/format';
 import { FEEL_TONE } from './common/feelTone';
 import { heatColor } from './common/warmupHeat';
 import { ChevronLeft, ChevronRight, Dumbbell, TrashIcon, NoteIcon } from './common/icons';
+import { QUALITY_BY_ID, FLAG_BY_ID } from '../domain/setTags';
 import type { Session } from '../domain/types';
+
+/** A small coloured set-tag chip (quality / flag) shown under an archived set. */
+function Tag({ color, children }: { color: string; children: React.ReactNode }) {
+  return (
+    <span
+      className="rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide"
+      style={{ backgroundColor: `${color}26`, color }}
+    >
+      {children}
+    </span>
+  );
+}
 
 /** Compact totals line shared by the list row and the detail header. */
 function Totals({ session }: { session: Session }) {
@@ -123,6 +136,20 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
                         <span className="text-center text-muted-2">–</span>
                       )}
                     </div>
+                    {(set.quality || set.flags?.length) && (
+                      <div className="mb-1 mt-1 flex flex-wrap gap-1 pl-[1.85rem]">
+                        {set.quality && (
+                          <Tag color={QUALITY_BY_ID[set.quality].color}>
+                            {QUALITY_BY_ID[set.quality].label}
+                          </Tag>
+                        )}
+                        {set.flags?.map((f) => (
+                          <Tag key={f} color={FLAG_BY_ID[f].color}>
+                            {FLAG_BY_ID[f].short}
+                          </Tag>
+                        ))}
+                      </div>
+                    )}
                     {set.note && (
                       <p className="mb-1 mt-1 flex items-start gap-1.5 pl-[1.85rem] pr-1 text-[12px] leading-snug text-muted">
                         <NoteIcon lines className="mt-[3px] h-3.5 w-3.5 shrink-0 text-secondary" />

@@ -18,6 +18,7 @@ import { barWeight as emptyBarWeight, autoRestOn, warmupSets } from '../../domai
 import { round } from '../../domain/calc';
 import { RpePicker } from './RpePicker';
 import { NoteSheet } from './NoteSheet';
+import { hasSetDetail, setMarkerColor } from '../../domain/setTags';
 import { FeelPicker } from './FeelPicker';
 import { FEEL_TONE } from '../common/feelTone';
 import { useHoldMenu } from './useHoldMenu';
@@ -740,18 +741,25 @@ export function ExerciseCard({
                     type="button"
                     onClick={() => setNoteFor(si)}
                     aria-label={
-                      set.note
-                        ? `Edit note for ${warm ? 'warm-up' : `set ${rowLabel}`}`
-                        : `Add a note to ${warm ? 'warm-up' : `set ${rowLabel}`}`
+                      hasSetDetail(set)
+                        ? `Edit log for ${warm ? 'warm-up' : `set ${rowLabel}`}`
+                        : `Log details for ${warm ? 'warm-up' : `set ${rowLabel}`}`
                     }
                     className={[
-                      'flex h-10 items-center justify-center rounded-lg transition-colors',
-                      set.note
+                      'relative flex h-10 items-center justify-center rounded-lg transition-colors',
+                      hasSetDetail(set)
                         ? 'text-secondary hover:text-secondary-deep'
                         : 'text-muted-2 hover:text-muted',
                     ].join(' ')}
                   >
-                    <NoteIcon lines={!!set.note} className="h-[18px] w-[18px]" />
+                    <NoteIcon lines={hasSetDetail(set)} className="h-[18px] w-[18px]" />
+                    {setMarkerColor(set) && (
+                      <span
+                        className="absolute right-1 top-1 h-2 w-2 rounded-full ring-2 ring-surface"
+                        style={{ backgroundColor: setMarkerColor(set)! }}
+                        aria-hidden
+                      />
+                    )}
                   </button>
                   <SetInput
                     value={set.w}
@@ -941,9 +949,15 @@ export function ExerciseCard({
       {noteFor !== null && sets[noteFor] && (
         <NoteSheet
           title={`${lift.name} · set ${noteFor + 1}`}
-          value={sets[noteFor].note ?? ''}
-          onSave={(note) => {
-            dispatch({ type: 'updateSet', dayKey, index, setIndex: noteFor, field: 'note', value: note });
+          set={sets[noteFor]}
+          onSave={(patch) => {
+            dispatch({
+              type: 'patchSet',
+              dayKey,
+              index,
+              setIndex: noteFor,
+              patch: { note: patch.note || undefined, quality: patch.quality, flags: patch.flags.length ? patch.flags : undefined },
+            });
             setNoteFor(null);
           }}
           onClose={() => setNoteFor(null)}

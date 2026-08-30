@@ -120,7 +120,17 @@ export interface LoggedSet {
   feel?: WarmupFeel;
   /** Free-text note about how the set went (form cue, pain, drop set, …). */
   note?: string;
+  /** Technique quality of the set (single choice). */
+  quality?: SetQuality;
+  /** Occasional modifiers/flags: pain, assisted, drop set, PR. */
+  flags?: SetFlag[];
 }
+
+/** How clean the set was. */
+export type SetQuality = 'clean' | 'grindy' | 'broke' | 'short';
+
+/** Occasional per-set modifiers. */
+export type SetFlag = 'pain' | 'assisted' | 'drop' | 'pr';
 
 /** Last recorded set for a lift, used as a "last time" hint. */
 export type LiftHistory = Pick<LoggedSet, 'w' | 'reps' | 'rpe'>;

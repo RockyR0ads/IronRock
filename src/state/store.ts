@@ -120,6 +120,7 @@ export type Action =
   | { type: 'restoreDay'; dayKey: string }
   | { type: 'addSet'; dayKey: string; index: number; set: LoggedSet }
   | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe' | 'repsR' | 'note'; value: string }
+  | { type: 'patchSet'; dayKey: string; index: number; setIndex: number; patch: Partial<LoggedSet> }
   | { type: 'toggleSetPerSide'; dayKey: string; index: number; setIndex: number }
   | { type: 'setFeel'; dayKey: string; index: number; setIndex: number; value: WarmupFeel | '' }
   | { type: 'toggleSetDone'; dayKey: string; index: number; setIndex: number }
@@ -307,6 +308,12 @@ export function reducer(state: State, action: Action): State {
       const sets = log[action.index];
       if (!sets[action.setIndex]) return state;
       sets[action.setIndex] = { ...sets[action.setIndex], [action.field]: action.value };
+      return { ...state, logs: { ...state.logs, [action.dayKey]: log } };
+    }
+    case 'patchSet': {
+      const log = cloneDayLog(state, action.dayKey, action.index + 1);
+      if (!log[action.index]?.[action.setIndex]) return state;
+      log[action.index][action.setIndex] = { ...log[action.index][action.setIndex], ...action.patch };
       return { ...state, logs: { ...state.logs, [action.dayKey]: log } };
     }
     case 'toggleSetPerSide': {
