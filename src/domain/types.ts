@@ -57,6 +57,12 @@ export interface Block {
   perLeg?: boolean;
   /** Render the RPE as "7→8". */
   drift?: boolean;
+  /**
+   * Which progression system the lift is on, following its RPE target:
+   * `hold` (RPE 7–8 compounds — keep the load) or `push` (RPE 9–10 arms/delts —
+   * double-progress the load).
+   */
+  prog?: 'hold' | 'push';
 }
 
 /** A training day. */

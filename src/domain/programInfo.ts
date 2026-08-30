@@ -82,27 +82,38 @@ export const STARTING_LOADS: InfoRule[] = [
   },
 ];
 
-/** Progression rules — hold the line, push only the arms. */
+/**
+ * Progression rules. The whole method: a lift's RPE target sets which of two
+ * systems it's on — RPE 8 lifts `hold`, RPE 9–10 lifts `push`.
+ */
 export const PROGRESSION: InfoRule[] = [
   {
-    title: 'Compounds — hold the line',
-    body: 'Keep the same loads and reps week to week. If a top set comes in below its target RPE, add the smallest increment next time. As you lean out the same weight reads as a higher RPE — holding load steady while RPE creeps up is a win, not a stall.',
+    title: 'RPE 8 → hold — every compound',
+    body: "Hold the line: keep the same load and reps week to week. As you lean out the same bar reads as a higher RPE — that's a win, not a stall. Add the smallest increment only if the top set comes in ≥1 RPE below target for two sessions running. Back off ~5% and rebuild if you miss the bottom of the rep range at target RPE two sessions running — expect this occasionally on a cut; it's fatigue, not failure, so don't grind sub-quality reps to avoid it.",
   },
   {
-    title: 'Arms — double progression',
-    body: 'Hit the top of the rep range on all sets at the target RPE, then add a small load and drop back to the bottom of the range. This is the one area to actively push.',
+    title: 'RPE 9–10 → push — every arm, delt & isolation',
+    body: 'The one place you chase load, via double progression: hit the top of the rep range on all sets at the target RPE, add the smallest load, then reset to the bottom of the range and climb again. Coarse DB jumps will drop you below the range (12kg×12 → 14kg×7) — grind the new load back up over sessions; if a jump is too big even for that, add a rep past the top or slow the eccentric until the next load is earnable.',
+  },
+  {
+    title: 'Cables micro-load — why arms sit on the tower',
+    body: 'Cable stacks (plus add-on magnets) move in small, consistent steps, so double progression runs cleaner than on dumbbells — the "the jump dumps me below the range" problem largely disappears. That\'s why the arm & delt block lives on the cable tower.',
+  },
+  {
+    title: 'Pull-up special case',
+    body: "Your bodyweight is dropping ~10kg, so holding the added weight constant is already progressive overload in relative terms. Keep the added weight fixed and re-test for more every 2–3 weeks, or you'll chronically under-load as the free relative-strength gain accrues.",
   },
 ];
 
 /** When and how to deload. */
 export const DELOAD = {
-  when: 'Every 5–6 weeks, or sooner if you’re run down — poor sleep, achy joints, or weights reading 1–2 RPE higher than normal two sessions running (common in a deficit).',
+  when: 'Every 5–6 weeks, or sooner if run down. The validated trigger is weights reading 1–2 RPE higher than normal for two sessions running (plus poor sleep, achy joints) — run deloads by that feel, not strictly by the calendar.',
   how: 'For one week: same exercises, halve the working sets, and cap everything at RPE 6. Loads stay roughly the same, effort drops hard. Then resume.',
 };
 
 /** Getting a session done inside an hour. */
 export const HOUR_TIPS: string[] = [
-  'Superset arm isolation with rear delts / lateral raises to save time without cutting work.',
+  'Superset arm isolation with lateral raises or face pulls (e.g. curl + lateral raise back-to-back) to save time without cutting work.',
   'Only the heavy first lift needs 3 min rest. Everything else: 60–90 sec.',
   'If a session runs long, the last isolation exercise is the one to drop — never the heavy compound.',
 ];

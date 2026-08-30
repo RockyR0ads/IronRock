@@ -253,13 +253,27 @@ function PplInfo({ onBack }: { onBack: () => void }) {
                       key={`${block.lift}-${i}`}
                       className="grid grid-cols-[1fr_auto_auto] items-center gap-2.5"
                     >
-                      <span
-                        className={[
-                          'truncate text-[13px]',
-                          lead ? 'font-display font-bold tracking-[-0.01em] text-ink' : 'text-muted',
-                        ].join(' ')}
-                      >
-                        {name}
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span
+                          className={[
+                            'truncate text-[13px]',
+                            lead ? 'font-display font-bold tracking-[-0.01em] text-ink' : 'text-muted',
+                          ].join(' ')}
+                        >
+                          {name}
+                        </span>
+                        {block.prog && (
+                          <span
+                            className={[
+                              'shrink-0 rounded px-1 py-px font-mono text-[9px] font-bold uppercase tracking-wide',
+                              block.prog === 'push'
+                                ? 'bg-secondary/15 text-secondary'
+                                : 'bg-surface-3 text-muted-2',
+                            ].join(' ')}
+                          >
+                            {block.prog}
+                          </span>
+                        )}
                       </span>
                       <span className="whitespace-nowrap font-mono text-[12px] tabular-nums text-muted-2">
                         {block.sets}×{repLabel(block.reps)}

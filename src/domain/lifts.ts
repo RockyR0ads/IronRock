@@ -79,9 +79,11 @@ export const LIFTS: Record<string, Lift> = {
   splitsquat: { id: 'splitsquat', name: 'Split squat', type: 'computed', unit: 'kg / DB', cats: ['uni'], uni: true },
   // lateral delt
   latraise: { id: 'latraise', name: 'DB lateral raise', type: 'manual', unit: 'kg / DB', cats: ['latdelt'] },
+  cablelatraise: { id: 'cablelatraise', name: 'Cable lateral raise', type: 'manual', unit: 'kg', cats: ['latdelt'] },
   leanlatraise: { id: 'leanlatraise', name: 'Leaning lateral raise', type: 'manual', unit: 'kg / DB', cats: ['latdelt'] },
   seatedlatraise: { id: 'seatedlatraise', name: 'Seated lateral raise', type: 'manual', unit: 'kg / DB', cats: ['latdelt'] },
   // rear delt
+  facepull: { id: 'facepull', name: 'Face pull', type: 'manual', unit: 'kg', cats: ['reardelt'] },
   reardelt: { id: 'reardelt', name: 'Rear delt fly', type: 'manual', unit: 'kg / DB', cats: ['reardelt'] },
   bentreardelt: { id: 'bentreardelt', name: 'Bent-over rear raise', type: 'manual', unit: 'kg / DB', cats: ['reardelt'] },
   reardeltrow: { id: 'reardeltrow', name: 'Rear delt row', type: 'manual', unit: 'kg / DB', cats: ['reardelt'] },
@@ -97,6 +99,7 @@ export const LIFTS: Record<string, Lift> = {
   // triceps
   skull: { id: 'skull', name: 'Skullcrusher', type: 'manual', unit: 'kg on bar', cats: ['triceps'] },
   ohext: { id: 'ohext', name: 'Overhead triceps ext.', type: 'manual', unit: 'kg', cats: ['triceps'] },
+  cableohext: { id: 'cableohext', name: 'Cable rope overhead ext.', type: 'manual', unit: 'kg', cats: ['triceps'] },
   jmpress: { id: 'jmpress', name: 'JM press', type: 'manual', unit: 'kg on bar', cats: ['triceps'] },
   tate: { id: 'tate', name: 'Tate press', type: 'manual', unit: 'kg / DB', cats: ['triceps'] },
   kickback: { id: 'kickback', name: 'DB kickback', type: 'manual', unit: 'kg / DB', cats: ['triceps'] },
@@ -138,6 +141,9 @@ const LIFT_LIB: Record<string, string> = {
   hammer: 'Hammer_Curls',
   skull: 'EZ-Bar_Skullcrusher',
   latraise: 'Side_Lateral_Raise',
+  cablelatraise: 'supp-standing-cable-lateral-raise',
+  cableohext: 'Cable_Rope_Overhead_Triceps_Extension',
+  facepull: 'Face_Pull',
   reardelt: 'Bent_Over_Dumbbell_Rear_Delt_Raise_With_Head_On_Bench',
   calf: 'Standing_Calf_Raises',
   seatedcalf: 'Seated_Calf_Raise',
