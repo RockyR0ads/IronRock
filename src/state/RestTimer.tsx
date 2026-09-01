@@ -7,12 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import {
-  requestNotify,
-  showRestNotification,
-  completeRestNotification,
-  clearRestNotification,
-} from '../domain/notify';
+import { restNotifier } from '../domain/restNotifier';
 
 /** Default rest between sets, in seconds. */
 export const REST_DEFAULT = 120;
@@ -61,17 +56,17 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     setOwnerId(owner);
     setRunning(true);
     // called from a set tap (a user gesture), so it's a valid time to prompt.
-    // The in-app bar covers the foreground case; the tray countdown is for when
-    // the app is backgrounded.
-    void requestNotify();
-    if (document.hidden) showRestNotification(seconds);
+    // Web shows a tray notification only when backgrounded; native starts the
+    // OS-ticked lock-screen countdown immediately (both behind restNotifier).
+    restNotifier.requestPermission();
+    restNotifier.start(seconds);
   }, []);
 
   const skip = useCallback(() => {
     stop();
     setSecondsLeft(0);
     setOwnerId(null);
-    void clearRestNotification();
+    restNotifier.stop();
   }, [stop]);
 
   const addTime = useCallback((delta: number) => {
@@ -89,7 +84,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
           if (tick.current) clearInterval(tick.current);
           tick.current = null;
           navigator.vibrate?.(300);
-          if (document.hidden) completeRestNotification();
+          restNotifier.complete();
           return 0;
         }
         // No per-second tray update: re-posting each second buzzes paired
@@ -109,9 +104,9 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onVis = () => {
       if (document.hidden) {
-        if (runningRef.current) showRestNotification(leftRef.current);
+        if (runningRef.current) restNotifier.background(leftRef.current);
       } else {
-        void clearRestNotification();
+        restNotifier.foreground();
       }
     };
     document.addEventListener('visibilitychange', onVis);
