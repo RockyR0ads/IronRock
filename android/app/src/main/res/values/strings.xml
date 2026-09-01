@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">IronRock</string>
+    <string name="title_activity_main">IronRock</string>
+    <string name="package_name">com.rockyr0ads.ironrock</string>
+    <string name="custom_url_scheme">com.rockyr0ads.ironrock</string>
+</resources>
