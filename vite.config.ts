@@ -4,12 +4,18 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, mode }) => ({
   // Served from a project page (https://<user>.github.io/IronRock/) when built,
   // but from the root during local dev/preview-tool runs.
   base: command === 'build' ? '/IronRock/' : '/',
   plugins: [
     react(),
+    // The Capacitor build (mode 'capacitor') skips the PWA service worker: the
+    // native app bundles its assets, so an SW just fails to register in the
+    // WebView and risks serving stale content across updates.
+    ...(mode === 'capacitor'
+      ? []
+      : [
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
@@ -60,6 +66,7 @@ export default defineConfig(({ command }) => ({
         ],
       },
     }),
+      ]),
   ],
   test: {
     globals: true,

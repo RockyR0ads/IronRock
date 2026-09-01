@@ -2,6 +2,7 @@ package com.rockyr0ads.ironrock;
 
 import android.Manifest;
 import android.os.Build;
+import android.util.Log;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -32,12 +33,19 @@ public class RestTimerPlugin extends Plugin {
 
     @PluginMethod
     public void start(PluginCall call) {
-        Integer seconds = call.getInt("seconds", 0);
-        long secs = seconds == null ? 0L : seconds.longValue();
-        long finishAt = System.currentTimeMillis() + secs * 1000L;
-        RestNotifications.showOngoing(getContext(), finishAt);
-        RestNotifications.scheduleComplete(getContext(), finishAt);
-        call.resolve();
+        try {
+            Integer seconds = call.getInt("seconds", 0);
+            long secs = seconds == null ? 0L : seconds.longValue();
+            long finishAt = System.currentTimeMillis() + secs * 1000L;
+            Log.d("RestTimer", "start seconds=" + secs + " finishAt=" + finishAt);
+            RestNotifications.showOngoing(getContext(), finishAt);
+            RestNotifications.scheduleComplete(getContext(), finishAt);
+            Log.d("RestTimer", "start posted ongoing + scheduled alarm");
+            call.resolve();
+        } catch (Throwable t) {
+            Log.e("RestTimer", "start failed", t);
+            call.reject("start failed: " + t.getMessage());
+        }
     }
 
     @PluginMethod
