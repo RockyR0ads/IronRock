@@ -295,6 +295,19 @@ export function DayView({
         </button>
       )}
 
+      {hasLogs && (
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm('Cancel this workout? Your logged sets for today will be discarded.'))
+              dispatch({ type: 'clearDaySets', dayKey: state.day });
+          }}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3 font-display text-[13px] font-bold text-muted-2 transition-colors hover:text-red"
+        >
+          Cancel workout
+        </button>
+      )}
+
       {summary && (
         <WorkoutSummary
           title={day.label}

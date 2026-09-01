@@ -147,7 +147,7 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
           onClick={() => onGo('progress')}
         />
         <Tile
-          icon={<GearIcon className="h-5 w-5" />}
+          icon={<Dumbbell className="h-5 w-5" />}
           title="Exercises"
           sub="History, records & per-lift settings"
           onClick={() => onGo('exercises')}
