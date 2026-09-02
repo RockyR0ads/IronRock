@@ -50,6 +50,36 @@
 }
 
 @layer utilities {
+  /* Brand tagline: red-to-orange gradient clipped to the text. Fixed brand
+     colours, independent of the themeable accent. */
+  .brand-subgrad {
+    background: linear-gradient(95deg, #ff5247 0%, #ff7a45 52%, #ff9a3e 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* "ROCK" in the wordmark follows the primary colour — solid by default, and
+     the primary gradient (clipped to the text) when the gradient style is on. */
+  .brand-rock {
+    color: rgb(var(--accent));
+  }
+  :root[data-accent-style='gradient'] .brand-rock {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* Gradient accent style: paint the primary gradient over solid accent fills.
+     --accent stays solid, so text-accent / border-accent / rings are unchanged;
+     only full `bg-accent` surfaces (buttons, the hero) pick up the sweep. */
+  :root[data-accent-style='gradient'] .bg-accent {
+    background-image: var(--accent-gradient);
+  }
+
   /* Safe-area helpers for the bottom nav and sheet on notched phones. */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);

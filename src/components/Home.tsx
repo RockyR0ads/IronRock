@@ -17,6 +17,7 @@ import {
   BendingBarbell,
   GearIcon,
 } from './common/icons';
+import { PlateMark } from './common/BrandLogo';
 
 /** Where a home tile can take you. */
 export type HomeDest =
@@ -65,14 +66,13 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6 sm:pb-16">
       <header className="flex items-center gap-3 pb-2 pt-8">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-bg shadow-glow">
-          <Dumbbell className="h-6 w-6" />
-        </span>
+        <PlateMark size={48} className="shrink-0 drop-shadow-[0_4px_14px_rgba(255,82,71,0.35)]" />
         <div className="min-w-0 flex-1 leading-none">
-          <div className="font-display text-[26px] font-black uppercase tracking-[-0.01em]">
-            IronRock
+          <div className="font-display text-[26px] font-black uppercase leading-none tracking-[-0.01em]">
+            <span className="text-ink">Iron</span>
+            <span className="brand-rock">Rock</span>
           </div>
-          <div className="mt-1 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
+          <div className="mt-1.5 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
             {prog?.name ?? 'Training'}
           </div>
         </div>
