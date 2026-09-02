@@ -3,6 +3,8 @@ import { ACTIVITY_LEVELS, type Sex, type Profile } from '../../domain/calories';
 import {
   PRIMARY,
   SECONDARY,
+  accentGradient,
+  type AccentStyle,
   type PrimaryKey,
   type SecondaryKey,
   type Swatch,
@@ -130,7 +132,28 @@ export function Settings({ onBack }: { onBack: () => void }) {
           hint="Buttons, logging & key actions"
           options={PRIMARY}
           selected={state.theme.primary}
-          onPick={(k) => dispatch({ type: 'setTheme', patch: { primary: k as PrimaryKey } })}
+          onPick={(k) =>
+            dispatch({
+              type: 'setTheme',
+              // the gradient-first themes switch fill to gradient on pick
+              patch:
+                PRIMARY[k]?.chip === 'gradient'
+                  ? {
+                      primary: k as PrimaryKey,
+                      accentStyle: 'gradient',
+                      ...(PRIMARY[k]?.partnerSecondary
+                        ? { secondary: PRIMARY[k].partnerSecondary as SecondaryKey }
+                        : {}),
+                    }
+                  : { primary: k as PrimaryKey },
+            })
+          }
+        />
+        <FillStyleRow
+          primaryHex={(PRIMARY[state.theme.primary] ?? PRIMARY.red).hex}
+          gradient={accentGradient(PRIMARY[state.theme.primary] ?? PRIMARY.red)}
+          selected={state.theme.accentStyle ?? 'solid'}
+          onPick={(s) => dispatch({ type: 'setTheme', patch: { accentStyle: s } })}
         />
         <div className="my-4 border-t border-line" />
         <SwatchRow
@@ -168,7 +191,7 @@ function SwatchRow({
     <div>
       <span className="block font-display text-[14px] font-bold tracking-[-0.01em]">{label}</span>
       <span className="mt-0.5 block text-[12px] text-muted-2">{hint}</span>
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         {Object.entries(options).map(([key, sw]) => {
           const on = selected === key;
           return (
@@ -178,13 +201,13 @@ function SwatchRow({
               aria-pressed={on}
               onClick={() => onPick(key)}
               className={[
-                'flex flex-1 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors',
+                'flex grow basis-[calc(50%-0.25rem)] items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors',
                 on ? 'border-line-2 bg-surface-2' : 'border-line bg-surface hover:border-line-2',
               ].join(' ')}
             >
               <span
                 className="h-6 w-6 shrink-0 rounded-full ring-2 ring-inset ring-white/10"
-                style={{ backgroundColor: sw.hex }}
+                style={{ background: sw.chip === 'gradient' ? accentGradient(sw) : sw.hex }}
               />
               <span className="min-w-0 flex-1 truncate font-display text-[13px] font-bold tracking-[-0.01em]">
                 {sw.label}
@@ -194,6 +217,59 @@ function SwatchRow({
                   className="shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide"
                   style={{ backgroundColor: `${sw.hex}22`, color: sw.hex }}
                 >
+                  On
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FillStyleRow({
+  primaryHex,
+  gradient,
+  selected,
+  onPick,
+}: {
+  primaryHex: string;
+  gradient: string;
+  selected: AccentStyle;
+  onPick: (s: AccentStyle) => void;
+}) {
+  const opts: { key: AccentStyle; label: string; bg: string }[] = [
+    { key: 'solid', label: 'Solid', bg: primaryHex },
+    { key: 'gradient', label: 'Gradient', bg: gradient },
+  ];
+  return (
+    <div className="mt-4">
+      <span className="block font-display text-[14px] font-bold tracking-[-0.01em]">Fill style</span>
+      <span className="mt-0.5 block text-[12px] text-muted-2">How the primary colour fills buttons</span>
+      <div className="mt-3 flex gap-2">
+        {opts.map((o) => {
+          const on = selected === o.key;
+          return (
+            <button
+              key={o.key}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onPick(o.key)}
+              className={[
+                'flex flex-1 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors',
+                on ? 'border-line-2 bg-surface-2' : 'border-line bg-surface hover:border-line-2',
+              ].join(' ')}
+            >
+              <span
+                className="h-6 w-6 shrink-0 rounded-full ring-2 ring-inset ring-white/10"
+                style={{ background: o.bg }}
+              />
+              <span className="min-w-0 flex-1 truncate font-display text-[13px] font-bold tracking-[-0.01em]">
+                {o.label}
+              </span>
+              {on && (
+                <span className="shrink-0 rounded-full bg-secondary/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-secondary">
                   On
                 </span>
               )}
