@@ -2,13 +2,16 @@ import { useRef, useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import type { Increment } from '../domain/types';
 import { exportBackup, importBackup, recordBackup } from '../domain/backup';
+import { parseStrong, StrongImportError } from '../domain/strongImport';
 
 const INCREMENTS: Increment[] = [1, 2.5, 5];
 
 export function GlobalControls() {
   const { state, dispatch } = useStore();
   const fileRef = useRef<HTMLInputElement>(null);
+  const strongRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [strongStatus, setStrongStatus] = useState<string | null>(null);
 
   async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -19,6 +22,42 @@ export function GlobalControls() {
       await importBackup(file); // reloads on success
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Could not read that file.');
+    }
+  }
+
+  async function onStrongFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setStrongStatus(null);
+    try {
+      const result = parseStrong(await file.text());
+      const known = new Set(state.sessions.map((s) => s.id));
+      const fresh = result.sessions.filter((s) => !known.has(s.id)).length;
+      const skipped = result.sessions.length - fresh;
+      if (fresh === 0) {
+        setStrongStatus(`Nothing new — those ${result.workouts} workouts are already imported.`);
+        return;
+      }
+      const unitNote = result.unit === 'lb' ? ' Weights were converted from lb to kg.' : '';
+      const skipNote = skipped > 0 ? ` (${skipped} already imported will be skipped.)` : '';
+      const ok = confirm(
+        `Import ${fresh} workout${fresh === 1 ? '' : 's'} — ${result.exercises} exercises, ` +
+          `${result.sets} sets — from Strong?${skipNote}${unitNote}\n\n` +
+          `They'll be added to your History; nothing you already have is changed.`,
+      );
+      if (!ok) return;
+      dispatch({ type: 'importSessions', sessions: result.sessions, customLifts: result.customLifts });
+      const unmatchedNote = result.unmatched.length
+        ? ` ${result.unmatched.length} exercise${result.unmatched.length === 1 ? '' : 's'} kept under Strong's own name.`
+        : '';
+      setStrongStatus(`Imported ${fresh} workout${fresh === 1 ? '' : 's'}.${unmatchedNote}`);
+    } catch (err) {
+      setStrongStatus(
+        err instanceof StrongImportError
+          ? err.message
+          : "Couldn't read that file — export it from Strong as CSV and try again.",
+      );
     }
   }
 
@@ -120,6 +159,34 @@ export function GlobalControls() {
           />
         </div>
         {status && <p className="m-0 mt-2 text-[11px] font-medium text-muted">{status}</p>}
+      </div>
+
+      {/* import history from the Strong app */}
+      <div className="mt-4 border-t border-line pt-4">
+        <span className="block font-display text-[13px] font-bold tracking-[-0.01em]">
+          Import from Strong
+        </span>
+        <p className="m-0 mt-0.5 text-[11px] leading-relaxed text-muted-2">
+          Coming from Strong? Export your data there (Profile → Settings → Export Data)
+          and load the CSV here. Your whole history lands in History and the charts.
+        </p>
+        <button
+          type="button"
+          onClick={() => strongRef.current?.click()}
+          className="mt-2.5 w-full rounded-xl border border-line-2 bg-surface-2 py-2.5 font-display text-[13px] font-bold text-ink transition-colors hover:border-secondary/50"
+        >
+          Import Strong CSV
+        </button>
+        <input
+          ref={strongRef}
+          type="file"
+          accept=".csv,text/csv,text/plain"
+          onChange={onStrongFile}
+          className="hidden"
+        />
+        {strongStatus && (
+          <p className="m-0 mt-2 text-[11px] font-medium text-muted">{strongStatus}</p>
+        )}
       </div>
 
       <div className="mt-4 flex items-center gap-4">

@@ -130,6 +130,7 @@ export type Action =
   | { type: 'removeSession'; id: string }
   | { type: 'setActiveProgram'; id: string }
   | { type: 'archiveSession'; session: Session }
+  | { type: 'importSessions'; sessions: Session[]; customLifts: Record<string, CustomLift> }
   | { type: 'logWeight'; at: string; kg: number }
   | { type: 'removeWeighIn'; at: string }
   | { type: 'setWeightGoal'; patch: Partial<WeightGoal> }
@@ -398,6 +399,16 @@ export function reducer(state: State, action: Action): State {
       // a fully-formed session archived directly (used by programs that build
       // their own workout, e.g. 5/3/1), newest first
       return { ...state, sessions: [action.session, ...state.sessions] };
+    case 'importSessions': {
+      // Merge in externally-parsed sessions (e.g. a Strong export). Skip any
+      // whose id is already present so re-importing the same file is a no-op,
+      // and keep existing custom lifts over imported ones (user edits win).
+      const known = new Set(state.sessions.map((s) => s.id));
+      const added = action.sessions.filter((s) => !known.has(s.id));
+      const sessions = [...state.sessions, ...added].sort((a, b) => b.at.localeCompare(a.at));
+      const customLifts = { ...action.customLifts, ...state.customLifts };
+      return { ...state, sessions, customLifts };
+    }
     case 'logWeight': {
       // one weigh-in per day: replace any existing entry for that date
       const rest = state.weighIns.filter((w) => w.at !== action.at);
