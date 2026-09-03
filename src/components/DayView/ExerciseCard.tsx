@@ -18,8 +18,9 @@ import { barWeight as emptyBarWeight, autoRestOn, warmupSets } from '../../domai
 import { round } from '../../domain/calc';
 import { RpePicker } from './RpePicker';
 import { NoteSheet } from './NoteSheet';
-import { hasSetDetail, setMarkerColor } from '../../domain/setTags';
+import { hasSetDetail, setMarkerColor, setTypeMeta } from '../../domain/setTags';
 import { FeelPicker } from './FeelPicker';
+import { SetTypePicker } from './SetTypePicker';
 import { FEEL_TONE } from '../common/feelTone';
 import { useHoldMenu } from './useHoldMenu';
 import type { Block, BlockClass, LiftHistory, LoggedSet, WarmupFeel } from '../../domain/types';
@@ -134,15 +135,16 @@ function useSwipeRow(onDelete: () => void) {
 /** A set row that slides left over a red delete zone; past the threshold it deletes. */
 function SwipeRow({
   onDelete,
-  warm,
   popped,
   gridCols,
+  rowBg,
   children,
 }: {
   onDelete: () => void;
-  warm: boolean;
   popped: boolean;
   gridCols: string;
+  /** Full-row background wash for this set's state (done / warm-up tone). */
+  rowBg?: string;
   children: ReactNode;
 }) {
   const swipe = useSwipeRow(onDelete);
@@ -169,12 +171,12 @@ function SwipeRow({
           transform: `translateX(${swipe.dx}px)`,
           transition: swipe.dragging ? 'none' : 'transform 0.2s ease',
           touchAction: 'pan-y',
-          backgroundColor: swiping ? '#16181C' : undefined,
+          backgroundColor: swiping ? '#16181C' : rowBg,
         }}
         className={[
-          'grid items-center gap-2 rounded-lg px-0.5',
+          'grid items-center gap-2 rounded-[10px] px-1 py-0.5',
+          'focus-within:shadow-[inset_0_0_0_1.5px_rgb(var(--secondary))]',
           gridCols,
-          warm ? 'bg-yellow/[0.05]' : '',
           popped ? 'animate-set-pop' : '',
         ].join(' ')}
       >
@@ -290,8 +292,8 @@ function SetInput({
   const warm = warmup && warmTone;
   const warmStyle = warm
     ? done
-      ? { backgroundColor: `${warmTone}4D`, borderColor: 'transparent', color: warmTone }
-      : { borderColor: `${warmTone}66` }
+      ? { backgroundColor: `${warmTone}40`, color: warmTone }
+      : { backgroundColor: `${warmTone}22` }
     : undefined;
 
   return (
@@ -306,15 +308,15 @@ function SetInput({
         {...hold.handlers}
         style={warmStyle}
         className={[
-          'h-10 w-full select-none rounded-lg border text-center font-mono font-bold transition-colors placeholder:font-normal placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-accent/70',
+          'h-11 w-full select-none rounded-[9px] text-center font-mono font-bold transition-colors placeholder:font-normal placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-secondary/70',
           compact ? 'px-0 text-[13px]' : 'text-[15px]',
           warm
             ? done
               ? '' // colour comes from warmStyle (tinted)
-              : 'bg-surface-2 text-ink'
+              : 'text-ink' // faint warm tint comes from warmStyle
             : done
-              ? 'border-transparent bg-green/30 text-green focus:border-green'
-              : 'border-line-2 bg-surface-2 text-ink focus:border-secondary',
+              ? 'bg-green/20 text-green'
+              : 'bg-surface-2 text-ink',
         ].join(' ')}
       />
       {hold.menu}
@@ -413,7 +415,6 @@ function RpeButton({
   value,
   base,
   done,
-  warmup,
   label,
   onOpen,
   onApply,
@@ -421,7 +422,6 @@ function RpeButton({
   value: string;
   base: () => number;
   done: boolean;
-  warmup: boolean;
   label: string;
   onOpen: () => void;
   onApply: (v: string) => void;
@@ -439,29 +439,24 @@ function RpeButton({
         aria-label={rated ? `${label}, currently ${value}` : `${label}, not rated`}
         {...hold.handlers}
         style={
-          rated
-            ? done
-              ? {
-                  backgroundColor: `hsl(${hue} 65% 50% / 0.3)`,
-                  borderColor: `hsl(${hue} 65% 55% / 0.6)`,
-                  color: `hsl(${hue} 90% 78%)`,
-                }
-              : {
-                  backgroundColor: `hsl(${hue} 60% 45% / 0.12)`,
-                  borderColor: `hsl(${hue} 60% 50% / 0.38)`,
-                  color: `hsl(${hue} 70% 68%)`,
-                }
+          // once a working set is done, the RPE settles into the row's green
+          // rather than keeping its effort hue — one calm colour per done row
+          rated && !done
+            ? {
+                backgroundColor: `hsl(${hue} 60% 45% / 0.14)`,
+                color: `hsl(${hue} 70% 68%)`,
+              }
             : undefined
         }
         className={[
-          'h-10 w-full select-none rounded-lg border text-center font-mono text-[15px] font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-accent/70',
+          'h-11 w-full select-none rounded-[9px] text-center font-mono text-[15px] font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/70',
           rated
-            ? ''
-            : done && warmup
-              ? 'border-transparent bg-yellow/30 text-yellow'
-              : done
-                ? 'border-transparent bg-green/30 text-green'
-                : 'border-line-2 bg-surface-2 text-muted-2 hover:text-ink',
+            ? done
+              ? 'bg-green/20 text-green'
+              : ''
+            : done
+              ? 'bg-green/20 text-green'
+              : 'bg-surface-2 text-muted-2 hover:text-ink',
         ].join(' ')}
       >
         {rated ? value : '–'}
@@ -491,8 +486,8 @@ function FeelButton({
       aria-haspopup="dialog"
       aria-label={value ? `${label}, currently ${feelOption(value).phrase}` : `${label}, not set`}
       className={[
-        'h-10 w-full rounded-lg border text-center font-display text-[15px] font-black transition-colors focus:outline-none focus:ring-2 focus:ring-accent/70',
-        value ? FEEL_TONE[value] : 'border-line-2 bg-surface-2 text-muted-2 hover:text-ink',
+        'h-11 w-full rounded-[9px] text-center font-display text-[15px] font-black transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/70',
+        value ? FEEL_TONE[value] : 'bg-surface-2 text-muted-2 hover:text-ink',
       ].join(' ')}
     >
       {value ?? '–'}
@@ -527,6 +522,7 @@ export function ExerciseCard({
   const [rpeFor, setRpeFor] = useState<number | null>(null);
   const [feelFor, setFeelFor] = useState<number | null>(null);
   const [noteFor, setNoteFor] = useState<number | null>(null);
+  const [typeFor, setTypeFor] = useState<number | null>(null);
   /** Index of the set that was just checked off, while its pop plays. */
   const [popped, setPopped] = useState<number | null>(null);
   const [cheer, setCheer] = useState(false);
@@ -545,8 +541,8 @@ export function ExerciseCard({
   // if any set logs reps per side, widen the reps column and split its header
   const anyPerSide = sets.some((s) => s.perSide);
   const gridCols = anyPerSide
-    ? 'grid-cols-[1.9rem_1.6rem_1fr_4.75rem_3.5rem_2.5rem]'
-    : 'grid-cols-[1.9rem_1.6rem_1fr_3.25rem_3.5rem_2.5rem]';
+    ? 'grid-cols-[2rem_1.7rem_1fr_5rem_2.9rem_2.75rem]'
+    : 'grid-cols-[2rem_1.7rem_1fr_3.75rem_2.9rem_2.75rem]';
 
   // weight shown on the barbell glyph: the most recent set with a weight
   // entered, else the computed target (so it shows before logging too)
@@ -719,24 +715,49 @@ export function ExerciseCard({
               const rowLabel = warm ? 'W' : wn;
               // each warm-up set gets its colour from the heating-up ramp
               const warmTone = warm ? heatColor(warmN - 1) : undefined;
+              // faint full-row wash matching the set's state (done green / warm tone)
+              const rowBg = warm
+                ? warmTone
+                  ? `${warmTone}14`
+                  : undefined
+                : set.done
+                  ? '#41C27712'
+                  : undefined;
+              // special set type (drop / failure / rest-pause / myo) — working sets only
+              const typeMeta = warm ? undefined : setTypeMeta(set.type);
               return (
                 <SwipeRow
                   key={si}
-                  warm={warm}
                   popped={popped === si}
                   gridCols={gridCols}
+                  rowBg={rowBg}
                   onDelete={() => dispatch({ type: 'removeSet', dayKey, index, setIndex: si })}
                 >
-                  <span
-                    className={[
-                      'select-none text-center font-mono text-[13px] font-bold tabular-nums',
-                      warm ? '' : 'text-muted-2',
-                    ].join(' ')}
-                    style={warm ? { color: warmTone } : undefined}
-                    aria-hidden
-                  >
-                    {rowLabel}
-                  </span>
+                  {warm ? (
+                    <span
+                      className="select-none text-center font-mono text-[13px] font-bold tabular-nums"
+                      style={{ color: warmTone }}
+                      aria-hidden
+                    >
+                      {rowLabel}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setTypeFor(si)}
+                      aria-label={
+                        typeMeta
+                          ? `Set ${rowLabel}, ${typeMeta.label} — change set type`
+                          : `Set ${rowLabel} — set type`
+                      }
+                      className="flex h-11 select-none items-center justify-center rounded-lg font-mono text-[13px] font-bold tabular-nums transition-colors hover:bg-surface-2"
+                      style={typeMeta ? { color: typeMeta.color } : undefined}
+                    >
+                      <span className={typeMeta ? '' : 'text-muted-2'}>
+                        {typeMeta ? typeMeta.short : rowLabel}
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setNoteFor(si)}
@@ -746,7 +767,7 @@ export function ExerciseCard({
                         : `Log details for ${warm ? 'warm-up' : `set ${rowLabel}`}`
                     }
                     className={[
-                      'relative flex h-10 items-center justify-center rounded-lg transition-colors',
+                      'relative flex h-11 items-center justify-center rounded-lg transition-colors',
                       hasSetDetail(set)
                         ? 'text-secondary hover:text-secondary-deep'
                         : 'text-muted-2 hover:text-muted',
@@ -802,7 +823,6 @@ export function ExerciseCard({
                       value={set.rpe}
                       base={() => cellBase(sets, si, 'rpe')}
                       done={!!set.done}
-                      warmup={warm}
                       label={`${lift.name} set ${rowLabel} RPE`}
                       onOpen={() => setRpeFor(si)}
                       onApply={(v) =>
@@ -829,14 +849,14 @@ export function ExerciseCard({
                         : undefined
                     }
                     className={[
-                      'flex h-9 w-9 items-center justify-center justify-self-center rounded-lg border transition-colors',
+                      'flex h-11 w-11 items-center justify-center justify-self-center rounded-[9px] transition-colors',
                       warm
                         ? set.done
                           ? 'text-bg'
                           : 'bg-surface-2'
                         : set.done
-                          ? 'border-green bg-green text-bg'
-                          : 'border-line-2 bg-surface-2 text-muted-2 hover:bg-surface-3 hover:text-ink',
+                          ? 'bg-green text-bg'
+                          : 'bg-surface-2 text-muted-2 hover:bg-surface-3 hover:text-ink',
                     ].join(' ')}
                   >
                     <CheckIcon
@@ -977,6 +997,18 @@ export function ExerciseCard({
             setFeelFor(null);
           }}
           onClose={() => setFeelFor(null)}
+        />
+      )}
+
+      {typeFor !== null && sets[typeFor] && (
+        <SetTypePicker
+          title={`${lift.name} · set ${typeFor + 1}`}
+          value={sets[typeFor].type}
+          onPick={(t) => {
+            dispatch({ type: 'patchSet', dayKey, index, setIndex: typeFor, patch: { type: t } });
+            setTypeFor(null);
+          }}
+          onClose={() => setTypeFor(null)}
         />
       )}
     </div>

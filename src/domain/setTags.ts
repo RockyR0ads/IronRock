@@ -1,4 +1,4 @@
-import type { LoggedSet, SetQuality, SetFlag } from './types';
+import type { LoggedSet, SetQuality, SetFlag, SetType } from './types';
 
 /**
  * Structured per-set nuance: how the set actually went, captured as quick taps
@@ -34,9 +34,34 @@ export interface FlagMeta {
 export const FLAGS: FlagMeta[] = [
   { id: 'pain', label: 'Pain / tweak', short: 'Pain', color: '#FF5247', concern: true },
   { id: 'assisted', label: 'Assisted / forced', short: 'Assist', color: '#9AA0A8', concern: false },
-  { id: 'drop', label: 'Drop / rest-pause', short: 'Drop', color: '#9AA0A8', concern: false },
   { id: 'pr', label: 'PR / best', short: 'PR', color: '#2DD4BF', concern: false },
 ];
+
+/** A special working-set type (drop, failure, rest-pause, myo-reps). */
+export interface SetTypeMeta {
+  id: SetType;
+  label: string;
+  /** Compact badge shown in the set-number cell and history. */
+  short: string;
+  blurb: string;
+  color: string;
+}
+
+export const SET_TYPES: SetTypeMeta[] = [
+  { id: 'drop', label: 'Drop set', short: 'D', blurb: 'Strip the weight and keep going past failure.', color: '#C08BF5' },
+  { id: 'failure', label: 'To failure', short: 'F', blurb: 'Taken to muscular failure.', color: '#FF5247' },
+  { id: 'restpause', label: 'Rest-pause', short: 'RP', blurb: 'Short rests inside one set for extra reps.', color: '#5AC8FA' },
+  { id: 'myo', label: 'Myo-reps', short: 'M', blurb: 'An activation set, then mini-sets.', color: '#FF9F45' },
+];
+
+export const SET_TYPE_BY_ID: Record<string, SetTypeMeta> = Object.fromEntries(
+  SET_TYPES.map((t) => [t.id, t])
+);
+
+/** Metadata for a set's type, or undefined for an ordinary straight set. */
+export function setTypeMeta(type: SetType | undefined): SetTypeMeta | undefined {
+  return type ? SET_TYPE_BY_ID[type] : undefined;
+}
 
 export const QUALITY_BY_ID: Record<string, QualityMeta> = Object.fromEntries(
   QUALITY.map((q) => [q.id, q])

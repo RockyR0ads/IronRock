@@ -122,8 +122,13 @@ export interface LoggedSet {
   note?: string;
   /** Technique quality of the set (single choice). */
   quality?: SetQuality;
-  /** Occasional modifiers/flags: pain, assisted, drop set, PR. */
+  /** Occasional modifiers/flags: pain, assisted, PR. */
   flags?: SetFlag[];
+  /**
+   * Special set type for a working set — drop set, to failure, rest-pause,
+   * myo-reps. Absent for an ordinary straight set. Warm-ups use `warmup`.
+   */
+  type?: SetType;
 }
 
 /** How clean the set was. */
@@ -131,6 +136,9 @@ export type SetQuality = 'clean' | 'grindy' | 'broke' | 'short';
 
 /** Occasional per-set modifiers. */
 export type SetFlag = 'pain' | 'assisted' | 'drop' | 'pr';
+
+/** Intensity-technique variants a working set can be. */
+export type SetType = 'drop' | 'failure' | 'restpause' | 'myo';
 
 /** Last recorded set for a lift, used as a "last time" hint. */
 export type LiftHistory = Pick<LoggedSet, 'w' | 'reps' | 'rpe'>;

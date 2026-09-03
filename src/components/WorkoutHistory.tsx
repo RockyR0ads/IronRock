@@ -6,7 +6,7 @@ import { rpeHue } from '../domain/format';
 import { FEEL_TONE } from './common/feelTone';
 import { heatColor } from './common/warmupHeat';
 import { ChevronLeft, ChevronRight, Dumbbell, TrashIcon, NoteIcon } from './common/icons';
-import { QUALITY_BY_ID, FLAG_BY_ID } from '../domain/setTags';
+import { QUALITY_BY_ID, FLAG_BY_ID, setTypeMeta } from '../domain/setTags';
 import type { Session } from '../domain/types';
 
 /** A small coloured set-tag chip (quality / flag) shown under an archived set. */
@@ -91,6 +91,7 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
                   if (!warm) wn += 1;
                   else warmN += 1;
                   const warmTone = warm ? heatColor(warmN - 1) : undefined;
+                  const typeMeta = warm ? undefined : setTypeMeta(set.type);
                   const rpe = parseFloat(set.rpe);
                   return (
                     <div key={si}>
@@ -101,10 +102,13 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
                       ].join(' ')}
                     >
                       <span
-                        className={warm ? 'font-bold' : 'text-muted-2'}
-                        style={warm ? { color: warmTone } : undefined}
+                        className={warm || typeMeta ? 'font-bold' : 'text-muted-2'}
+                        style={
+                          warm ? { color: warmTone } : typeMeta ? { color: typeMeta.color } : undefined
+                        }
+                        title={typeMeta?.label}
                       >
-                        {warm ? 'W' : wn}
+                        {warm ? 'W' : typeMeta ? typeMeta.short : wn}
                       </span>
                       <span className="font-bold tabular-nums">
                         {set.w || '–'} <span className="text-[10px] font-normal text-muted-2">kg</span>
