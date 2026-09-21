@@ -16,17 +16,20 @@ const prefersReducedMotion = () =>
 export function DayView({
   onSwap,
   onAdd,
+  onAddOption,
   onOpenExercise,
 }: {
   onSwap: (index: number) => void;
   onAdd: () => void;
+  onAddOption?: (index: number) => void;
   onOpenExercise?: (liftId: string) => void;
 }) {
   const { state, dispatch } = useStore();
   const [summary, setSummary] = useState<WorkoutStats | null>(null);
   const day = defaultDay(state.day);
   const blocks = effBlocks(state, state.day);
-  const customized = state.customDays[state.day] !== undefined;
+  const deviated = state.sessionDays[state.day] !== undefined; // changed just for today
+  const planEdited = state.planDays[state.day] !== undefined; // saved into the plan
   const hasLogs = (state.logs[state.day] ?? []).some((s) => s.length > 0);
 
   // Completion of every block, used to auto-advance to the next unfinished one.
@@ -212,6 +215,12 @@ export function DayView({
             </span>
           </h3>
           <p className="m-0 mt-1 text-[13px] text-muted">{day.note}</p>
+          {deviated && (
+            <p className="m-0 mt-1.5 flex items-center gap-1.5 text-[12px] font-medium text-secondary">
+              <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
+              Adjusted for today — not saved to your program
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {hasLogs && (
@@ -226,15 +235,38 @@ export function DayView({
               Clear sets
             </button>
           )}
-          {customized && (
+          {deviated ? (
+            <>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'saveDayToProgram', dayKey: state.day })}
+                className="rounded-lg px-2.5 py-1.5 text-[12px] font-semibold text-secondary transition-colors hover:bg-secondary/10"
+              >
+                Save to plan
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!hasLogs || confirm("Undo today's changes? Your logged sets for this day will be cleared."))
+                    dispatch({ type: 'revertDay', dayKey: state.day });
+                }}
+                className="rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-muted-2 hover:bg-surface-2 hover:text-ink"
+              >
+                Revert
+              </button>
+            </>
+          ) : planEdited ? (
             <button
               type="button"
-              onClick={() => dispatch({ type: 'restoreDay', dayKey: state.day })}
+              onClick={() => {
+                if (confirm('Reset this day to the program default? Your saved changes and logged sets for it will be cleared.'))
+                  dispatch({ type: 'restoreDay', dayKey: state.day });
+              }}
               className="rounded-lg px-2.5 py-1.5 text-[12px] font-medium text-muted-2 hover:bg-surface-2 hover:text-ink"
             >
-              Restore
+              Restore default
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -256,6 +288,7 @@ export function DayView({
               index={i}
               dayKey={state.day}
               onSwap={onSwap}
+              onAddOption={onAddOption}
               onOpenExercise={onOpenExercise}
             />
           </div>

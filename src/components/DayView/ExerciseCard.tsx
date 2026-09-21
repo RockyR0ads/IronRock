@@ -8,6 +8,8 @@ import {
 import { useStore } from '../../state/StoreContext';
 import { useRestTimer } from '../../state/RestTimer';
 import { setsFor, liftById } from '../../state/store';
+import type { Dispatch } from 'react';
+import type { Action } from '../../state/store';
 import { blockLoad, doneSetCount, workingSetCount, isBlockComplete } from '../../state/selectors';
 import { repLabel, feelLabel, rpeNum, rpeHue, isPerLeg } from '../../domain/format';
 import { feelOption } from '../../domain/feel';
@@ -496,6 +498,85 @@ function FeelButton({
 }
 
 /**
+ * The slot's exercise chooser: a chip per interchangeable option, the active one
+ * highlighted. Tapping another switches the slot for the day (a free choice, not
+ * a program deviation); a chip's × removes that option from the slot. A trailing
+ * ＋ opens the picker to attach another. Shown only when the slot has options.
+ */
+function OptionsBar({
+  block,
+  dayKey,
+  index,
+  dispatch,
+  state,
+  onAddOption,
+}: {
+  block: Block;
+  dayKey: string;
+  index: number;
+  dispatch: Dispatch<Action>;
+  state: ReturnType<typeof useStore>['state'];
+  onAddOption?: (index: number) => void;
+}) {
+  const pool = block.pool ?? [];
+  if (pool.length < 2 && !onAddOption) return null;
+  if (pool.length < 2) return null; // nothing to choose yet — add lives in the swap picker
+
+  return (
+    <div className="relative z-10 mt-2.5 flex flex-wrap gap-1.5" data-nodrag>
+      {pool.map((id) => {
+        const active = id === block.lift;
+        const name = liftById(state, id).name;
+        return (
+          <span
+            key={id}
+            className={[
+              'group inline-flex items-center rounded-full border text-[12px] font-semibold transition-colors',
+              active
+                ? 'border-secondary/50 bg-secondary/15 text-secondary'
+                : 'border-line-2 bg-surface-2 text-muted hover:text-ink',
+            ].join(' ')}
+          >
+            <button
+              type="button"
+              onClick={() => !active && dispatch({ type: 'pickOption', dayKey, index, liftId: id })}
+              aria-pressed={active}
+              aria-label={active ? `${name}, current option` : `Switch this slot to ${name}`}
+              className="max-w-[46vw] truncate py-1.5 pl-3 pr-2"
+            >
+              {name}
+            </button>
+            {!active && (
+              <button
+                type="button"
+                aria-label={`Remove ${name} option`}
+                onClick={() => {
+                  if (confirm(`Remove ${name} as an option for this slot?`))
+                    dispatch({ type: 'removeOption', dayKey, index, liftId: id });
+                }}
+                className="flex h-7 w-6 items-center justify-center rounded-r-full text-[14px] leading-none text-muted-2 hover:text-red"
+              >
+                ×
+              </button>
+            )}
+          </span>
+        );
+      })}
+      {onAddOption && (
+        <button
+          type="button"
+          onClick={() => onAddOption(index)}
+          aria-label="Add another exercise option to this slot"
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-line-2 px-2.5 py-1.5 text-[12px] font-semibold text-muted-2 transition-colors hover:border-secondary/50 hover:text-secondary"
+        >
+          <PlusIcon className="h-3.5 w-3.5" /> Option
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
  * One exercise: header (dot/name/plate-bar/progress), the logged-set grid, and
  * add/swap/remove actions. Shared between the program day view and the freestyle
  * workout. In `freestyle` mode the prescription (scheme / RPE / target) is hidden
@@ -507,6 +588,7 @@ export function ExerciseCard({
   dayKey,
   onSwap,
   onOpenExercise,
+  onAddOption,
   variant = 'program',
 }: {
   block: Block;
@@ -515,6 +597,8 @@ export function ExerciseCard({
   onSwap: (index: number) => void;
   /** Open this lift's exercise page (history, records, settings). */
   onOpenExercise?: (liftId: string) => void;
+  /** Open the picker to attach another exercise option to this slot. */
+  onAddOption?: (index: number) => void;
   variant?: 'program' | 'freestyle';
 }) {
   const { state, dispatch } = useStore();
@@ -685,6 +769,17 @@ export function ExerciseCard({
           </div>
         )}
       </div>
+
+      {!freestyle && (
+        <OptionsBar
+          block={block}
+          dayKey={dayKey}
+          index={index}
+          dispatch={dispatch}
+          state={state}
+          onAddOption={onAddOption}
+        />
+      )}
 
       {/* logged sets */}
       {sets.length > 0 && (

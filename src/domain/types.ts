@@ -42,8 +42,21 @@ export type BlockClass = 'r-hi' | 'r-mid' | 'r-iso';
 
 /** One exercise slot within a day. */
 export interface Block {
-  /** Lift id, keys into the LIFTS catalogue. */
+  /** Lift id, keys into the LIFTS catalogue. In effect this is the *active*
+   * exercise for the slot; the program-authored anchor is `pool[0]`. */
   lift: string;
+  /**
+   * Interchangeable alternatives for this slot (lift ids), besides `lift` — the
+   * same movement done another way (e.g. barbell vs cable row). The lifter can
+   * pick any of them for the day without it counting as a program deviation.
+   */
+  alts?: string[];
+  /**
+   * Display-only, stamped by `effBlocks`: the full ordered option pool with the
+   * program anchor first. Never persisted (stripped before writing a base
+   * layer). Absent on single-option slots.
+   */
+  pool?: string[];
   sets: number;
   reps: Reps;
   /**

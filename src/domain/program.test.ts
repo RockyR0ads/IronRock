@@ -22,6 +22,19 @@ describe('program data', () => {
     }
   });
 
+  it('every slot option is a distinct, existing lift', () => {
+    for (const day of DAYS) {
+      for (const block of day.blocks) {
+        for (const alt of block.alts ?? []) {
+          expect(LIFTS[alt], `${day.key}: ${alt}`).toBeDefined();
+          expect(alt, `${day.key}: ${alt} duplicates the anchor`).not.toBe(block.lift);
+        }
+        const alts = block.alts ?? [];
+        expect(new Set(alts).size, `${day.key}: duplicate options`).toBe(alts.length);
+      }
+    }
+  });
+
   it('every block category is one the lift can fill', () => {
     for (const day of DAYS) {
       for (const block of day.blocks) {

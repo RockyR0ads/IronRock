@@ -59,11 +59,84 @@ describe('reducer', () => {
     expect(effBlocks(s, 'legsA').length).toBe(len - 1);
   });
 
-  it('restoreDay drops the override', () => {
+  it('an in-day edit is a session deviation, not a plan change', () => {
     let s = reducer(initialState(), { type: 'removeBlock', dayKey: 'pushA', index: 0 });
-    expect(s.customDays.pushA).toBeDefined();
+    expect(s.sessionDays.pushA).toBeDefined();
+    expect(s.planDays.pushA).toBeUndefined();
     s = reducer(s, { type: 'restoreDay', dayKey: 'pushA' });
-    expect(s.customDays.pushA).toBeUndefined();
+    expect(s.sessionDays.pushA).toBeUndefined();
+    expect(s.planDays.pushA).toBeUndefined();
+  });
+
+  it('saveDayToProgram promotes the deviation into the plan', () => {
+    let s = reducer(initialState(), { type: 'removeBlock', dayKey: 'pushA', index: 0 });
+    const len = effBlocks(s, 'pushA').length;
+    s = reducer(s, { type: 'saveDayToProgram', dayKey: 'pushA' });
+    expect(s.sessionDays.pushA).toBeUndefined();
+    expect(s.planDays.pushA).toBeDefined();
+    expect(effBlocks(s, 'pushA').length).toBe(len);
+  });
+
+  it('completing a workout clears the day deviation (back to plan next time)', () => {
+    let s = reducer(initialState(), { type: 'swapBlock', dayKey: 'pushA', index: 0, liftId: 'dbbench' });
+    s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0 });
+    s = reducer(s, { type: 'completeWorkout', dayKey: 'pushA', title: 'Push', at: '2026-01-01T00:00:00Z', id: 'x' });
+    expect(s.sessionDays.pushA).toBeUndefined(); // deviation did not carry over
+    expect(s.sessions.length).toBe(1); // but the workout was archived as performed
+  });
+
+  it('picks a slot option without deviating, and stamps the pool', () => {
+    // pushA[0] is bench with alts [dbbench, inclinebench]
+    let s = reducer(initialState(), { type: 'pickOption', dayKey: 'pushA', index: 0, liftId: 'dbbench' });
+    const b = effBlocks(s, 'pushA')[0];
+    expect(b.lift).toBe('dbbench'); // active is the picked option
+    expect(b.pool).toEqual(['bench', 'dbbench', 'inclinebench']); // anchor first, stable
+    expect(s.sessionDays.pushA).toBeUndefined(); // a free choice, not a deviation
+    // picking the anchor again clears the pick
+    s = reducer(s, { type: 'pickOption', dayKey: 'pushA', index: 0, liftId: 'bench' });
+    expect(effBlocks(s, 'pushA')[0].lift).toBe('bench');
+    expect(s.sessionPicks.pushA).toBeUndefined();
+  });
+
+  it('rejects an option that is not one of the slot options', () => {
+    const s = reducer(initialState(), { type: 'pickOption', dayKey: 'pushA', index: 0, liftId: 'squat' });
+    expect(s.sessionPicks.pushA).toBeUndefined();
+    expect(effBlocks(s, 'pushA')[0].lift).toBe('bench');
+  });
+
+  it('switching a slot option clears that slot’s logged sets', () => {
+    let s = reducer(initialState(), { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
+    s = reducer(s, { type: 'pickOption', dayKey: 'pushA', index: 0, liftId: 'dbbench' });
+    expect(setsFor(s, 'pushA', 0)).toEqual([]);
+  });
+
+  it('completing a workout resets the option pick to the slot default', () => {
+    let s = reducer(initialState(), { type: 'pickOption', dayKey: 'pushA', index: 0, liftId: 'dbbench' });
+    s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('40', '8', '8') });
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0 });
+    s = reducer(s, { type: 'completeWorkout', dayKey: 'pushA', title: 'Push', at: AT, id: 'x' });
+    expect(s.sessionPicks.pushA).toBeUndefined();
+    expect(effBlocks(s, 'pushA')[0].lift).toBe('bench');
+  });
+
+  it('adds a user option into the plan and can pick it', () => {
+    // legsA[0] is squat with alts [pausesquat, boxsquat]; add front squat too
+    let s = reducer(initialState(), { type: 'addOption', dayKey: 'legsA', index: 0, liftId: 'frontsquat' });
+    expect(s.planDays.legsA).toBeDefined(); // a persistent plan edit
+    expect(effBlocks(s, 'legsA')[0].pool).toContain('frontsquat');
+    s = reducer(s, { type: 'pickOption', dayKey: 'legsA', index: 0, liftId: 'frontsquat' });
+    expect(effBlocks(s, 'legsA')[0].lift).toBe('frontsquat');
+  });
+
+  it('removes an option, re-anchoring when needed', () => {
+    // drop the anchor (bench) — the slot re-anchors to the first remaining option
+    let s = reducer(initialState(), { type: 'removeOption', dayKey: 'pushA', index: 0, liftId: 'dbbench' });
+    expect(effBlocks(s, 'pushA')[0].pool).toEqual(['bench', 'inclinebench']);
+    s = reducer(s, { type: 'removeOption', dayKey: 'pushA', index: 0, liftId: 'bench' });
+    const b = effBlocks(s, 'pushA')[0];
+    expect(b.lift).toBe('inclinebench'); // re-anchored
+    expect(b.pool).toBeUndefined(); // a single-exercise slot now
   });
 
   it('clearAll keeps inc and day but wipes entries', () => {
@@ -156,17 +229,21 @@ describe('set logging', () => {
     expect(setsFor(s, 'pushA', 0)).toHaveLength(0);
   });
 
-  it('resetWeek clears all logged sets but keeps history, refs and edits', () => {
+  it('resetWeek clears logs and this-week deviations but keeps history, refs and plan edits', () => {
     let s = withRef(initialState());
+    // a saved plan edit persists across the reset
     s = reducer(s, { type: 'swapBlock', dayKey: 'legsA', index: 0, liftId: 'frontsquat' });
+    s = reducer(s, { type: 'saveDayToProgram', dayKey: 'legsA' });
+    // a today-only deviation on another day should be dropped
+    s = reducer(s, { type: 'removeBlock', dayKey: 'pullA', index: 0 });
     s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
     s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0 });
-    s = reducer(s, { type: 'addSet', dayKey: 'legsA', index: 0, set: SET('120', '3', '8') });
     s = reducer(s, { type: 'resetWeek' });
     expect(s.logs).toEqual({});
     expect(s.history.bench).toEqual({ w: '100', reps: '5', rpe: '8' }); // preserved
     expect(s.refs.bench).toBeDefined(); // references kept
-    expect(s.customDays.legsA).toBeDefined(); // swapped exercise kept
+    expect(s.planDays.legsA).toBeDefined(); // saved plan edit kept
+    expect(s.sessionDays.pullA).toBeUndefined(); // this-week deviation cleared
   });
 
   it('resetWeek keeps the freestyle workout but clears program logs', () => {

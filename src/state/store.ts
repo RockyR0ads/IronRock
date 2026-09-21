@@ -35,8 +35,25 @@ export interface State {
   customLifts: Record<string, CustomLift>;
   /** Per-exercise settings (rest, bar type, …), keyed by lift id. */
   exerciseConfig: Record<string, ExerciseConfig>;
-  /** Per-day overrides; absence means "use the default day". */
-  customDays: Record<string, Block[]>;
+  /**
+   * Persistent edits to a program day's exercises — "my plan differs from the
+   * default here". Survives completing a workout; changed only on purpose.
+   */
+  planDays: Record<string, Block[]>;
+  /**
+   * This-session-only edits to a day (life-happens deviations): a swap, an
+   * added or dropped exercise, a reorder. Takes precedence over the plan while
+   * present, and is cleared when the workout is completed so next time starts
+   * from the plan again — unless the user saves it to the program.
+   */
+  sessionDays: Record<string, Block[]>;
+  /**
+   * This-session-only choice of which option a multi-exercise slot is running,
+   * keyed by day then by the slot's anchor lift id → the picked lift id. A free,
+   * expected choice among the slot's own options (not a deviation), cleared when
+   * the workout is completed so next time starts from the slot's default again.
+   */
+  sessionPicks: Record<string, Record<string, string>>;
   /** Logged working sets per day, aligned to the day's block order. */
   logs: Record<string, LoggedSet[][]>;
   /** Last completed set per lift id — shown as a "last time" hint. */
@@ -76,7 +93,9 @@ export function initialState(): State {
     manual: {},
     customLifts: {},
     exerciseConfig: {},
-    customDays: {},
+    planDays: {},
+    sessionDays: {},
+    sessionPicks: {},
     logs: {},
     history: {},
     sessions: [],
@@ -115,9 +134,14 @@ export type Action =
   | { type: 'removeBlock'; dayKey: string; index: number }
   | { type: 'moveBlock'; dayKey: string; from: number; to: number }
   | { type: 'addBlock'; dayKey: string; liftId: string }
+  | { type: 'pickOption'; dayKey: string; index: number; liftId: string }
+  | { type: 'addOption'; dayKey: string; index: number; liftId: string }
+  | { type: 'removeOption'; dayKey: string; index: number; liftId: string }
   | { type: 'addCustomLift'; id: string; name: string; unit: string; group: string }
   | { type: 'setExerciseConfig'; id: string; patch: Partial<ExerciseConfig> }
   | { type: 'restoreDay'; dayKey: string }
+  | { type: 'revertDay'; dayKey: string }
+  | { type: 'saveDayToProgram'; dayKey: string }
   | { type: 'addSet'; dayKey: string; index: number; set: LoggedSet }
   | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe' | 'repsR' | 'note'; value: string }
   | { type: 'patchSet'; dayKey: string; index: number; setIndex: number; patch: Partial<LoggedSet> }
@@ -141,15 +165,74 @@ export type Action =
   | { type: 'resetWeek' }
   | { type: 'clearAll' };
 
-/** Deep-clone a day's default blocks so edits never mutate the program template. */
-function cloneDefaultBlocks(dayKey: string): Block[] {
-  const day = defaultDay(dayKey);
-  return day ? day.blocks.map((b) => ({ ...b })) : [];
+/** The full ordered option pool for a slot: the anchor lift, then its alternatives. */
+export function blockOptions(block: Block): string[] {
+  return block.alts && block.alts.length ? [block.lift, ...block.alts] : [block.lift];
 }
 
-/** Blocks currently in effect for a day (override if present, else default). */
+/**
+ * The un-picked base layer for a day: today's session copy wins, then the user's
+ * saved plan edits, then the program default. This keeps each block's *anchor*
+ * lift in `lift` (option picks are held separately, in `sessionPicks`).
+ */
+function pickBase(state: State, dayKey: string): Block[] {
+  return state.sessionDays[dayKey] ?? state.planDays[dayKey] ?? defaultDay(dayKey)?.blocks ?? [];
+}
+
+/**
+ * Blocks currently in effect for a day. On top of the base layer this applies
+ * this-session option picks: a slot's active `lift` becomes the picked option,
+ * with the full ordered pool stamped onto `pool` (anchor first) for the chooser.
+ */
 export function effBlocks(state: State, dayKey: string): Block[] {
-  return state.customDays[dayKey] ?? defaultDay(dayKey)?.blocks ?? [];
+  const base = pickBase(state, dayKey);
+  const picks = state.sessionPicks[dayKey];
+  return base.map((b) => {
+    const pool = blockOptions(b);
+    if (pool.length < 2) return b; // single-exercise slot — nothing to pick or stamp
+    const picked = picks?.[b.lift];
+    const active = picked && pool.includes(picked) ? picked : b.lift;
+    return {
+      ...b,
+      lift: active,
+      alts: pool.filter((id) => id !== active),
+      pool,
+      perLeg: b.perLeg ?? !!liftById(state, active).uni,
+    };
+  });
+}
+
+/**
+ * A fresh, deep-cloned copy of the blocks a session edit should start from — the
+ * current effective layout, with the display-only `pool` stripped — so editing
+ * never mutates the plan or the default and never persists a transient field.
+ */
+function baseBlocks(state: State, dayKey: string): Block[] {
+  return effBlocks(state, dayKey).map(({ pool: _pool, ...b }) => b);
+}
+
+/**
+ * The layer an option edit (add/remove) should write to, cloned and un-picked:
+ * a live deviation stays session-scoped, otherwise it edits the persistent plan.
+ * Keeps indexes aligned with what the card shows and never bakes in a pick.
+ */
+function editBase(
+  state: State,
+  dayKey: string
+): { blocks: Block[]; layer: 'sessionDays' | 'planDays' } {
+  const clone = (bs: Block[]) => bs.map((b) => ({ ...b, alts: b.alts ? [...b.alts] : undefined }));
+  if (state.sessionDays[dayKey]) return { blocks: clone(state.sessionDays[dayKey]), layer: 'sessionDays' };
+  return { blocks: clone(state.planDays[dayKey] ?? defaultDay(dayKey)?.blocks ?? []), layer: 'planDays' };
+}
+
+/** Whether a day currently deviates from what its program prescribes. */
+export function isDeviatedToday(state: State, dayKey: string): boolean {
+  return state.sessionDays[dayKey] !== undefined;
+}
+
+/** Whether a day's plan has been edited away from the program default. */
+export function isPlanEdited(state: State, dayKey: string): boolean {
+  return state.planDays[dayKey] !== undefined;
 }
 
 /** Logged sets for a single block (empty array if none yet). */
@@ -216,14 +299,15 @@ export function reducer(state: State, action: Action): State {
     case 'setDay':
       return { ...state, day: action.key };
     case 'swapBlock': {
-      const blocks = (state.customDays[action.dayKey] ?? cloneDefaultBlocks(action.dayKey)).map(
-        (b) => ({ ...b })
-      );
+      const blocks = baseBlocks(state, action.dayKey);
       const target = blocks[action.index];
       if (!target) return state;
       blocks[action.index] = {
         ...target,
         lift: action.liftId,
+        // a swap replaces the slot's exercise outright — its old options no
+        // longer apply (use "Add option" to build a new set of alternatives)
+        alts: undefined,
         perLeg: !!liftById(state, action.liftId).uni,
       };
       // a different exercise now occupies the slot — drop its logged sets
@@ -231,25 +315,21 @@ export function reducer(state: State, action: Action): State {
       log[action.index] = [];
       return {
         ...state,
-        customDays: { ...state.customDays, [action.dayKey]: blocks },
+        sessionDays: { ...state.sessionDays, [action.dayKey]: blocks },
         logs: { ...state.logs, [action.dayKey]: log },
       };
     }
     case 'removeBlock': {
-      const blocks = (state.customDays[action.dayKey] ?? cloneDefaultBlocks(action.dayKey)).filter(
-        (_, i) => i !== action.index
-      );
+      const blocks = baseBlocks(state, action.dayKey).filter((_, i) => i !== action.index);
       const log = cloneDayLog(state, action.dayKey).filter((_, i) => i !== action.index);
       return {
         ...state,
-        customDays: { ...state.customDays, [action.dayKey]: blocks },
+        sessionDays: { ...state.sessionDays, [action.dayKey]: blocks },
         logs: { ...state.logs, [action.dayKey]: log },
       };
     }
     case 'moveBlock': {
-      const blocks = (state.customDays[action.dayKey] ?? cloneDefaultBlocks(action.dayKey)).map(
-        (b) => ({ ...b })
-      );
+      const blocks = baseBlocks(state, action.dayKey);
       const { from, to } = action;
       if (from === to || from < 0 || to < 0 || from >= blocks.length || to >= blocks.length)
         return state;
@@ -261,21 +341,56 @@ export function reducer(state: State, action: Action): State {
       log.splice(to, 0, movedLog);
       return {
         ...state,
-        customDays: { ...state.customDays, [action.dayKey]: blocks },
+        sessionDays: { ...state.sessionDays, [action.dayKey]: blocks },
         logs: { ...state.logs, [action.dayKey]: log },
       };
     }
     case 'addBlock': {
-      const blocks = (state.customDays[action.dayKey] ?? cloneDefaultBlocks(action.dayKey)).map(
-        (b) => ({ ...b })
-      );
+      const blocks = baseBlocks(state, action.dayKey);
       blocks.push(newBlock(liftById(state, action.liftId)));
       const log = cloneDayLog(state, action.dayKey, blocks.length);
       return {
         ...state,
-        customDays: { ...state.customDays, [action.dayKey]: blocks },
+        sessionDays: { ...state.sessionDays, [action.dayKey]: blocks },
         logs: { ...state.logs, [action.dayKey]: log },
       };
+    }
+    case 'pickOption': {
+      // Choose which of a slot's options is running today — a free choice among
+      // the program's own alternatives (not a deviation), held in sessionPicks.
+      const base = pickBase(state, action.dayKey);
+      const slot = base[action.index];
+      if (!slot) return state;
+      const key = slot.lift; // the slot's anchor lift — the stable pick key
+      if (!blockOptions(slot).includes(action.liftId)) return state;
+      const dayPicks = { ...(state.sessionPicks[action.dayKey] ?? {}) };
+      if (action.liftId === key) delete dayPicks[key];
+      else dayPicks[key] = action.liftId;
+      const sessionPicks = { ...state.sessionPicks };
+      if (Object.keys(dayPicks).length) sessionPicks[action.dayKey] = dayPicks;
+      else delete sessionPicks[action.dayKey];
+      // a different exercise now occupies the slot — drop its logged sets
+      const log = cloneDayLog(state, action.dayKey, action.index + 1);
+      log[action.index] = [];
+      return { ...state, sessionPicks, logs: { ...state.logs, [action.dayKey]: log } };
+    }
+    case 'addOption': {
+      const { blocks, layer } = editBase(state, action.dayKey);
+      const target = blocks[action.index];
+      if (!target || blockOptions(target).includes(action.liftId)) return state;
+      target.alts = [...(target.alts ?? []), action.liftId];
+      return { ...state, [layer]: { ...state[layer], [action.dayKey]: blocks } };
+    }
+    case 'removeOption': {
+      const { blocks, layer } = editBase(state, action.dayKey);
+      const target = blocks[action.index];
+      if (!target) return state;
+      const pool = blockOptions(target).filter((id) => id !== action.liftId);
+      if (!pool.length) return state; // never strip a slot's last exercise
+      // re-anchor to the first remaining option; the rest stay as alternatives
+      target.lift = pool[0];
+      target.alts = pool.length > 1 ? pool.slice(1) : undefined;
+      return { ...state, [layer]: { ...state[layer], [action.dayKey]: blocks } };
     }
     case 'addCustomLift':
       return {
@@ -293,11 +408,39 @@ export function reducer(state: State, action: Action): State {
       };
     }
     case 'restoreDay': {
-      const customDays = { ...state.customDays };
-      delete customDays[action.dayKey];
+      // full reset of a day to the program default — drop both this session's
+      // deviations and any saved plan edits, plus the day's logged sets
+      const planDays = { ...state.planDays };
+      delete planDays[action.dayKey];
+      const sessionDays = { ...state.sessionDays };
+      delete sessionDays[action.dayKey];
+      const sessionPicks = { ...state.sessionPicks };
+      delete sessionPicks[action.dayKey];
       const logs = { ...state.logs };
       delete logs[action.dayKey];
-      return { ...state, customDays, logs };
+      return { ...state, planDays, sessionDays, sessionPicks, logs };
+    }
+    case 'revertDay': {
+      // undo just today's deviation and option picks (back to the plan), plus logs
+      const sessionDays = { ...state.sessionDays };
+      delete sessionDays[action.dayKey];
+      const sessionPicks = { ...state.sessionPicks };
+      delete sessionPicks[action.dayKey];
+      const logs = { ...state.logs };
+      delete logs[action.dayKey];
+      return { ...state, sessionDays, sessionPicks, logs };
+    }
+    case 'saveDayToProgram': {
+      // promote today's layout — including any option pick — into the persistent
+      // plan, so it's the new default for this day going forward. Strip the
+      // display-only pool; logs stay index-aligned.
+      const eff = effBlocks(state, action.dayKey).map(({ pool: _pool, ...b }) => b);
+      const planDays = { ...state.planDays, [action.dayKey]: eff };
+      const sessionDays = { ...state.sessionDays };
+      delete sessionDays[action.dayKey];
+      const sessionPicks = { ...state.sessionPicks };
+      delete sessionPicks[action.dayKey];
+      return { ...state, planDays, sessionDays, sessionPicks };
     }
     case 'addSet': {
       const log = cloneDayLog(state, action.dayKey, action.index + 1);
@@ -384,12 +527,14 @@ export function reducer(state: State, action: Action): State {
       };
       const logs = { ...state.logs };
       delete logs[action.dayKey];
-      // a program day keeps its prescribed blocks for next time; a freestyle
-      // workout is one-off, so it goes back to a blank slate
-      const customDays = { ...state.customDays };
-      if (action.dayKey === FREESTYLE_KEY) delete customDays[FREESTYLE_KEY];
+      // today's deviations were one-off — next time this day starts from the
+      // plan again (saved plan edits persist; a freestyle workout is always one-off)
+      const sessionDays = { ...state.sessionDays };
+      delete sessionDays[action.dayKey];
+      const sessionPicks = { ...state.sessionPicks };
+      delete sessionPicks[action.dayKey];
 
-      return { ...state, sessions: [session, ...state.sessions], logs, customDays };
+      return { ...state, sessions: [session, ...state.sessions], logs, sessionDays, sessionPicks };
     }
     case 'removeSession':
       return { ...state, sessions: state.sessions.filter((s) => s.id !== action.id) };
@@ -433,10 +578,17 @@ export function reducer(state: State, action: Action): State {
       return next;
     }
     case 'resetWeek': {
-      // Start a fresh training week: drop every program day's logged sets, but
-      // keep references, swapped exercises, history, and the freestyle workout.
-      const freestyle = state.logs[FREESTYLE_KEY];
-      return { ...state, logs: freestyle ? { [FREESTYLE_KEY]: freestyle } : {} };
+      // Start a fresh training week: drop every program day's logged sets and
+      // this-week deviations, but keep references, saved plan edits, history, and
+      // the freestyle workout in progress.
+      const freestyleLog = state.logs[FREESTYLE_KEY];
+      const freestyleSession = state.sessionDays[FREESTYLE_KEY];
+      return {
+        ...state,
+        logs: freestyleLog ? { [FREESTYLE_KEY]: freestyleLog } : {},
+        sessionDays: freestyleSession ? { [FREESTYLE_KEY]: freestyleSession } : {},
+        sessionPicks: {},
+      };
     }
     case 'clearAll':
       return { ...initialState(), inc: state.inc, day: state.day };
@@ -457,7 +609,10 @@ export function loadState(): State {
   })();
   if (!raw) return base; // genuinely a fresh start — safe to save over
   try {
-    const parsed = JSON.parse(raw) as Partial<State>;
+    // legacy `customDays` (a single override layer) becomes the persistent plan
+    const { customDays: legacyCustomDays, ...parsed } = JSON.parse(raw) as Partial<State> & {
+      customDays?: Record<string, Block[]>;
+    };
     return {
       ...base,
       ...parsed,
@@ -467,7 +622,9 @@ export function loadState(): State {
       weightGoal: parsed.weightGoal ?? {},
       profile: parsed.profile ?? {},
       theme: { ...DEFAULT_THEME, ...(parsed.theme ?? {}) },
-      customDays: parsed.customDays ?? {},
+      planDays: parsed.planDays ?? legacyCustomDays ?? {},
+      sessionDays: parsed.sessionDays ?? {},
+      sessionPicks: parsed.sessionPicks ?? {},
       logs: parsed.logs ?? {},
       history: parsed.history ?? {},
       sessions: parsed.sessions ?? [],

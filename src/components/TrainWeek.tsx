@@ -10,7 +10,10 @@ import { RestTimerBar } from './RestTimerBar';
 import { ExercisePicker, type PickerRequest } from './ExercisePicker/ExercisePicker';
 
 /** What the open picker is doing: swapping a block, or adding a new one. */
-type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
+type PickerMode =
+  | { kind: 'swap'; index: number }
+  | { kind: 'add' }
+  | { kind: 'option'; index: number };
 
 /**
  * The PPL program week: the day switcher, the day's exercise cards, settings and
@@ -44,6 +47,9 @@ export function TrainWeek({
       if (!block) return null;
       return { title: 'Swap exercise', currentId: block.lift };
     }
+    if (picker.kind === 'option') {
+      return { title: 'Add exercise option' };
+    }
     return { title: 'Add exercise' };
   }
 
@@ -51,6 +57,8 @@ export function TrainWeek({
     if (!picker) return;
     if (picker.kind === 'swap') {
       dispatch({ type: 'swapBlock', dayKey: state.day, index: picker.index, liftId });
+    } else if (picker.kind === 'option') {
+      dispatch({ type: 'addOption', dayKey: state.day, index: picker.index, liftId });
     } else {
       dispatch({ type: 'addBlock', dayKey: state.day, liftId });
     }
@@ -126,6 +134,7 @@ export function TrainWeek({
       <DayView
         onSwap={(index) => setPicker({ kind: 'swap', index })}
         onAdd={() => setPicker({ kind: 'add' })}
+        onAddOption={(index) => setPicker({ kind: 'option', index })}
         onOpenExercise={onOpenExercise}
       />
 
