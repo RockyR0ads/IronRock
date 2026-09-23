@@ -76,7 +76,7 @@ export default function App() {
 
   return (
     <>
-      <DataBanner />
+      <DataBanner onOpenSettings={() => push({ p: 'settings' })} />
       {workout && !onWorkoutPage && (
         <ActiveWorkoutBar
           workout={workout}

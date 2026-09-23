@@ -2,6 +2,14 @@ import { useRef, useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import type { Increment } from '../domain/types';
 import { exportBackup, importBackup, recordBackup } from '../domain/backup';
+import {
+  getCloudConfig,
+  setCloudConfig,
+  clearCloudConfig,
+  cloudBackup,
+  cloudRestore,
+  DEFAULT_CLOUD_URL,
+} from '../domain/cloudBackup';
 import { parseStrong, StrongImportError } from '../domain/strongImport';
 
 const INCREMENTS: Increment[] = [1, 2.5, 5];
@@ -12,6 +20,58 @@ export function GlobalControls() {
   const strongRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [strongStatus, setStrongStatus] = useState<string | null>(null);
+
+  // --- cloud backup (the user's own LeaveNow Azure endpoint) ---
+  const [cloud, setCloud] = useState(getCloudConfig());
+  const [cloudUrl, setCloudUrl] = useState(cloud?.url ?? DEFAULT_CLOUD_URL);
+  const [cloudSecret, setCloudSecret] = useState(cloud?.secret ?? '');
+  const [cloudStatus, setCloudStatus] = useState<string | null>(null);
+  const [cloudBusy, setCloudBusy] = useState(false);
+
+  function saveCloud() {
+    const url = cloudUrl.trim();
+    const secret = cloudSecret.trim();
+    if (!url || !secret) {
+      setCloudStatus('Enter both the server URL and the secret.');
+      return;
+    }
+    setCloudConfig({ url, secret });
+    setCloud({ url, secret });
+    setCloudStatus('Saved. Try “Back up now”.');
+  }
+
+  function disconnectCloud() {
+    if (!confirm('Disconnect cloud backup? Your data stays; this only forgets the server and secret on this device.')) return;
+    clearCloudConfig();
+    setCloud(null);
+    setCloudSecret('');
+    setCloudStatus(null);
+  }
+
+  async function doCloudBackup() {
+    setCloudBusy(true);
+    setCloudStatus(null);
+    try {
+      const bytes = await cloudBackup(state.sessions.length);
+      setCloudStatus(`Backed up to the cloud (${(bytes / 1024).toFixed(1)} KB).`);
+    } catch (err) {
+      setCloudStatus(err instanceof Error ? err.message : 'Backup failed.');
+    } finally {
+      setCloudBusy(false);
+    }
+  }
+
+  async function doCloudRestore() {
+    if (!confirm('Restore from the cloud? This replaces all data currently in the app on this device.')) return;
+    setCloudBusy(true);
+    setCloudStatus(null);
+    try {
+      await cloudRestore(); // reloads on success
+    } catch (err) {
+      setCloudStatus(err instanceof Error ? err.message : 'Restore failed.');
+      setCloudBusy(false);
+    }
+  }
 
   async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -121,12 +181,82 @@ export function GlobalControls() {
         Used for bodyweight lifts. A more recent weigh-in on the Weight page takes over.
       </p>
 
-      {/* backup — the only copy of your data lives in this browser */}
+      {/* cloud backup — the user's own LeaveNow Azure endpoint */}
       <div className="mt-4 border-t border-line pt-4">
-        <span className="block font-display text-[13px] font-bold tracking-[-0.01em]">Backup &amp; restore</span>
+        <span className="block font-display text-[13px] font-bold tracking-[-0.01em]">Cloud backup</span>
         <p className="m-0 mt-0.5 text-[11px] leading-relaxed text-muted-2">
-          Your data lives only in this browser. Export a file now and again so a
-          cleared browser can&apos;t wipe it out.
+          Back up to your own server so a lost, reset, or reinstalled phone can be
+          restored in a tap.
+        </p>
+
+        {cloud ? (
+          <div className="mt-2.5">
+            <p className="m-0 mb-2 truncate font-mono text-[11px] text-muted-2" title={cloud.url}>
+              Connected · {cloud.url.replace(/^https?:\/\//, '')}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={cloudBusy}
+                onClick={doCloudBackup}
+                className="flex-1 rounded-xl bg-secondary/15 py-2.5 font-display text-[13px] font-bold text-secondary transition-colors hover:bg-secondary/25 disabled:opacity-50"
+              >
+                {cloudBusy ? 'Working…' : 'Back up now'}
+              </button>
+              <button
+                type="button"
+                disabled={cloudBusy}
+                onClick={doCloudRestore}
+                className="flex-1 rounded-xl border border-line-2 bg-surface-2 py-2.5 font-display text-[13px] font-bold text-ink transition-colors hover:border-secondary/50 disabled:opacity-50"
+              >
+                Restore from cloud
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={disconnectCloud}
+              className="mt-2 text-[11px] font-medium text-muted-2 underline-offset-4 hover:text-accent hover:underline"
+            >
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <div className="mt-2.5 space-y-2">
+            <input
+              type="url"
+              inputMode="url"
+              value={cloudUrl}
+              onChange={(e) => setCloudUrl(e.target.value)}
+              placeholder="Backup endpoint URL"
+              aria-label="Cloud backup endpoint URL"
+              className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3 font-mono text-[12px] text-ink placeholder:text-muted-2 focus:border-secondary focus:outline-none"
+            />
+            <input
+              type="password"
+              value={cloudSecret}
+              onChange={(e) => setCloudSecret(e.target.value)}
+              placeholder="Backup secret"
+              aria-label="Cloud backup secret"
+              autoComplete="off"
+              className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3 font-mono text-[13px] text-ink placeholder:text-muted-2 focus:border-secondary focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={saveCloud}
+              className="w-full rounded-xl bg-secondary/15 py-2.5 font-display text-[13px] font-bold text-secondary transition-colors hover:bg-secondary/25"
+            >
+              Connect
+            </button>
+          </div>
+        )}
+        {cloudStatus && <p className="m-0 mt-2 text-[11px] font-medium text-muted">{cloudStatus}</p>}
+      </div>
+
+      {/* local file backup — offline fallback / manual copy */}
+      <div className="mt-4 border-t border-line pt-4">
+        <span className="block font-display text-[13px] font-bold tracking-[-0.01em]">Local file backup</span>
+        <p className="m-0 mt-0.5 text-[11px] leading-relaxed text-muted-2">
+          Prefer a file? Export a JSON copy you keep yourself, or import one to restore.
         </p>
         <div className="mt-2.5 flex gap-2">
           <button

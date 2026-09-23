@@ -2,19 +2,36 @@ import { useRef, useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import { useStorageHealth } from '../state/storageHealth';
 import { exportBackup, importBackup, recordBackup, shouldNudgeBackup } from '../domain/backup';
+import { isCloudConfigured, cloudBackup } from '../domain/cloudBackup';
 
 /**
  * A top-of-app safety banner. Priority order:
  *  1. loadFailed  — saved data couldn't be read; saving is paused. Not dismissible.
  *  2. quotaFailed — storage is full; changes aren't saving. Not dismissible.
- *  3. backup nudge — several workouts since the last export. Dismissible.
+ *  3. backup nudge — several workouts since the last backup. Dismissible.
+ *     Prefers a one-tap cloud backup when it's set up; otherwise nudges setup.
  */
-export function DataBanner() {
+export function DataBanner({ onOpenSettings }: { onOpenSettings?: () => void }) {
   const { state } = useStore();
   const health = useStorageHealth();
   const [dismissed, setDismissed] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cloudReady = isCloudConfigured();
+
+  async function doCloudBackup() {
+    setBusy(true);
+    setErr(null);
+    try {
+      await cloudBackup(state.sessions.length);
+      setDismissed(true);
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : 'Backup failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -57,14 +74,25 @@ export function DataBanner() {
     actions = <BtnPrimary onClick={doExport}>Export backup</BtnPrimary>;
   } else if (!dismissed && shouldNudgeBackup(state.sessions.length)) {
     tone = 'border-secondary/40 bg-secondary/10';
-    title = 'Time to back up';
-    body = 'You’ve logged new workouts since your last backup. Export keeps them safe from a cleared browser.';
-    actions = (
-      <>
-        <BtnPrimary onClick={doExport}>Export backup</BtnPrimary>
-        <BtnGhost onClick={() => setDismissed(true)}>Later</BtnGhost>
-      </>
-    );
+    if (cloudReady) {
+      title = 'Time to back up';
+      body = 'You’ve logged new workouts since your last backup. Send a copy to your server so a lost or reset phone can be restored.';
+      actions = (
+        <>
+          <BtnPrimary onClick={doCloudBackup}>{busy ? 'Backing up…' : 'Back up to cloud'}</BtnPrimary>
+          <BtnGhost onClick={() => setDismissed(true)}>Later</BtnGhost>
+        </>
+      );
+    } else {
+      title = 'Set up cloud backup';
+      body = 'Your data lives only on this device. Connect your server so a lost, reset, or reinstalled phone can be restored.';
+      actions = (
+        <>
+          {onOpenSettings && <BtnPrimary onClick={onOpenSettings}>Set up backup</BtnPrimary>}
+          <BtnGhost onClick={() => setDismissed(true)}>Later</BtnGhost>
+        </>
+      );
+    }
   } else {
     return null;
   }
