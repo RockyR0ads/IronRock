@@ -194,6 +194,22 @@ export function HistoryIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** A clock face — exercise timing / rest. */
+export function ClockIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M12 7.5V12l3 2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** A downward trend — weight-loss tracking. */
 export function TrendDownIcon(props: SVGProps<SVGSVGElement>) {
   return (

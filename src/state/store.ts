@@ -56,6 +56,12 @@ export interface State {
   sessionPicks: Record<string, Record<string, string>>;
   /** Logged working sets per day, aligned to the day's block order. */
   logs: Record<string, LoggedSet[][]>;
+  /**
+   * ISO timestamp of when each exercise was started, per day then block index —
+   * the anchor for time-to-first-set and per-exercise duration. Session-scoped:
+   * cleared when the day is completed, reset, or its structure changes.
+   */
+  exerciseStart: Record<string, Record<number, string>>;
   /** Last completed set per lift id — shown as a "last time" hint. */
   history: Record<string, LiftHistory>;
   /** Archived workouts, newest first. */
@@ -97,6 +103,7 @@ export function initialState(): State {
     sessionDays: {},
     sessionPicks: {},
     logs: {},
+    exerciseStart: {},
     history: {},
     sessions: [],
     bw: '',
@@ -147,7 +154,8 @@ export type Action =
   | { type: 'patchSet'; dayKey: string; index: number; setIndex: number; patch: Partial<LoggedSet> }
   | { type: 'toggleSetPerSide'; dayKey: string; index: number; setIndex: number }
   | { type: 'setFeel'; dayKey: string; index: number; setIndex: number; value: WarmupFeel | '' }
-  | { type: 'toggleSetDone'; dayKey: string; index: number; setIndex: number }
+  | { type: 'toggleSetDone'; dayKey: string; index: number; setIndex: number; at?: string }
+  | { type: 'startExercise'; dayKey: string; index: number; at: string }
   | { type: 'removeSet'; dayKey: string; index: number; setIndex: number }
   | { type: 'clearDaySets'; dayKey: string }
   | { type: 'completeWorkout'; dayKey: string; title: string; at: string; id: string }
@@ -247,6 +255,33 @@ function cloneDayLog(state: State, dayKey: string, minLength = 0): LoggedSet[][]
   return rows;
 }
 
+/** Exercise-start map with a whole day's anchors dropped (structure changed / reset). */
+function clearDayStart(
+  map: Record<string, Record<number, string>>,
+  dayKey: string
+): Record<string, Record<number, string>> {
+  if (!(dayKey in map)) return map;
+  const next = { ...map };
+  delete next[dayKey];
+  return next;
+}
+
+/** Exercise-start map with one slot's anchor dropped (that slot restarted). */
+function clearSlotStart(
+  map: Record<string, Record<number, string>>,
+  dayKey: string,
+  index: number
+): Record<string, Record<number, string>> {
+  const day = map[dayKey];
+  if (!day || day[index] === undefined) return map;
+  const nextDay = { ...day };
+  delete nextDay[index];
+  const next = { ...map };
+  if (Object.keys(nextDay).length) next[dayKey] = nextDay;
+  else delete next[dayKey];
+  return next;
+}
+
 /** A new block with a sensible default scheme for the given (resolved) lift. */
 export function newBlock(lift: Lift): Block {
   const iso = lift.type === 'manual';
@@ -317,6 +352,7 @@ export function reducer(state: State, action: Action): State {
         ...state,
         sessionDays: { ...state.sessionDays, [action.dayKey]: blocks },
         logs: { ...state.logs, [action.dayKey]: log },
+        exerciseStart: clearSlotStart(state.exerciseStart, action.dayKey, action.index),
       };
     }
     case 'removeBlock': {
@@ -326,6 +362,8 @@ export function reducer(state: State, action: Action): State {
         ...state,
         sessionDays: { ...state.sessionDays, [action.dayKey]: blocks },
         logs: { ...state.logs, [action.dayKey]: log },
+        // indices shift — drop the day's start anchors rather than misattribute them
+        exerciseStart: clearDayStart(state.exerciseStart, action.dayKey),
       };
     }
     case 'moveBlock': {
@@ -343,6 +381,7 @@ export function reducer(state: State, action: Action): State {
         ...state,
         sessionDays: { ...state.sessionDays, [action.dayKey]: blocks },
         logs: { ...state.logs, [action.dayKey]: log },
+        exerciseStart: clearDayStart(state.exerciseStart, action.dayKey),
       };
     }
     case 'addBlock': {
@@ -369,10 +408,15 @@ export function reducer(state: State, action: Action): State {
       const sessionPicks = { ...state.sessionPicks };
       if (Object.keys(dayPicks).length) sessionPicks[action.dayKey] = dayPicks;
       else delete sessionPicks[action.dayKey];
-      // a different exercise now occupies the slot — drop its logged sets
+      // a different exercise now occupies the slot — drop its logged sets & start
       const log = cloneDayLog(state, action.dayKey, action.index + 1);
       log[action.index] = [];
-      return { ...state, sessionPicks, logs: { ...state.logs, [action.dayKey]: log } };
+      return {
+        ...state,
+        sessionPicks,
+        logs: { ...state.logs, [action.dayKey]: log },
+        exerciseStart: clearSlotStart(state.exerciseStart, action.dayKey, action.index),
+      };
     }
     case 'addOption': {
       const { blocks, layer } = editBase(state, action.dayKey);
@@ -418,7 +462,14 @@ export function reducer(state: State, action: Action): State {
       delete sessionPicks[action.dayKey];
       const logs = { ...state.logs };
       delete logs[action.dayKey];
-      return { ...state, planDays, sessionDays, sessionPicks, logs };
+      return {
+        ...state,
+        planDays,
+        sessionDays,
+        sessionPicks,
+        logs,
+        exerciseStart: clearDayStart(state.exerciseStart, action.dayKey),
+      };
     }
     case 'revertDay': {
       // undo just today's deviation and option picks (back to the plan), plus logs
@@ -428,7 +479,13 @@ export function reducer(state: State, action: Action): State {
       delete sessionPicks[action.dayKey];
       const logs = { ...state.logs };
       delete logs[action.dayKey];
-      return { ...state, sessionDays, sessionPicks, logs };
+      return {
+        ...state,
+        sessionDays,
+        sessionPicks,
+        logs,
+        exerciseStart: clearDayStart(state.exerciseStart, action.dayKey),
+      };
     }
     case 'saveDayToProgram': {
       // promote today's layout — including any option pick — into the persistent
@@ -480,7 +537,8 @@ export function reducer(state: State, action: Action): State {
       const set = log[action.index][action.setIndex];
       if (!set) return state;
       const nowDone = !set.done;
-      log[action.index][action.setIndex] = { ...set, done: nowDone };
+      // stamp when it was checked off (for rest-period analysis); drop on undo
+      log[action.index][action.setIndex] = { ...set, done: nowDone, at: nowDone ? action.at : undefined };
       let history = state.history;
       if (nowDone && !set.warmup) {
         const liftId = effBlocks(state, action.dayKey)[action.index]?.lift;
@@ -490,6 +548,10 @@ export function reducer(state: State, action: Action): State {
       }
       return { ...state, logs: { ...state.logs, [action.dayKey]: log }, history };
     }
+    case 'startExercise': {
+      const day = { ...(state.exerciseStart[action.dayKey] ?? {}), [action.index]: action.at };
+      return { ...state, exerciseStart: { ...state.exerciseStart, [action.dayKey]: day } };
+    }
     case 'removeSet': {
       const log = cloneDayLog(state, action.dayKey, action.index + 1);
       log[action.index] = log[action.index].filter((_, i) => i !== action.setIndex);
@@ -498,7 +560,7 @@ export function reducer(state: State, action: Action): State {
     case 'clearDaySets': {
       const logs = { ...state.logs };
       delete logs[action.dayKey];
-      return { ...state, logs };
+      return { ...state, logs, exerciseStart: clearDayStart(state.exerciseStart, action.dayKey) };
     }
     case 'completeWorkout': {
       // Archive what was actually performed: checked-off sets only, with the
@@ -534,7 +596,14 @@ export function reducer(state: State, action: Action): State {
       const sessionPicks = { ...state.sessionPicks };
       delete sessionPicks[action.dayKey];
 
-      return { ...state, sessions: [session, ...state.sessions], logs, sessionDays, sessionPicks };
+      return {
+        ...state,
+        sessions: [session, ...state.sessions],
+        logs,
+        sessionDays,
+        sessionPicks,
+        exerciseStart: clearDayStart(state.exerciseStart, action.dayKey),
+      };
     }
     case 'removeSession':
       return { ...state, sessions: state.sessions.filter((s) => s.id !== action.id) };
@@ -583,11 +652,13 @@ export function reducer(state: State, action: Action): State {
       // the freestyle workout in progress.
       const freestyleLog = state.logs[FREESTYLE_KEY];
       const freestyleSession = state.sessionDays[FREESTYLE_KEY];
+      const freestyleStart = state.exerciseStart[FREESTYLE_KEY];
       return {
         ...state,
         logs: freestyleLog ? { [FREESTYLE_KEY]: freestyleLog } : {},
         sessionDays: freestyleSession ? { [FREESTYLE_KEY]: freestyleSession } : {},
         sessionPicks: {},
+        exerciseStart: freestyleStart ? { [FREESTYLE_KEY]: freestyleStart } : {},
       };
     }
     case 'clearAll':
@@ -625,6 +696,7 @@ export function loadState(): State {
       planDays: parsed.planDays ?? legacyCustomDays ?? {},
       sessionDays: parsed.sessionDays ?? {},
       sessionPicks: parsed.sessionPicks ?? {},
+      exerciseStart: parsed.exerciseStart ?? {},
       logs: parsed.logs ?? {},
       history: parsed.history ?? {},
       sessions: parsed.sessions ?? [],

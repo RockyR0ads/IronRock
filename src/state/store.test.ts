@@ -139,6 +139,29 @@ describe('reducer', () => {
     expect(b.pool).toBeUndefined(); // a single-exercise slot now
   });
 
+  it('stamps a set with a completion time, and clears it on undo', () => {
+    let s = reducer(initialState(), { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0, at: AT });
+    expect(setsFor(s, 'pushA', 0)[0].at).toBe(AT);
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0, at: AT });
+    expect(setsFor(s, 'pushA', 0)[0].at).toBeUndefined();
+  });
+
+  it('records an exercise start and clears it when the workout completes', () => {
+    let s = reducer(initialState(), { type: 'startExercise', dayKey: 'pushA', index: 0, at: AT });
+    expect(s.exerciseStart.pushA[0]).toBe(AT);
+    s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
+    s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0, at: AT });
+    s = reducer(s, { type: 'completeWorkout', dayKey: 'pushA', title: 'Push', at: AT, id: 'x' });
+    expect(s.exerciseStart.pushA).toBeUndefined();
+  });
+
+  it('drops the day start anchors when a block is removed (indices shift)', () => {
+    let s = reducer(initialState(), { type: 'startExercise', dayKey: 'pushA', index: 1, at: AT });
+    s = reducer(s, { type: 'removeBlock', dayKey: 'pushA', index: 0 });
+    expect(s.exerciseStart.pushA).toBeUndefined();
+  });
+
   it('clearAll keeps inc and day but wipes entries', () => {
     let s = withRef(initialState());
     s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });

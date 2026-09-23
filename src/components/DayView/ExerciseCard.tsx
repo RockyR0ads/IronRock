@@ -13,7 +13,7 @@ import type { Action } from '../../state/store';
 import { blockLoad, doneSetCount, workingSetCount, isBlockComplete } from '../../state/selectors';
 import { repLabel, feelLabel, rpeNum, rpeHue, isPerLeg } from '../../domain/format';
 import { feelOption } from '../../domain/feel';
-import { SwapIcon, TrashIcon, PlusIcon, CheckIcon, ChevronRight, NoteIcon } from '../common/icons';
+import { SwapIcon, TrashIcon, PlusIcon, CheckIcon, ChevronRight, NoteIcon, ClockIcon } from '../common/icons';
 import { PlateBar } from '../common/PlateBar';
 import { heatColor } from '../common/warmupHeat';
 import { barWeight as emptyBarWeight, autoRestOn, warmupSets } from '../../domain/exerciseConfig';
@@ -177,7 +177,6 @@ function SwipeRow({
         }}
         className={[
           'grid items-center gap-2 rounded-[10px] px-1 py-0.5',
-          'focus-within:shadow-[inset_0_0_0_1.5px_rgb(var(--secondary))]',
           gridCols,
           popped ? 'animate-set-pop' : '',
         ].join(' ')}
@@ -186,6 +185,16 @@ function SwipeRow({
       </div>
     </div>
   );
+}
+
+/** Seconds → "m:ss" (or "h:mm:ss" past an hour), for the live rest/elapsed clock. */
+function clock(totalSecs: number): string {
+  const s = Math.max(0, Math.floor(totalSecs));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${m}:${pad(ss)}`;
 }
 
 /**
@@ -653,7 +662,7 @@ export function ExerciseCard({
 
   function toggleDone(setIndex: number) {
     const wasDone = sets[setIndex]?.done;
-    dispatch({ type: 'toggleSetDone', dayKey, index, setIndex });
+    dispatch({ type: 'toggleSetDone', dayKey, index, setIndex, at: new Date().toISOString() });
     if (!wasDone && autoRestOn(cfg)) {
       rest.start(cfg?.restSeconds, cardId); // per-exercise rest, or the default
 
@@ -667,6 +676,25 @@ export function ExerciseCard({
     const t = setTimeout(() => setPopped(null), 380);
     return () => clearTimeout(t);
   }, [popped]);
+
+  // --- live rest / elapsed clock -------------------------------------------
+  // anchor the clock to the most recent set completion, else the exercise start
+  const startedAt = state.exerciseStart[dayKey]?.[index];
+  const lastDoneAt = sets.reduce<string | undefined>(
+    (mx, s) => (s.done && s.at && (!mx || s.at > mx) ? s.at : mx),
+    undefined
+  );
+  const anchor = lastDoneAt ?? startedAt;
+  const clockRunning = !!anchor && !complete;
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!clockRunning) return;
+    setNowTs(Date.now());
+    const id = window.setInterval(() => setNowTs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [clockRunning, anchor]);
+  const elapsedSecs = clockRunning && anchor ? (nowTs - Date.parse(anchor)) / 1000 : 0;
+  const resting = clockRunning && !!lastDoneAt; // rest between sets vs pre-first-set warm-up
 
   // the card cheers on the transition into complete — not on every render while
   // it happens to be complete
@@ -968,6 +996,29 @@ export function ExerciseCard({
           })()}
         </div>
       )}
+
+      {!complete &&
+        (anchor ? (
+          <div
+            className="relative z-10 mt-3 flex items-center justify-center gap-1.5 font-mono text-[12px]"
+            data-nodrag
+          >
+            <span className={resting ? 'text-secondary' : 'text-muted-2'}>
+              {resting ? 'Rested' : 'Elapsed'}
+            </span>
+            <span className="font-bold tabular-nums text-ink">{clock(elapsedSecs)}</span>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() =>
+              dispatch({ type: 'startExercise', dayKey, index, at: new Date().toISOString() })
+            }
+            className="relative z-10 mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-line-2 py-2 font-display text-[13px] font-bold text-muted transition-colors hover:border-secondary/50 hover:text-secondary"
+          >
+            <ClockIcon className="h-4 w-4" /> Start exercise
+          </button>
+        ))}
 
       <div className="relative z-10 mt-3 flex items-center gap-2 border-t border-line pt-3">
         <button

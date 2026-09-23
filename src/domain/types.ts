@@ -124,6 +124,12 @@ export interface LoggedSet {
   /** Explicitly checked off as completed. Drives card completion. */
   done?: boolean;
   /**
+   * ISO timestamp of when the set was checked off. Captured for rest-period
+   * analysis: the gap to the previous set's `at` is the rest taken. Cleared if
+   * the set is un-checked.
+   */
+  at?: string;
+  /**
    * A warm-up / ramp-up set: shown for context but excluded from everything
    * that represents the program — completion, the set count, volume, stats
    * and the numbers on the archived session.
