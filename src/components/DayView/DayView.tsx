@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
+import { useRestTimer } from '../../state/RestTimer';
 import { effBlocks, setsFor } from '../../state/store';
 import { dayStats, isBlockComplete } from '../../state/selectors';
 import { defaultDay } from '../../domain/program';
@@ -25,6 +26,7 @@ export function DayView({
   onOpenExercise?: (liftId: string) => void;
 }) {
   const { state, dispatch } = useStore();
+  const rest = useRestTimer();
   const [summary, setSummary] = useState<WorkoutStats | null>(null);
   const day = defaultDay(state.day);
   const blocks = effBlocks(state, state.day);
@@ -309,6 +311,7 @@ export function DayView({
           onClick={() => {
             // snapshot the stats before archiving — completing clears the day
             setSummary(dayStats(state, state.day));
+            rest.skip(); // finishing the workout stops any running rest countdown
             dispatch({
               type: 'completeWorkout',
               dayKey: state.day,
@@ -332,8 +335,10 @@ export function DayView({
         <button
           type="button"
           onClick={() => {
-            if (confirm('Cancel this workout? Your logged sets for today will be discarded.'))
+            if (confirm('Cancel this workout? Your logged sets for today will be discarded.')) {
+              rest.skip(); // cancelling also stops any running rest countdown
               dispatch({ type: 'clearDaySets', dayKey: state.day });
+            }
           }}
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl py-3 font-display text-[13px] font-bold text-muted-2 transition-colors hover:text-red"
         >

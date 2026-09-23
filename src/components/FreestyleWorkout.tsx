@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../state/StoreContext';
+import { useRestTimer } from '../state/RestTimer';
 import { effBlocks, FREESTYLE_KEY } from '../state/store';
 import { dayStats } from '../state/selectors';
 import { newSessionId } from '../domain/session';
@@ -25,6 +26,7 @@ export function FreestyleWorkout({
   onOpenExercise?: (liftId: string) => void;
 }) {
   const { state, dispatch } = useStore();
+  const rest = useRestTimer();
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [summary, setSummary] = useState<WorkoutStats | null>(null);
   const blocks = effBlocks(state, FREESTYLE_KEY);
@@ -130,6 +132,7 @@ export function FreestyleWorkout({
           onClick={() => {
             // snapshot the stats before archiving — completing clears the slate
             setSummary(dayStats(state, FREESTYLE_KEY));
+            rest.skip(); // finishing the workout stops any running rest countdown
             dispatch({
               type: 'completeWorkout',
               dayKey: FREESTYLE_KEY,
