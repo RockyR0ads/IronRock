@@ -7,6 +7,8 @@ import type { ExerciseConfig } from '../domain/exerciseConfig';
 import type { WeighIn, WeightGoal } from '../domain/weightTracker';
 import type { Profile } from '../domain/calories';
 import { DEFAULT_THEME, type ThemeChoice } from '../domain/theme';
+import type { StretchSessionType } from '../domain/stretchProgram';
+import type { StretchSession, FlexBenchmark, FlexMetric } from '../domain/stretchSession';
 import { getStorageHealth, markLoadFailed, markQuotaFailed } from './storageHealth';
 import type {
   Block,
@@ -86,6 +88,33 @@ export interface State {
   profile: Profile;
   /** Chosen brand colours (primary + secondary). */
   theme: ThemeChoice;
+  /** The Stretching programmer — its own program, in-progress session, and history. */
+  stretch: StretchState;
+}
+
+/** State slice for the Stretching programmer (independent of the lifting program). */
+export interface StretchState {
+  /** ISO date the stretching program began, for week-based hold progression. */
+  programStart?: string;
+  /** The session currently in progress (the guided player's cursor), if any. */
+  active?: {
+    type: StretchSessionType;
+    startedAt: string;
+    /** Program week the steps were built for, so the flow is stable across reloads. */
+    week: number;
+    /** Current step index into the built step list. */
+    step: number;
+    /** Total steps in this session. */
+    total: number;
+  };
+  /** Completed stretching sessions, newest first. */
+  sessions: StretchSession[];
+  /** Flexibility self-test measurements over time. */
+  benchmarks: FlexBenchmark[];
+}
+
+export function initialStretchState(): StretchState {
+  return { sessions: [], benchmarks: [] };
 }
 
 export const STORAGE_KEY = 'ironrock-loadsheet-v1';
@@ -114,6 +143,7 @@ export function initialState(): State {
     weightGoal: {},
     profile: {},
     theme: DEFAULT_THEME,
+    stretch: initialStretchState(),
   };
 }
 
@@ -171,6 +201,12 @@ export type Action =
   | { type: 'startProgram'; at: string }
   | { type: 'resetProgram' }
   | { type: 'resetWeek' }
+  | { type: 'startStretch'; sessionType: StretchSessionType; at: string; week: number; total: number }
+  | { type: 'setStretchStep'; step: number }
+  | { type: 'cancelStretch' }
+  | { type: 'completeStretch'; session: StretchSession }
+  | { type: 'logFlex'; at: string; metric: FlexMetric; value: number }
+  | { type: 'removeFlex'; at: string; metric: FlexMetric }
   | { type: 'clearAll' };
 
 /** The full ordered option pool for a slot: the anchor lift, then its alternatives. */
@@ -661,6 +697,54 @@ export function reducer(state: State, action: Action): State {
         exerciseStart: freestyleStart ? { [FREESTYLE_KEY]: freestyleStart } : {},
       };
     }
+    case 'startStretch': {
+      const s = state.stretch;
+      return {
+        ...state,
+        stretch: {
+          ...s,
+          programStart: s.programStart ?? action.at, // week counting begins at the first session
+          active: { type: action.sessionType, startedAt: action.at, week: action.week, step: 0, total: action.total },
+        },
+      };
+    }
+    case 'setStretchStep': {
+      const a = state.stretch.active;
+      if (!a) return state;
+      const step = Math.max(0, Math.min(action.step, a.total));
+      return { ...state, stretch: { ...state.stretch, active: { ...a, step } } };
+    }
+    case 'cancelStretch':
+      return { ...state, stretch: { ...state.stretch, active: undefined } };
+    case 'completeStretch':
+      return {
+        ...state,
+        stretch: {
+          ...state.stretch,
+          active: undefined,
+          sessions: [action.session, ...state.stretch.sessions],
+        },
+      };
+    case 'logFlex': {
+      // one entry per day per metric — replace any existing same-day measurement
+      const rest = state.stretch.benchmarks.filter(
+        (b) => !(b.at === action.at && b.metric === action.metric)
+      );
+      const benchmarks = [...rest, { at: action.at, metric: action.metric, value: action.value }].sort(
+        (a, b) => a.at.localeCompare(b.at)
+      );
+      return { ...state, stretch: { ...state.stretch, benchmarks } };
+    }
+    case 'removeFlex':
+      return {
+        ...state,
+        stretch: {
+          ...state.stretch,
+          benchmarks: state.stretch.benchmarks.filter(
+            (b) => !(b.at === action.at && b.metric === action.metric)
+          ),
+        },
+      };
     case 'clearAll':
       return { ...initialState(), inc: state.inc, day: state.day };
     default:
@@ -693,6 +777,7 @@ export function loadState(): State {
       weightGoal: parsed.weightGoal ?? {},
       profile: parsed.profile ?? {},
       theme: { ...DEFAULT_THEME, ...(parsed.theme ?? {}) },
+      stretch: { ...initialStretchState(), ...(parsed.stretch ?? {}) },
       planDays: parsed.planDays ?? legacyCustomDays ?? {},
       sessionDays: parsed.sessionDays ?? {},
       sessionPicks: parsed.sessionPicks ?? {},

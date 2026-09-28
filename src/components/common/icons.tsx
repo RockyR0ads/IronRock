@@ -194,6 +194,22 @@ export function HistoryIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** A figure mid-stretch — the Stretching section. */
+export function StretchIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+      <circle cx="13" cy="4.5" r="1.8" fill="currentColor" />
+      <path
+        d="M13 6.8l-2.2 4.2 4.2 1.4M10.8 11L7 13.5M14.9 12.4L17.5 17M10.8 11l-2 6.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** A clock face — exercise timing / rest. */
 export function ClockIcon(props: SVGProps<SVGSVGElement>) {
   return (

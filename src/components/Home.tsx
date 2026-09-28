@@ -16,6 +16,7 @@ import {
   BookIcon,
   BendingBarbell,
   GearIcon,
+  StretchIcon,
 } from './common/icons';
 import { PlateMark } from './common/BrandLogo';
 
@@ -29,6 +30,7 @@ export type HomeDest =
   | 'reference'
   | 'exercises'
   | 'weight'
+  | 'stretch'
   | 'settings';
 
 /**
@@ -157,6 +159,18 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
           title="Weight"
           sub="Track weigh-ins toward a goal"
           onClick={() => onGo('weight')}
+        />
+        <Tile
+          icon={<StretchIcon className="h-5 w-5" />}
+          title="Stretching"
+          sub={
+            state.stretch.active
+              ? 'Session in progress — resume'
+              : state.stretch.sessions.length
+                ? `${state.stretch.sessions.length} done · loosen hips & hamstrings`
+                : 'Loosen tight hips & hamstrings'
+          }
+          onClick={() => onGo('stretch')}
         />
       </div>
 
