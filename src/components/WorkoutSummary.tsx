@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { volumeParts, type WorkoutStats } from '../domain/stats';
+import { fmtDuration, type WorkoutTiming } from '../domain/workoutTiming';
 import { CheckIcon } from './common/icons';
 
 function Tile({ value, unit, label }: { value: string; unit?: string; label: string }) {
@@ -24,11 +25,14 @@ function Tile({ value, unit, label }: { value: string; unit?: string; label: str
 export function WorkoutSummary({
   title,
   stats,
+  timing,
   archived = false,
   onClose,
 }: {
   title: string;
   stats: WorkoutStats;
+  /** Whole-session timing derived from set check-off times. */
+  timing?: WorkoutTiming | null;
   /** The session was saved to history — say so, since the day just got cleared. */
   archived?: boolean;
   onClose: () => void;
@@ -91,6 +95,16 @@ export function WorkoutSummary({
                 </div>
               </div>
             </div>
+
+            {timing && timing.durationSec > 0 && (
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Tile value={fmtDuration(timing.durationSec)} label="Duration" />
+                <Tile
+                  value={timing.avgIntervalSec !== null ? fmtDuration(timing.avgIntervalSec) : '–'}
+                  label="Avg / set"
+                />
+              </div>
+            )}
 
             <div className="mt-4 space-y-2">
               {stats.exercises.map((ex) => (

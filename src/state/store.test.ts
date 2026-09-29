@@ -96,12 +96,12 @@ describe('reducer', () => {
     // picking the anchor again clears the pick
     s = reducer(s, { type: 'pickOption', dayKey: 'pushA', index: 0, liftId: 'bench' });
     expect(effBlocks(s, 'pushA')[0].lift).toBe('bench');
-    expect(s.sessionPicks.pushA).toBeUndefined();
+    expect(s.optionPicks.pushA).toBeUndefined();
   });
 
   it('rejects an option that is not one of the slot options', () => {
     const s = reducer(initialState(), { type: 'pickOption', dayKey: 'pushA', index: 0, liftId: 'squat' });
-    expect(s.sessionPicks.pushA).toBeUndefined();
+    expect(s.optionPicks.pushA).toBeUndefined();
     expect(effBlocks(s, 'pushA')[0].lift).toBe('bench');
   });
 
@@ -111,12 +111,16 @@ describe('reducer', () => {
     expect(setsFor(s, 'pushA', 0)).toEqual([]);
   });
 
-  it('completing a workout resets the option pick to the slot default', () => {
+  it('an option pick persists across completing a workout and resetting the week', () => {
     let s = reducer(initialState(), { type: 'pickOption', dayKey: 'pushA', index: 0, liftId: 'dbbench' });
     s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('40', '8', '8') });
     s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0 });
     s = reducer(s, { type: 'completeWorkout', dayKey: 'pushA', title: 'Push', at: AT, id: 'x' });
-    expect(s.sessionPicks.pushA).toBeUndefined();
+    expect(effBlocks(s, 'pushA')[0].lift).toBe('dbbench'); // still my standing choice
+    s = reducer(s, { type: 'resetWeek' });
+    expect(effBlocks(s, 'pushA')[0].lift).toBe('dbbench');
+    // restoring the day to default is what clears the pick
+    s = reducer(s, { type: 'restoreDay', dayKey: 'pushA' });
     expect(effBlocks(s, 'pushA')[0].lift).toBe('bench');
   });
 

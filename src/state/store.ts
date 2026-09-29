@@ -2,6 +2,7 @@ import { DAYS, defaultDay } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
 import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
 import { meaningfulSet } from '../domain/session';
+import { workoutStartedAt } from '../domain/workoutTiming';
 import { DEFAULT_PROGRAM } from '../domain/programs';
 import type { ExerciseConfig } from '../domain/exerciseConfig';
 import type { WeighIn, WeightGoal } from '../domain/weightTracker';
@@ -50,12 +51,13 @@ export interface State {
    */
   sessionDays: Record<string, Block[]>;
   /**
-   * This-session-only choice of which option a multi-exercise slot is running,
-   * keyed by day then by the slot's anchor lift id → the picked lift id. A free,
-   * expected choice among the slot's own options (not a deviation), cleared when
-   * the workout is completed so next time starts from the slot's default again.
+   * Persistent choice of which option a multi-exercise slot runs, keyed by day
+   * then by the slot's anchor lift id → the picked lift id. Set on the program
+   * screen; it's your standing default for that slot (not a session deviation)
+   * and survives completing workouts and resetting the week. Cleared only by
+   * restoring the day to default or saving the day into the plan.
    */
-  sessionPicks: Record<string, Record<string, string>>;
+  optionPicks: Record<string, Record<string, string>>;
   /** Logged working sets per day, aligned to the day's block order. */
   logs: Record<string, LoggedSet[][]>;
   /**
@@ -130,7 +132,7 @@ export function initialState(): State {
     exerciseConfig: {},
     planDays: {},
     sessionDays: {},
-    sessionPicks: {},
+    optionPicks: {},
     logs: {},
     exerciseStart: {},
     history: {},
@@ -217,7 +219,7 @@ export function blockOptions(block: Block): string[] {
 /**
  * The un-picked base layer for a day: today's session copy wins, then the user's
  * saved plan edits, then the program default. This keeps each block's *anchor*
- * lift in `lift` (option picks are held separately, in `sessionPicks`).
+ * lift in `lift` (option picks are held separately, in `optionPicks`).
  */
 function pickBase(state: State, dayKey: string): Block[] {
   return state.sessionDays[dayKey] ?? state.planDays[dayKey] ?? defaultDay(dayKey)?.blocks ?? [];
@@ -230,7 +232,7 @@ function pickBase(state: State, dayKey: string): Block[] {
  */
 export function effBlocks(state: State, dayKey: string): Block[] {
   const base = pickBase(state, dayKey);
-  const picks = state.sessionPicks[dayKey];
+  const picks = state.optionPicks[dayKey];
   return base.map((b) => {
     const pool = blockOptions(b);
     if (pool.length < 2) return b; // single-exercise slot — nothing to pick or stamp
@@ -431,25 +433,25 @@ export function reducer(state: State, action: Action): State {
       };
     }
     case 'pickOption': {
-      // Choose which of a slot's options is running today — a free choice among
-      // the program's own alternatives (not a deviation), held in sessionPicks.
+      // Set which of a slot's options is your standing choice — a persistent
+      // program-level pick among its own alternatives (not a session deviation).
       const base = pickBase(state, action.dayKey);
       const slot = base[action.index];
       if (!slot) return state;
       const key = slot.lift; // the slot's anchor lift — the stable pick key
       if (!blockOptions(slot).includes(action.liftId)) return state;
-      const dayPicks = { ...(state.sessionPicks[action.dayKey] ?? {}) };
+      const dayPicks = { ...(state.optionPicks[action.dayKey] ?? {}) };
       if (action.liftId === key) delete dayPicks[key];
       else dayPicks[key] = action.liftId;
-      const sessionPicks = { ...state.sessionPicks };
-      if (Object.keys(dayPicks).length) sessionPicks[action.dayKey] = dayPicks;
-      else delete sessionPicks[action.dayKey];
+      const optionPicks = { ...state.optionPicks };
+      if (Object.keys(dayPicks).length) optionPicks[action.dayKey] = dayPicks;
+      else delete optionPicks[action.dayKey];
       // a different exercise now occupies the slot — drop its logged sets & start
       const log = cloneDayLog(state, action.dayKey, action.index + 1);
       log[action.index] = [];
       return {
         ...state,
-        sessionPicks,
+        optionPicks,
         logs: { ...state.logs, [action.dayKey]: log },
         exerciseStart: clearSlotStart(state.exerciseStart, action.dayKey, action.index),
       };
@@ -494,31 +496,29 @@ export function reducer(state: State, action: Action): State {
       delete planDays[action.dayKey];
       const sessionDays = { ...state.sessionDays };
       delete sessionDays[action.dayKey];
-      const sessionPicks = { ...state.sessionPicks };
-      delete sessionPicks[action.dayKey];
+      const optionPicks = { ...state.optionPicks };
+      delete optionPicks[action.dayKey];
       const logs = { ...state.logs };
       delete logs[action.dayKey];
       return {
         ...state,
         planDays,
         sessionDays,
-        sessionPicks,
+        optionPicks,
         logs,
         exerciseStart: clearDayStart(state.exerciseStart, action.dayKey),
       };
     }
     case 'revertDay': {
-      // undo just today's deviation and option picks (back to the plan), plus logs
+      // undo just today's deviation (back to the plan) and its logs — option
+      // picks are persistent program choices, so they're left in place
       const sessionDays = { ...state.sessionDays };
       delete sessionDays[action.dayKey];
-      const sessionPicks = { ...state.sessionPicks };
-      delete sessionPicks[action.dayKey];
       const logs = { ...state.logs };
       delete logs[action.dayKey];
       return {
         ...state,
         sessionDays,
-        sessionPicks,
         logs,
         exerciseStart: clearDayStart(state.exerciseStart, action.dayKey),
       };
@@ -531,9 +531,9 @@ export function reducer(state: State, action: Action): State {
       const planDays = { ...state.planDays, [action.dayKey]: eff };
       const sessionDays = { ...state.sessionDays };
       delete sessionDays[action.dayKey];
-      const sessionPicks = { ...state.sessionPicks };
-      delete sessionPicks[action.dayKey];
-      return { ...state, planDays, sessionDays, sessionPicks };
+      const optionPicks = { ...state.optionPicks };
+      delete optionPicks[action.dayKey];
+      return { ...state, planDays, sessionDays, optionPicks };
     }
     case 'addSet': {
       const log = cloneDayLog(state, action.dayKey, action.index + 1);
@@ -619,6 +619,7 @@ export function reducer(state: State, action: Action): State {
       const session: Session = {
         id: action.id,
         at: action.at,
+        startedAt: workoutStartedAt(exercises.map((ex) => ex.sets)),
         dayKey: action.dayKey,
         title: action.title,
         exercises,
@@ -626,18 +627,15 @@ export function reducer(state: State, action: Action): State {
       const logs = { ...state.logs };
       delete logs[action.dayKey];
       // today's deviations were one-off — next time this day starts from the
-      // plan again (saved plan edits persist; a freestyle workout is always one-off)
+      // plan again (saved plan edits and option picks persist; freestyle is one-off)
       const sessionDays = { ...state.sessionDays };
       delete sessionDays[action.dayKey];
-      const sessionPicks = { ...state.sessionPicks };
-      delete sessionPicks[action.dayKey];
 
       return {
         ...state,
         sessions: [session, ...state.sessions],
         logs,
         sessionDays,
-        sessionPicks,
         exerciseStart: clearDayStart(state.exerciseStart, action.dayKey),
       };
     }
@@ -693,7 +691,7 @@ export function reducer(state: State, action: Action): State {
         ...state,
         logs: freestyleLog ? { [FREESTYLE_KEY]: freestyleLog } : {},
         sessionDays: freestyleSession ? { [FREESTYLE_KEY]: freestyleSession } : {},
-        sessionPicks: {},
+        // option picks are persistent program choices — kept across a week reset
         exerciseStart: freestyleStart ? { [FREESTYLE_KEY]: freestyleStart } : {},
       };
     }
@@ -780,7 +778,7 @@ export function loadState(): State {
       stretch: { ...initialStretchState(), ...(parsed.stretch ?? {}) },
       planDays: parsed.planDays ?? legacyCustomDays ?? {},
       sessionDays: parsed.sessionDays ?? {},
-      sessionPicks: parsed.sessionPicks ?? {},
+      optionPicks: parsed.optionPicks ?? (parsed as { sessionPicks?: State['optionPicks'] }).sessionPicks ?? {},
       exerciseStart: parsed.exerciseStart ?? {},
       logs: parsed.logs ?? {},
       history: parsed.history ?? {},

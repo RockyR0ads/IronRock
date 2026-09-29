@@ -176,6 +176,8 @@ export interface Session {
   id: string;
   /** ISO timestamp of when it was completed. */
   at: string;
+  /** ISO timestamp of the first set checked off — the workout's start, for duration. */
+  startedAt?: string;
   /** Day it came from: a program day key, or the freestyle key. */
   dayKey: string;
   /** Display name at archive time, e.g. "Push" or "Freestyle". */

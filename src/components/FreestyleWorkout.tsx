@@ -5,6 +5,7 @@ import { effBlocks, FREESTYLE_KEY } from '../state/store';
 import { dayStats } from '../state/selectors';
 import { newSessionId } from '../domain/session';
 import type { WorkoutStats } from '../domain/stats';
+import { workoutTiming, type WorkoutTiming } from '../domain/workoutTiming';
 import { CheckIcon, ChevronLeft, PlusIcon } from './common/icons';
 import { ExerciseCard } from './DayView/ExerciseCard';
 import { RestTimerBar } from './RestTimerBar';
@@ -29,6 +30,7 @@ export function FreestyleWorkout({
   const rest = useRestTimer();
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [summary, setSummary] = useState<WorkoutStats | null>(null);
+  const [timing, setTiming] = useState<WorkoutTiming | null>(null);
   const blocks = effBlocks(state, FREESTYLE_KEY);
   const hasLogs = (state.logs[FREESTYLE_KEY] ?? []).some((s) => s.length > 0);
 
@@ -131,13 +133,15 @@ export function FreestyleWorkout({
           type="button"
           onClick={() => {
             // snapshot the stats before archiving — completing clears the slate
+            const at = new Date().toISOString();
             setSummary(dayStats(state, FREESTYLE_KEY));
+            setTiming(workoutTiming(state.logs[FREESTYLE_KEY] ?? [], at));
             rest.skip(); // finishing the workout stops any running rest countdown
             dispatch({
               type: 'completeWorkout',
               dayKey: FREESTYLE_KEY,
               title: 'Freestyle',
-              at: new Date().toISOString(),
+              at,
               id: newSessionId(),
             });
           }}
@@ -151,9 +155,11 @@ export function FreestyleWorkout({
         <WorkoutSummary
           title="Freestyle"
           stats={summary}
+          timing={timing}
           archived={summary.sets > 0}
           onClose={() => {
             setSummary(null);
+            setTiming(null);
             if (summary.sets > 0) onBack(); // slate is blank now — back to the week
           }}
         />

@@ -6,7 +6,8 @@ import { dayStats, isBlockComplete } from '../../state/selectors';
 import { defaultDay } from '../../domain/program';
 import { newSessionId } from '../../domain/session';
 import type { WorkoutStats } from '../../domain/stats';
-import { CheckIcon, PlusIcon } from '../common/icons';
+import { CheckIcon, PlusIcon, ClockIcon } from '../common/icons';
+import { workoutStartedAt, workoutTiming, fmtDuration, type WorkoutTiming } from '../../domain/workoutTiming';
 import { ExerciseCard } from './ExerciseCard';
 import { WorkoutSummary } from '../WorkoutSummary';
 
@@ -17,17 +18,16 @@ const prefersReducedMotion = () =>
 export function DayView({
   onSwap,
   onAdd,
-  onAddOption,
   onOpenExercise,
 }: {
   onSwap: (index: number) => void;
   onAdd: () => void;
-  onAddOption?: (index: number) => void;
   onOpenExercise?: (liftId: string) => void;
 }) {
   const { state, dispatch } = useStore();
   const rest = useRestTimer();
   const [summary, setSummary] = useState<WorkoutStats | null>(null);
+  const [timing, setTiming] = useState<WorkoutTiming | null>(null);
   const day = defaultDay(state.day);
   const blocks = effBlocks(state, state.day);
   const deviated = state.sessionDays[state.day] !== undefined; // changed just for today
@@ -204,6 +204,18 @@ export function DayView({
     window.addEventListener('pointercancel', cancelPre);
   }
 
+  // live whole-workout clock: runs from the first checked set until the day is done
+  const workoutStart = workoutStartedAt(state.logs[state.day] ?? []);
+  const workoutRunning = !!workoutStart && !allDone;
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!workoutRunning) return;
+    setNowTs(Date.now());
+    const id = window.setInterval(() => setNowTs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [workoutRunning, workoutStart]);
+  const workoutElapsed = workoutStart ? (nowTs - Date.parse(workoutStart)) / 1000 : 0;
+
   if (!day) return null;
 
   return (
@@ -217,6 +229,15 @@ export function DayView({
             </span>
           </h3>
           <p className="m-0 mt-1 text-[13px] text-muted">{day.note}</p>
+          {workoutStart && (
+            <p className="m-0 mt-1.5 flex items-center gap-1.5 font-mono text-[12px] font-bold tabular-nums text-secondary">
+              <ClockIcon className="h-3.5 w-3.5" />
+              {fmtDuration(workoutElapsed)}
+              <span className="font-sans text-[11px] font-medium text-muted-2">
+                {workoutRunning ? 'this workout' : 'done'}
+              </span>
+            </p>
+          )}
           {deviated && (
             <p className="m-0 mt-1.5 flex items-center gap-1.5 text-[12px] font-medium text-secondary">
               <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
@@ -290,7 +311,6 @@ export function DayView({
               index={i}
               dayKey={state.day}
               onSwap={onSwap}
-              onAddOption={onAddOption}
               onOpenExercise={onOpenExercise}
             />
           </div>
@@ -309,14 +329,16 @@ export function DayView({
         <button
           type="button"
           onClick={() => {
-            // snapshot the stats before archiving — completing clears the day
+            // snapshot the stats + timing before archiving — completing clears the day
+            const at = new Date().toISOString();
             setSummary(dayStats(state, state.day));
+            setTiming(workoutTiming(state.logs[state.day] ?? [], at));
             rest.skip(); // finishing the workout stops any running rest countdown
             dispatch({
               type: 'completeWorkout',
               dayKey: state.day,
               title: day.label,
-              at: new Date().toISOString(),
+              at,
               id: newSessionId(),
             });
           }}
@@ -350,8 +372,12 @@ export function DayView({
         <WorkoutSummary
           title={day.label}
           stats={summary}
+          timing={timing}
           archived={summary.sets > 0}
-          onClose={() => setSummary(null)}
+          onClose={() => {
+            setSummary(null);
+            setTiming(null);
+          }}
         />
       )}
     </div>

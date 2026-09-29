@@ -1,6 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { DAYS } from '../../domain/program';
 import { LIFTS } from '../../domain/lifts';
+import { useStore } from '../../state/StoreContext';
+import { effBlocks, liftById } from '../../state/store';
+import { CheckIcon, ChevronDown } from '../common/icons';
 import { repLabel, feelLabel, rpeNum, isPerLeg, rpeHue } from '../../domain/format';
 import {
   PROGRAM_PROFILE,
@@ -131,6 +134,129 @@ const TABS: [Tab, string][] = [
   ['protocols', 'Protocols'],
 ];
 
+/**
+ * The interactive day-by-day plan. Renders each day's effective blocks (your
+ * plan, with any option picks applied) and lets you choose which exercise a slot
+ * runs when it has alternatives — a persistent choice, set here on the program
+ * rather than mid-workout.
+ */
+function DaysConfig() {
+  const { state, dispatch } = useStore();
+  const [open, setOpen] = useState<string | null>(null);
+
+  return (
+    <Section label="The days">
+      <p className="m-0 mb-2.5 text-[12px] leading-relaxed text-muted-2">
+        Tap an exercise with alternatives to choose which one you do. Your pick sticks until you
+        change it.
+      </p>
+      <div className="flex flex-col gap-2">
+        {DAYS.map((day) => {
+          const blocks = effBlocks(state, day.key);
+          return (
+            <div key={day.key} className="rounded-2xl border border-line bg-surface p-4 shadow-card">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-display text-[15px] font-black uppercase tracking-[-0.01em]">
+                  {day.label}
+                </span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-accent">
+                  {day.variant}
+                </span>
+              </div>
+              <p className="m-0 mt-0.5 text-[12px] text-muted-2">{day.note}</p>
+              <div className="mt-3 flex flex-col gap-1">
+                {blocks.map((block, i) => {
+                  const pool = block.pool ?? [];
+                  const hasAlts = pool.length > 1;
+                  const name = liftById(state, block.lift).name;
+                  const perLeg = isPerLeg(block, LIFTS[block.lift]?.uni);
+                  const hue = rpeHue(rpeNum(block.rpe));
+                  const lead = i === 0;
+                  const key = `${day.key}:${i}`;
+                  const isOpen = open === key;
+                  return (
+                    <div key={key}>
+                      <button
+                        type="button"
+                        disabled={!hasAlts}
+                        onClick={() => setOpen(isOpen ? null : key)}
+                        className={[
+                          'grid w-full grid-cols-[1fr_auto_auto] items-center gap-2.5 rounded-lg py-1.5 text-left transition-colors',
+                          hasAlts ? '-mx-1.5 px-1.5 hover:bg-surface-2' : '',
+                        ].join(' ')}
+                      >
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span
+                            className={[
+                              'truncate text-[13px]',
+                              lead ? 'font-display font-bold tracking-[-0.01em] text-ink' : 'text-muted',
+                            ].join(' ')}
+                          >
+                            {name}
+                          </span>
+                          {hasAlts && (
+                            <span className="flex shrink-0 items-center gap-0.5 rounded bg-secondary/15 px-1 py-px font-mono text-[9px] font-bold uppercase tracking-wide text-secondary">
+                              {pool.length}
+                              <ChevronDown
+                                className={`h-2.5 w-2.5 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                              />
+                            </span>
+                          )}
+                        </span>
+                        <span className="whitespace-nowrap font-mono text-[12px] tabular-nums text-muted-2">
+                          {block.sets}×{repLabel(block.reps)}
+                          {perLeg ? '/leg' : ''}
+                        </span>
+                        <span
+                          className="w-[54px] shrink-0 rounded-md border py-0.5 text-center font-mono text-[10px] font-bold tabular-nums"
+                          style={{
+                            backgroundColor: `hsl(${hue} 65% 45% / 0.18)`,
+                            borderColor: `hsl(${hue} 65% 55% / 0.5)`,
+                            color: `hsl(${hue} 85% 78%)`,
+                          }}
+                        >
+                          {feelLabel(block).replace('RPE ', '')}
+                        </span>
+                      </button>
+
+                      {isOpen && hasAlts && (
+                        <div className="mb-1 ml-1 mt-1 flex flex-col gap-1 border-l border-line-2 pl-2.5">
+                          {pool.map((id) => {
+                            const active = id === block.lift;
+                            return (
+                              <button
+                                key={id}
+                                type="button"
+                                onClick={() => {
+                                  dispatch({ type: 'pickOption', dayKey: day.key, index: i, liftId: id });
+                                  setOpen(null);
+                                }}
+                                className={[
+                                  'flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors',
+                                  active
+                                    ? 'bg-secondary/15 font-semibold text-secondary'
+                                    : 'text-muted hover:bg-surface-2 hover:text-ink',
+                                ].join(' ')}
+                              >
+                                <span className="truncate">{liftById(state, id).name}</span>
+                                {active && <CheckIcon className="h-4 w-4 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Section>
+  );
+}
+
 function PplInfo({ onBack }: { onBack: () => void }) {
   const [tab, setTab] = useState<Tab>('progress');
 
@@ -228,76 +354,7 @@ function PplInfo({ onBack }: { onBack: () => void }) {
         </>
       )}
 
-      {tab === 'days' && (
-      <Section label="The days">
-        <div className="flex flex-col gap-2">
-          {DAYS.map((day) => (
-            <div key={day.key} className="rounded-2xl border border-line bg-surface p-4 shadow-card">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-display text-[15px] font-black uppercase tracking-[-0.01em]">
-                  {day.label}
-                </span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-accent">
-                  {day.variant}
-                </span>
-              </div>
-              <p className="m-0 mt-0.5 text-[12px] text-muted-2">{day.note}</p>
-              <div className="mt-3 flex flex-col gap-1.5">
-                {day.blocks.map((block, i) => {
-                  const name = LIFTS[block.lift]?.name ?? block.lift;
-                  const perLeg = isPerLeg(block, LIFTS[block.lift]?.uni);
-                  const hue = rpeHue(rpeNum(block.rpe));
-                  const lead = i === 0;
-                  return (
-                    <div
-                      key={`${block.lift}-${i}`}
-                      className="grid grid-cols-[1fr_auto_auto] items-center gap-2.5"
-                    >
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        <span
-                          className={[
-                            'truncate text-[13px]',
-                            lead ? 'font-display font-bold tracking-[-0.01em] text-ink' : 'text-muted',
-                          ].join(' ')}
-                        >
-                          {name}
-                        </span>
-                        {block.prog && (
-                          <span
-                            className={[
-                              'shrink-0 rounded px-1 py-px font-mono text-[9px] font-bold uppercase tracking-wide',
-                              block.prog === 'push'
-                                ? 'bg-secondary/15 text-secondary'
-                                : 'bg-surface-3 text-muted-2',
-                            ].join(' ')}
-                          >
-                            {block.prog}
-                          </span>
-                        )}
-                      </span>
-                      <span className="whitespace-nowrap font-mono text-[12px] tabular-nums text-muted-2">
-                        {block.sets}×{repLabel(block.reps)}
-                        {perLeg ? '/leg' : ''}
-                      </span>
-                      <span
-                        className="w-[54px] shrink-0 rounded-md border py-0.5 text-center font-mono text-[10px] font-bold tabular-nums"
-                        style={{
-                          backgroundColor: `hsl(${hue} 65% 45% / 0.18)`,
-                          borderColor: `hsl(${hue} 65% 55% / 0.5)`,
-                          color: `hsl(${hue} 85% 78%)`,
-                        }}
-                      >
-                        {feelLabel(block).replace('RPE ', '')}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
-      )}
+      {tab === 'days' && <DaysConfig />}
 
       {tab === 'protocols' && (
         <>
