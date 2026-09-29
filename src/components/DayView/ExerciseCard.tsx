@@ -593,24 +593,20 @@ export function ExerciseCard({
     return () => clearTimeout(t);
   }, [popped]);
 
-  // --- live rest / elapsed clock -------------------------------------------
-  // anchor the clock to the most recent set completion, else the exercise start
+  // --- live exercise clock --------------------------------------------------
+  // elapsed since the exercise was started. We deliberately don't time between
+  // sets: set check-offs aren't stopwatch presses, so within-exercise timing
+  // (rest, pace) would be unreliable — only the start-anchored duration is honest.
   const startedAt = state.exerciseStart[dayKey]?.[index];
-  const lastDoneAt = sets.reduce<string | undefined>(
-    (mx, s) => (s.done && s.at && (!mx || s.at > mx) ? s.at : mx),
-    undefined
-  );
-  const anchor = lastDoneAt ?? startedAt;
-  const clockRunning = !!anchor && !complete;
+  const clockRunning = !!startedAt && !complete;
   const [nowTs, setNowTs] = useState(() => Date.now());
   useEffect(() => {
     if (!clockRunning) return;
     setNowTs(Date.now());
     const id = window.setInterval(() => setNowTs(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [clockRunning, anchor]);
-  const elapsedSecs = clockRunning && anchor ? (nowTs - Date.parse(anchor)) / 1000 : 0;
-  const resting = clockRunning && !!lastDoneAt; // rest between sets vs pre-first-set warm-up
+  }, [clockRunning, startedAt]);
+  const elapsedSecs = clockRunning && startedAt ? (nowTs - Date.parse(startedAt)) / 1000 : 0;
 
   // the card cheers on the transition into complete — not on every render while
   // it happens to be complete
@@ -903,14 +899,12 @@ export function ExerciseCard({
       )}
 
       {!complete &&
-        (anchor ? (
+        (startedAt ? (
           <div
             className="relative z-10 mt-3 flex items-center justify-center gap-1.5 font-mono text-[12px]"
             data-nodrag
           >
-            <span className={resting ? 'text-secondary' : 'text-muted-2'}>
-              {resting ? 'Rested' : 'Elapsed'}
-            </span>
+            <span className="text-muted-2">Elapsed</span>
             <span className="font-bold tabular-nums text-ink">{clock(elapsedSecs)}</span>
           </div>
         ) : (

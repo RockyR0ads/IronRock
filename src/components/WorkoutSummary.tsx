@@ -97,12 +97,8 @@ export function WorkoutSummary({
             </div>
 
             {timing && timing.durationSec > 0 && (
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <Tile value={fmtDuration(timing.durationSec)} label="Duration" />
-                <Tile
-                  value={timing.avgIntervalSec !== null ? fmtDuration(timing.avgIntervalSec) : '–'}
-                  label="Avg / set"
-                />
+              <div className="mt-2">
+                <Tile value={fmtDuration(timing.durationSec)} label="Session length" />
               </div>
             )}
 
