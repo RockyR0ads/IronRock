@@ -1,4 +1,4 @@
-import { DAYS, defaultDay } from '../domain/program';
+import { defaultDay, daysForProgram } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
 import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
 import { meaningfulSet } from '../domain/session';
@@ -342,7 +342,7 @@ export function newBlock(lift: Lift): Block {
 export function computedInUse(state: State): string[] {
   const seen: string[] = [];
   const mark = new Set<string>();
-  for (const day of DAYS) {
+  for (const day of daysForProgram(state.activeProgram)) {
     for (const block of effBlocks(state, day.key)) {
       const lift = LIFTS[block.lift];
       if (lift && lift.type === 'computed' && !mark.has(block.lift)) {
@@ -641,8 +641,13 @@ export function reducer(state: State, action: Action): State {
     }
     case 'removeSession':
       return { ...state, sessions: state.sessions.filter((s) => s.id !== action.id) };
-    case 'setActiveProgram':
-      return { ...state, activeProgram: action.id };
+    case 'setActiveProgram': {
+      // moving to a day-based program lands you on its first day (so the week
+      // and day engine resolve against the right template)
+      const days = daysForProgram(action.id);
+      const day = days.some((d) => d.key === state.day) ? state.day : (days[0]?.key ?? state.day);
+      return { ...state, activeProgram: action.id, day };
+    }
     case 'archiveSession':
       // a fully-formed session archived directly (used by programs that build
       // their own workout, e.g. 5/3/1), newest first

@@ -1,11 +1,11 @@
 import { useStore } from '../../state/StoreContext';
-import { DAYS } from '../../domain/program';
+import { daysForProgram } from '../../domain/program';
 
-/** Push / Pull / Legs → quick-scan dot color. */
+/** Day label → quick-scan dot color. */
 function dotColor(label: string): string {
-  if (label === 'Push') return 'bg-red';
+  if (label === 'Push' || label === 'Upper') return 'bg-red';
   if (label === 'Pull') return 'bg-blue';
-  return 'bg-green';
+  return 'bg-green'; // Legs / Lower
 }
 
 /**
@@ -14,11 +14,12 @@ function dotColor(label: string): string {
  */
 export function DayNav({ onSelect }: { onSelect?: () => void }) {
   const { state, dispatch } = useStore();
+  const days = daysForProgram(state.activeProgram);
 
   return (
     <nav aria-label="Training day">
       <div className="grid grid-cols-3 gap-1.5">
-        {DAYS.map((day) => {
+        {days.map((day) => {
           const active = day.key === state.day;
           return (
             <button

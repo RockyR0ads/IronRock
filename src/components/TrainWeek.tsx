@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import { effBlocks } from '../state/store';
-import { defaultDay, DAYS } from '../domain/program';
+import { defaultDay, daysForProgram } from '../domain/program';
+import { programMeta } from '../domain/programs';
 import { programProgress, programCycle } from '../domain/programTracker';
 import { ChevronLeft, ChevronDown } from './common/icons';
 import { DayView } from './DayView/DayView';
@@ -60,7 +61,8 @@ export function TrainWeek({
   const day = defaultDay(state.day);
   const dayLetter = day?.variant.split('·')[0].trim();
   // this day's position in the program week (1-based), for the switcher pill
-  const dayNum = DAYS.findIndex((d) => d.key === state.day) + 1;
+  const dayNum = daysForProgram(state.activeProgram).findIndex((d) => d.key === state.day) + 1;
+  const programName = programMeta(state.activeProgram)?.name ?? 'Training';
 
   // Where the lifter is in the block, so the header can name the week.
   const prog = state.programStart
@@ -85,7 +87,7 @@ export function TrainWeek({
               {weekLabel}
             </div>
             <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
-              PPL · Cut
+              {programName}
             </div>
           </div>
         </div>

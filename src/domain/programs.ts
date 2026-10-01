@@ -41,6 +41,17 @@ export const PROGRAMS: ProgramMeta[] = [
     weeks: 6,
   },
   {
+    id: 'upper-lower-arms',
+    name: 'Upper / Lower + Arms',
+    tagline: 'Grow arms & delts, hold the legs, cut lean.',
+    focus: 'Four days — two upper, two lower-plus-arms. Compounds at RPE 7–8, isolation to failure.',
+    days: 4,
+    level: 'Intermediate',
+    origin: 'custom',
+    ready: true,
+    weeks: 6,
+  },
+  {
     id: 'starting-strength',
     name: 'Starting Strength',
     tagline: 'The classic barbell linear progression.',

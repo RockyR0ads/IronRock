@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { DAYS } from '../../domain/program';
+import { DAYS, ULA_DAYS } from '../../domain/program';
+import type { Day } from '../../domain/types';
 import { LIFTS } from '../../domain/lifts';
 import { useStore } from '../../state/StoreContext';
 import { effBlocks, liftById } from '../../state/store';
@@ -26,6 +27,7 @@ import { ReferencePanels } from '../ReferencePanels';
 /** Route the details page to the opened program's own content. */
 export function ProgramInfo({ programId, onBack }: { programId: string; onBack: () => void }) {
   if (programId === 'wendler-531') return <Wendler531Info onBack={onBack} />;
+  if (programId === 'upper-lower-arms') return <UlaInfo onBack={onBack} />;
   return <PplInfo onBack={onBack} />;
 }
 
@@ -140,7 +142,7 @@ const TABS: [Tab, string][] = [
  * runs when it has alternatives — a persistent choice, set here on the program
  * rather than mid-workout.
  */
-function DaysConfig() {
+function DaysConfig({ days }: { days: Day[] }) {
   const { state, dispatch } = useStore();
   const [open, setOpen] = useState<string | null>(null);
 
@@ -151,7 +153,7 @@ function DaysConfig() {
         change it.
       </p>
       <div className="flex flex-col gap-2">
-        {DAYS.map((day) => {
+        {days.map((day) => {
           const blocks = effBlocks(state, day.key);
           return (
             <div key={day.key} className="rounded-2xl border border-line bg-surface p-4 shadow-card">
@@ -354,7 +356,7 @@ function PplInfo({ onBack }: { onBack: () => void }) {
         </>
       )}
 
-      {tab === 'days' && <DaysConfig />}
+      {tab === 'days' && <DaysConfig days={DAYS} />}
 
       {tab === 'protocols' && (
         <>
@@ -400,6 +402,104 @@ function PplInfo({ onBack }: { onBack: () => void }) {
           ))}
         </ul>
       </Section>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------- Upper / Lower + Arms --- */
+
+const ULA_TABS: ['days' | 'rules', string][] = [
+  ['days', 'Days'],
+  ['rules', 'Rules'],
+];
+
+const ULA_RULES: InfoRule[] = [
+  {
+    title: 'Compounds — RPE 7–8',
+    body: 'Bench, row, press, squat, hinge. When every set reaches the top of the rep range at or below the target RPE, add weight next time: +2.5 kg upper, +5 kg squat/deadlift. If set one goes past RPE 9, hold the weight.',
+  },
+  {
+    title: 'Isolation — RPE 9–10',
+    body: 'Arms, delts and flyes use double progression: build reps to the top of the range, then add the smallest jump (one cable plate / the next dumbbell). Take the last set to RPE 10 — within a rep of failure. Strict form, no swinging.',
+  },
+  {
+    title: 'Legs stay low-volume on purpose',
+    body: 'Legs are kept to low reps and a couple of sets short of failure. On a cut, holding the same squat/deadlift counts as a win — the growth is sent to the arms and delts.',
+  },
+  {
+    title: 'Deload',
+    body: 'Every 6–8 weeks, or when two compounds stall two sessions running: keep the weights, halve the sets, for one week.',
+  },
+];
+
+const ULA_CUT: InfoRule[] = [
+  {
+    title: 'Rate & protein',
+    body: 'Aim ~0.5 kg/week (~0.6% of bodyweight) — about 10 weeks from 85 to 80 kg. Protein ~170 g/day (2 g/kg).',
+  },
+  {
+    title: 'If recovery or performance drops off',
+    body: 'Slow the rate of loss first. Don’t cut training volume first.',
+  },
+];
+
+const ULA_NOTES: string[] = [
+  'a/b pairs are supersets — run them back to back, then rest.',
+  'Elbows: skull crushers and close-grip bench fall on back-to-back days. If elbows flare up, swap the skull crushers for a second overhead cable extension.',
+  'Lateral raises: cable and dumbbell grow the side delt about equally — use whichever feels better (tap the exercise to switch).',
+  'Sessions run ~60–70 minutes with the supersets.',
+];
+
+function UlaInfo({ onBack }: { onBack: () => void }) {
+  const [tab, setTab] = useState<'days' | 'rules'>('days');
+  const meta = programMeta('upper-lower-arms');
+
+  return (
+    <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6">
+      <InfoHeader programId="upper-lower-arms" subtitle="Arms & delts, legs held, cut lean" onBack={onBack} />
+      <TabBar tabs={ULA_TABS} tab={tab} setTab={setTab} />
+
+      {tab === 'days' && (
+        <>
+          <div className="mt-4 rounded-2xl border border-line bg-surface p-4 shadow-card">
+            <div className="font-display text-[15px] font-bold tracking-[-0.01em]">{meta?.tagline}</div>
+            <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-muted">{meta?.focus}</p>
+          </div>
+          <DaysConfig days={ULA_DAYS} />
+        </>
+      )}
+
+      {tab === 'rules' && (
+        <>
+          <Section label="Progression">
+            <div className="flex flex-col gap-2">
+              {ULA_RULES.map((r) => (
+                <RuleCard key={r.title} rule={r} accent={r.title.startsWith('Compounds') || r.title.startsWith('Isolation')} />
+              ))}
+            </div>
+          </Section>
+          <Section label="Cutting">
+            <div className="flex flex-col gap-2">
+              {ULA_CUT.map((r) => (
+                <RuleCard key={r.title} rule={r} />
+              ))}
+            </div>
+          </Section>
+          <Section label="Notes">
+            <ul className="m-0 flex flex-col gap-2 p-0">
+              {ULA_NOTES.map((tip) => (
+                <li
+                  key={tip}
+                  className="flex gap-2.5 rounded-2xl border border-line bg-surface p-3.5 text-[13px] leading-relaxed text-muted shadow-card"
+                >
+                  <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-accent" />
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </Section>
         </>
       )}
     </div>

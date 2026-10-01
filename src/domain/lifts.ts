@@ -103,6 +103,16 @@ export const LIFTS: Record<string, Lift> = {
   jmpress: { id: 'jmpress', name: 'JM press', type: 'manual', unit: 'kg on bar', cats: ['triceps'] },
   tate: { id: 'tate', name: 'Tate press', type: 'manual', unit: 'kg / DB', cats: ['triceps'] },
   kickback: { id: 'kickback', name: 'DB kickback', type: 'manual', unit: 'kg / DB', cats: ['triceps'] },
+  // cable / machine isolation (Upper-Lower + Arms program)
+  latpulldown: { id: 'latpulldown', name: 'Cable lat pulldown', type: 'manual', unit: 'kg', cats: ['vpull'] },
+  reversecablefly: { id: 'reversecablefly', name: 'Reverse cable fly', type: 'manual', unit: 'kg', cats: ['reardelt'] },
+  cablefly: { id: 'cablefly', name: 'Cable fly', type: 'manual', unit: 'kg', cats: ['hpress'] },
+  cableyraise: { id: 'cableyraise', name: 'Cable Y-raise', type: 'manual', unit: 'kg', cats: ['latdelt'] },
+  cablecurl: { id: 'cablecurl', name: 'Cable curl', type: 'manual', unit: 'kg', cats: ['biceps'] },
+  reversecurl: { id: 'reversecurl', name: 'Cable reverse curl', type: 'manual', unit: 'kg', cats: ['biceps'] },
+  pushdown: { id: 'pushdown', name: 'Cable pushdown', type: 'manual', unit: 'kg', cats: ['triceps'] },
+  ropepushdown: { id: 'ropepushdown', name: 'Rope pushdown', type: 'manual', unit: 'kg', cats: ['triceps'] },
+  singlepushdown: { id: 'singlepushdown', name: 'Single-arm pushdown', type: 'manual', unit: 'kg', cats: ['triceps'] },
   // calves
   calf: { id: 'calf', name: 'Standing calf raise', type: 'manual', unit: 'kg', cats: ['calf'] },
   seatedcalf: { id: 'seatedcalf', name: 'Seated calf raise', type: 'manual', unit: 'kg', cats: ['calf'] },

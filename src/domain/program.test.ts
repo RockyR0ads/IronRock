@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { DAYS } from './program';
+import { DAYS, PROGRAM_DAYS } from './program';
 import { LIFTS } from './lifts';
+
+/** Every day across all registered day-based programs. */
+const ALL_DAYS = Object.values(PROGRAM_DAYS).flat();
 
 describe('program data', () => {
   it('has the six expected days', () => {
@@ -15,7 +18,7 @@ describe('program data', () => {
   });
 
   it('references only lifts that exist in the catalogue', () => {
-    for (const day of DAYS) {
+    for (const day of ALL_DAYS) {
       for (const block of day.blocks) {
         expect(LIFTS[block.lift], `${day.key}: ${block.lift}`).toBeDefined();
       }
@@ -23,7 +26,7 @@ describe('program data', () => {
   });
 
   it('every slot option is a distinct, existing lift', () => {
-    for (const day of DAYS) {
+    for (const day of ALL_DAYS) {
       for (const block of day.blocks) {
         for (const alt of block.alts ?? []) {
           expect(LIFTS[alt], `${day.key}: ${alt}`).toBeDefined();
@@ -36,7 +39,7 @@ describe('program data', () => {
   });
 
   it('every block category is one the lift can fill', () => {
-    for (const day of DAYS) {
+    for (const day of ALL_DAYS) {
       for (const block of day.blocks) {
         expect(LIFTS[block.lift].cats).toContain(block.cat);
       }
@@ -44,7 +47,7 @@ describe('program data', () => {
   });
 
   it('string-rpe blocks are always manual lifts', () => {
-    for (const day of DAYS) {
+    for (const day of ALL_DAYS) {
       for (const block of day.blocks) {
         if (typeof block.rpe === 'string') {
           expect(LIFTS[block.lift].type).toBe('manual');

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useStore } from '../state/StoreContext';
 import { effBlocks, setsFor, liftById, computedInUse } from '../state/store';
 import { doneSetCount, e1rmFor } from '../state/selectors';
-import { defaultDay } from '../domain/program';
+import { defaultDay, PROGRAM_DAYS } from '../domain/program';
 import { sessionDayLabel } from '../domain/session';
 import { programMeta } from '../domain/programs';
 import { cycleWeek, WAVE_LABEL, CYCLE_WEEKS } from '../domain/wendler531';
@@ -51,13 +51,13 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
 
   // the hero adapts to the active program (only the PPL cut runs its day engine)
   const prog = programMeta(state.activeProgram);
-  const isPpl = state.activeProgram === 'ppl-cut';
+  const isDayProgram = !!PROGRAM_DAYS[state.activeProgram]; // runs the day engine (PPL, U/L+Arms…)
   const is531 = state.activeProgram === 'wendler-531';
   const week531 = is531 ? cycleWeek(state.programStart) : 0;
-  const heroKicker = isPpl ? (done > 0 ? 'Continue training' : "Today's session") : 'Active program';
-  const heroLabel = isPpl ? (day?.label ?? 'Train') : (prog?.name ?? 'Train');
-  const heroVariant = isPpl ? day?.variant : is531 ? WAVE_LABEL[week531] : undefined;
-  const heroSub = isPpl
+  const heroKicker = isDayProgram ? (done > 0 ? 'Continue training' : "Today's session") : 'Active program';
+  const heroLabel = isDayProgram ? (day?.label ?? 'Train') : (prog?.name ?? 'Train');
+  const heroVariant = isDayProgram ? day?.variant : is531 ? WAVE_LABEL[week531] : undefined;
+  const heroSub = isDayProgram
     ? leadLift
       ? `${leadLift} first`
       : 'Log your working sets'
@@ -114,7 +114,7 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
             )}
           </span>
           <span className="mt-2 text-[13px] leading-snug text-bg/80">{heroSub}</span>
-          {isPpl && prescribed > 0 && (
+          {isDayProgram && prescribed > 0 && (
             <span className="mt-1 font-mono text-[12px] font-medium text-bg/70">
               {done} / {prescribed} sets done
             </span>
