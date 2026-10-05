@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap');
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; }
+    a { color: #FF5247; } a:hover { color: #CA463B; }
+  </style>
+</helmet>
+
+<div style="width: 560px; height: 420px; box-sizing: border-box; background:
+    radial-gradient(120% 70% at 24% -10%, #1a1c22 0%, #0e0f12 58%);
+    padding: 40px; display: flex; flex-direction: column; gap: 26px; color: #F2F1EC;
+    font-family: Inter, system-ui, sans-serif; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.22em; color: #2DD4BF; text-transform: uppercase;">Direction F</span>
+    <span style="height: 1px; flex-grow: 1; background: #2A2E35;"></span>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.18em; color: #646A73; text-transform: uppercase;">The anvil</span>
+  </div>
+
+  <div style="display: flex; align-items: flex-end; gap: 22px;">
+    <div style="width: 116px; height: 116px; border-radius: 26px;
+        background: linear-gradient(157deg, #FF5247 0%, #CA463B 100%);
+        box-shadow: 0 12px 30px -12px rgba(255,82,71,0.55), inset 0 1px 0 rgba(255,255,255,0.18);
+        display: flex; align-items: center; justify-content: center;">
+      <svg viewBox="0 0 128 128" width="96" height="96" aria-hidden="true">
+        <!-- top face + horn -->
+        <path d="M20 46 H104 V60 H70 L64 66 H44 L38 60 H20 Z" fill="#14161A"></path>
+        <path d="M20 46 L6 52 L10 60 L20 60 Z" fill="#14161A"></path>
+        <!-- neck -->
+        <path d="M48 66 H80 L74 82 H54 Z" fill="#14161A"></path>
+        <!-- base -->
+        <rect x="34" y="82" width="60" height="14" rx="3" fill="#14161A"></rect>
+      </svg>
+    </div>
+    <div style="width: 44px; height: 44px; border-radius: 11px;
+        background: linear-gradient(157deg, #FF5247 0%, #CA463B 100%);
+        display: flex; align-items: center; justify-content: center;">
+      <svg viewBox="0 0 128 128" width="38" height="38" aria-hidden="true">
+        <path d="M20 46 H104 V60 H70 L64 66 H44 L38 60 H20 Z" fill="#14161A"></path>
+        <path d="M20 46 L6 52 L10 60 L20 60 Z" fill="#14161A"></path>
+        <path d="M48 66 H80 L74 82 H54 Z" fill="#14161A"></path>
+        <rect x="34" y="82" width="60" height="14" rx="3" fill="#14161A"></rect>
+      </svg>
+    </div>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em;
+        color: #646A73; text-transform: uppercase; padding-bottom: 4px;">icon &middot; favicon</span>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 14px; margin-top: 2px;">
+    <div style="width: 40px; height: 40px; border-radius: 10px;
+        background: linear-gradient(157deg, #FF5247 0%, #CA463B 100%);
+        display: flex; align-items: center; justify-content: center;">
+      <svg viewBox="0 0 128 128" width="34" height="34" aria-hidden="true">
+        <path d="M20 46 H104 V60 H70 L64 66 H44 L38 60 H20 Z" fill="#14161A"></path>
+        <path d="M20 46 L6 52 L10 60 L20 60 Z" fill="#14161A"></path>
+        <path d="M48 66 H80 L74 82 H54 Z" fill="#14161A"></path>
+        <rect x="34" y="82" width="60" height="14" rx="3" fill="#14161A"></rect>
+      </svg>
+    </div>
+    <span style="font-family: Archivo, sans-serif; font-weight: 900; font-size: 33px;
+        letter-spacing: -1.5px; color: #F2F1EC; text-transform: uppercase;">Ironrock</span>
+  </div>
+
+  <p style="margin: auto 0 0; font-size: 12.5px; line-height: 1.5; color: #9AA0A8; max-width: 470px;">
+    A blacksmith&rsquo;s anvil &mdash; iron, forging, things made hard through work. Solid and masculine.
+    <span style="color:#646A73;">Trade-off: forge imagery over gym imagery; less &ldquo;training app&rdquo; at a glance.</span>
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

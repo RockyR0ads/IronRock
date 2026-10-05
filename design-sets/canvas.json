@@ -1,0 +1,7 @@
+{
+  "artboards": [
+    { "file": "Current.dc.html", "title": "Current (as shipped)", "x": 0, "y": 0, "w": 404, "h": 560 },
+    { "file": "Main.dc.html", "title": "D · inline chips", "x": 484, "y": 0, "w": 404, "h": 560 }
+  ],
+  "launch": { "view": "canvas" }
+}

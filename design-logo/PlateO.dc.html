@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap');
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; }
+    a { color: #FF5247; } a:hover { color: #CA463B; }
+  </style>
+</helmet>
+
+<div style="width: 560px; height: 420px; box-sizing: border-box; background:
+    radial-gradient(120% 70% at 24% -10%, #1a1c22 0%, #0e0f12 58%);
+    padding: 40px; display: flex; flex-direction: column; gap: 26px; color: #F2F1EC;
+    font-family: Inter, system-ui, sans-serif; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.22em; color: #2DD4BF; text-transform: uppercase;">Direction B</span>
+    <span style="height: 1px; flex-grow: 1; background: #2A2E35;"></span>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.18em; color: #646A73; text-transform: uppercase;">The plate</span>
+  </div>
+
+  <div style="display: flex; align-items: flex-end; gap: 22px;">
+    <div style="width: 116px; height: 116px; border-radius: 26px;
+        background: linear-gradient(157deg, #FF5247 0%, #CA463B 100%);
+        box-shadow: 0 12px 30px -12px rgba(255,82,71,0.55), inset 0 1px 0 rgba(255,255,255,0.18);
+        display: flex; align-items: center; justify-content: center;">
+      <!-- weight plate -->
+      <svg viewBox="0 0 128 128" width="112" height="112" aria-hidden="true">
+        <circle cx="64" cy="64" r="49" fill="#14161A"></circle>
+        <circle cx="64" cy="64" r="49" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="2"></circle>
+        <circle cx="64" cy="64" r="37" fill="none" stroke="#FF5247" stroke-width="3.5" opacity="0.55"></circle>
+        <circle cx="64" cy="64" r="24" fill="#1E2127"></circle>
+        <circle cx="64" cy="64" r="24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"></circle>
+        <circle cx="64" cy="64" r="9" fill="#CA463B"></circle>
+      </svg>
+    </div>
+    <div style="width: 44px; height: 44px; border-radius: 11px;
+        background: linear-gradient(157deg, #FF5247 0%, #CA463B 100%);
+        display: flex; align-items: center; justify-content: center;">
+      <svg viewBox="0 0 128 128" width="42" height="42" aria-hidden="true">
+        <circle cx="64" cy="64" r="49" fill="#14161A"></circle>
+        <circle cx="64" cy="64" r="37" fill="none" stroke="#FF5247" stroke-width="4.5" opacity="0.6"></circle>
+        <circle cx="64" cy="64" r="24" fill="#1E2127"></circle>
+        <circle cx="64" cy="64" r="9" fill="#CA463B"></circle>
+      </svg>
+    </div>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em;
+        color: #646A73; text-transform: uppercase; padding-bottom: 4px;">icon &middot; favicon</span>
+  </div>
+
+  <!-- lockup: the plate becomes the O in ROCK -->
+  <div style="display: flex; align-items: center; margin-top: 2px;
+      font-family: Archivo, sans-serif; font-weight: 900; font-size: 33px;
+      letter-spacing: -1.5px; color: #F2F1EC; text-transform: uppercase;">
+    <span>Ironr</span>
+    <svg viewBox="0 0 40 40" width="30" height="30" style="margin: 0 -1px;" aria-hidden="true">
+      <circle cx="20" cy="20" r="16" fill="none" stroke="#FF5247" stroke-width="6.5"></circle>
+      <circle cx="20" cy="20" r="3.2" fill="#FF5247"></circle>
+    </svg>
+    <span>ck</span>
+  </div>
+
+  <p style="margin: auto 0 0; font-size: 12.5px; line-height: 1.5; color: #9AA0A8; max-width: 460px;">
+    A single Olympic plate &mdash; unmistakably gym, and the plate slots in as the
+    <strong style="color:#F2F1EC; font-weight:600;">O</strong> of the wordmark.
+    <span style="color:#646A73;">Trade-off: the friendliest and most literal of the four.</span>
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

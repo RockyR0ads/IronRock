@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap');
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; }
+    a { color: #FF5247; } a:hover { color: #CA463B; }
+  </style>
+</helmet>
+
+<div style="width: 560px; height: 420px; box-sizing: border-box; background:
+    radial-gradient(120% 70% at 24% -10%, #1a1c22 0%, #0e0f12 58%);
+    padding: 38px 40px; display: flex; flex-direction: column; gap: 22px; color: #F2F1EC;
+    font-family: Inter, system-ui, sans-serif; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.22em; color: #2DD4BF; text-transform: uppercase;">Variation 1</span>
+    <span style="height: 1px; flex-grow: 1; background: #2A2E35;"></span>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.18em; color: #646A73; text-transform: uppercase;">Straight stamp</span>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 28px;">
+    <svg viewBox="0 0 128 128" width="150" height="150" aria-hidden="true">
+      <defs>
+        <radialGradient id="blueS" cx="38%" cy="30%" r="82%">
+          <stop offset="0%" stop-color="#EAF1FC"></stop>
+          <stop offset="44%" stop-color="#A6C4F4"></stop>
+          <stop offset="80%" stop-color="#4C8DF0"></stop>
+          <stop offset="100%" stop-color="#28518F"></stop>
+        </radialGradient>
+        <radialGradient id="hubSt" cx="40%" cy="33%" r="74%">
+          <stop offset="0%" stop-color="#CFE0F8"></stop>
+          <stop offset="100%" stop-color="#4F79C4"></stop>
+        </radialGradient>
+      </defs>
+      <circle cx="64" cy="64" r="57" fill="url(#blueS)" stroke="#1E447E" stroke-width="1.5"></circle>
+      <ellipse cx="49" cy="41" rx="29" ry="15" fill="rgba(255,255,255,0.24)"></ellipse>
+      <circle cx="64" cy="64" r="50" fill="none" stroke="rgba(10,26,52,0.28)" stroke-width="2"></circle>
+      <circle cx="64" cy="64" r="48.5" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1"></circle>
+      <!-- name stamped straight across the upper face -->
+      <text x="64" y="42.8" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="900"
+          font-size="12" letter-spacing="0.5" fill="rgba(8,16,28,0.42)">IRONROCK</text>
+      <text x="64" y="42" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="900"
+          font-size="12" letter-spacing="0.5" fill="#F4F7FB" stroke="#0F1D33" stroke-width="1.5"
+          paint-order="stroke" style="stroke-linejoin:round">IRONROCK</text>
+      <line x1="41" y1="50" x2="87" y2="50" stroke="#FF5247" stroke-width="1.6"></line>
+      <text x="64" y="90" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="800"
+          font-size="6.6" letter-spacing="1.4" fill="#CBD8EC" stroke="#14233B" stroke-width="0.8"
+          paint-order="stroke" style="stroke-linejoin:round">LIFT LIFE &#183; EST 2026</text>
+      <circle cx="64" cy="64" r="16" fill="url(#hubSt)" stroke="#FF5247" stroke-width="2.4"></circle>
+      <circle cx="64" cy="64" r="6.5" fill="#141619"></circle>
+    </svg>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <span style="font-family: Archivo, sans-serif; font-weight: 900; font-size: 30px;
+          letter-spacing: -1.6px; color: #F2F1EC; text-transform: uppercase; line-height: 0.94;">Iron<span style="color:#FF5247;">rock</span></span>
+      <div style="width: 44px; height: 44px; border-radius: 11px;
+          background: linear-gradient(157deg, #2A2E35 0%, #14161A 100%);
+          display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 128 128" width="38" height="38" aria-hidden="true">
+          <circle cx="64" cy="64" r="57" fill="#A6C4F4" stroke="#1E447E" stroke-width="2"></circle>
+          <circle cx="64" cy="64" r="48" fill="none" stroke="rgba(10,26,52,0.26)" stroke-width="3"></circle>
+          <circle cx="64" cy="64" r="22" fill="#6E9BE0" stroke="#FF5247" stroke-width="4"></circle>
+          <circle cx="64" cy="64" r="9" fill="#141619"></circle>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <p style="margin: auto 0 0; font-size: 12.5px; line-height: 1.5; color: #9AA0A8; max-width: 480px;">
+    Name stamped straight across the face instead of curved &mdash; blunter, more industrial, easier to read.
+    <span style="color:#646A73;">Trade-off: less &ldquo;cast plate&rdquo; character than the curved version.</span>
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

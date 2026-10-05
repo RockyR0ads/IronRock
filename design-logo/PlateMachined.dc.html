@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap');
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; }
+    a { color: #FF5247; } a:hover { color: #CA463B; }
+  </style>
+</helmet>
+
+<div style="width: 560px; height: 420px; box-sizing: border-box; background:
+    radial-gradient(120% 70% at 24% -10%, #1a1c22 0%, #0e0f12 58%);
+    padding: 38px 40px; display: flex; flex-direction: column; gap: 22px; color: #F2F1EC;
+    font-family: Inter, system-ui, sans-serif; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.22em; color: #2DD4BF; text-transform: uppercase;">Variation 3</span>
+    <span style="height: 1px; flex-grow: 1; background: #2A2E35;"></span>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.18em; color: #646A73; text-transform: uppercase;">Machined &middot; grip holes</span>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 28px;">
+    <svg viewBox="0 0 128 128" width="150" height="150" aria-hidden="true">
+      <defs>
+        <radialGradient id="blueM" cx="38%" cy="30%" r="82%">
+          <stop offset="0%" stop-color="#EAF1FC"></stop>
+          <stop offset="44%" stop-color="#A6C4F4"></stop>
+          <stop offset="80%" stop-color="#4C8DF0"></stop>
+          <stop offset="100%" stop-color="#28518F"></stop>
+        </radialGradient>
+        <radialGradient id="hubM" cx="40%" cy="33%" r="74%">
+          <stop offset="0%" stop-color="#CFE0F8"></stop>
+          <stop offset="100%" stop-color="#4F79C4"></stop>
+        </radialGradient>
+        <path id="arcTopM" d="M 30 54 A 36 36 0 0 1 98 54" fill="none"></path>
+      </defs>
+      <circle cx="64" cy="64" r="57" fill="url(#blueM)" stroke="#1E447E" stroke-width="1.5"></circle>
+      <!-- knurled rim -->
+      <circle cx="64" cy="64" r="53" fill="none" stroke="rgba(10,26,52,0.35)" stroke-width="4"
+          stroke-dasharray="2 2.4"></circle>
+      <ellipse cx="49" cy="41" rx="27" ry="14" fill="rgba(255,255,255,0.22)"></ellipse>
+      <circle cx="64" cy="64" r="46" fill="none" stroke="rgba(255,255,255,0.24)" stroke-width="1"></circle>
+      <text font-family="Archivo, sans-serif" font-weight="900" font-size="10.5" letter-spacing="2.6"
+          fill="rgba(8,16,28,0.45)"><textPath href="#arcTopM" startOffset="50%" text-anchor="middle" dy="0.85">IRONROCK</textPath></text>
+      <text font-family="Archivo, sans-serif" font-weight="900" font-size="10.5" letter-spacing="2.6"
+          fill="#F4F7FB" stroke="#0F1D33" stroke-width="1.4" paint-order="stroke" style="stroke-linejoin:round"><textPath href="#arcTopM" startOffset="50%" text-anchor="middle">IRONROCK</textPath></text>
+      <!-- four grip holes -->
+      <circle cx="64" cy="35.5" r="4.4" fill="#141619" stroke="rgba(255,255,255,0.14)" stroke-width="0.8"></circle>
+      <circle cx="92.5" cy="64" r="4.4" fill="#141619" stroke="rgba(255,255,255,0.14)" stroke-width="0.8"></circle>
+      <circle cx="64" cy="92.5" r="4.4" fill="#141619" stroke="rgba(255,255,255,0.14)" stroke-width="0.8"></circle>
+      <circle cx="35.5" cy="64" r="4.4" fill="#141619" stroke="rgba(255,255,255,0.14)" stroke-width="0.8"></circle>
+      <!-- hub -->
+      <circle cx="64" cy="64" r="18" fill="url(#hubM)" stroke="#1E447E" stroke-width="1"></circle>
+      <circle cx="64" cy="64" r="17" fill="none" stroke="#FF5247" stroke-width="2.4"></circle>
+      <circle cx="64" cy="64" r="7.5" fill="#141619"></circle>
+    </svg>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <span style="font-family: Archivo, sans-serif; font-weight: 900; font-size: 30px;
+          letter-spacing: -1.6px; color: #F2F1EC; text-transform: uppercase; line-height: 0.94;">Iron<span style="color:#FF5247;">rock</span></span>
+      <div style="width: 44px; height: 44px; border-radius: 11px;
+          background: linear-gradient(157deg, #2A2E35 0%, #14161A 100%);
+          display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 128 128" width="38" height="38" aria-hidden="true">
+          <circle cx="64" cy="64" r="57" fill="#A6C4F4" stroke="#1E447E" stroke-width="2"></circle>
+          <circle cx="64" cy="64" r="53" fill="none" stroke="rgba(10,26,52,0.3)" stroke-width="4" stroke-dasharray="3 3"></circle>
+          <circle cx="64" cy="64" r="22" fill="#6E9BE0" stroke="#FF5247" stroke-width="4"></circle>
+          <circle cx="64" cy="64" r="9" fill="#141619"></circle>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <p style="margin: auto 0 0; font-size: 12.5px; line-height: 1.5; color: #9AA0A8; max-width: 480px;">
+    A machined plate with grip holes and a knurled rim &mdash; the most literal, gear-like read.
+    <span style="color:#646A73;">Trade-off: most detail to lose when the icon gets small.</span>
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

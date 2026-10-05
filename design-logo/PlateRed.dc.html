@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap');
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; }
+    a { color: #FF5247; } a:hover { color: #CA463B; }
+  </style>
+</helmet>
+
+<div style="width: 560px; height: 420px; box-sizing: border-box; background:
+    radial-gradient(120% 70% at 24% -10%, #1a1c22 0%, #0e0f12 58%);
+    padding: 38px 40px; display: flex; flex-direction: column; gap: 22px; color: #F2F1EC;
+    font-family: Inter, system-ui, sans-serif; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.22em; color: #2DD4BF; text-transform: uppercase;">Variation 2</span>
+    <span style="height: 1px; flex-grow: 1; background: #2A2E35;"></span>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.18em; color: #646A73; text-transform: uppercase;">Anodised red</span>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 28px;">
+    <svg viewBox="0 0 128 128" width="150" height="150" aria-hidden="true">
+      <defs>
+        <radialGradient id="redR" cx="38%" cy="30%" r="82%">
+          <stop offset="0%" stop-color="#FF7A6E"></stop>
+          <stop offset="46%" stop-color="#FF5247"></stop>
+          <stop offset="82%" stop-color="#D24A3E"></stop>
+          <stop offset="100%" stop-color="#9E3A31"></stop>
+        </radialGradient>
+        <radialGradient id="hubR" cx="40%" cy="33%" r="74%">
+          <stop offset="0%" stop-color="#C4CAD2"></stop>
+          <stop offset="100%" stop-color="#727A84"></stop>
+        </radialGradient>
+        <path id="arcTopR" d="M 26 50 A 40 40 0 0 1 102 50" fill="none"></path>
+        <path id="arcBotR" d="M 26 78 A 40 40 0 0 0 102 78" fill="none"></path>
+      </defs>
+      <circle cx="64" cy="64" r="57" fill="url(#redR)" stroke="#8A342B" stroke-width="1.5"></circle>
+      <ellipse cx="49" cy="41" rx="29" ry="15" fill="rgba(255,255,255,0.22)"></ellipse>
+      <circle cx="64" cy="64" r="50" fill="none" stroke="rgba(60,18,14,0.32)" stroke-width="2"></circle>
+      <circle cx="64" cy="64" r="48.5" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1"></circle>
+      <circle cx="64" cy="64" r="47" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"></circle>
+      <circle cx="64" cy="64" r="33" fill="none" stroke="rgba(40,10,8,0.28)" stroke-width="1"></circle>
+      <text font-family="Archivo, sans-serif" font-weight="900" font-size="11.5" letter-spacing="3"
+          fill="rgba(40,8,6,0.5)"><textPath href="#arcTopR" startOffset="50%" text-anchor="middle" dy="0.9">IRONROCK</textPath></text>
+      <text font-family="Archivo, sans-serif" font-weight="900" font-size="11.5" letter-spacing="3"
+          fill="#FFF3F0" stroke="#4A140E" stroke-width="1.5" paint-order="stroke" style="stroke-linejoin:round"><textPath href="#arcTopR" startOffset="50%" text-anchor="middle">IRONROCK</textPath></text>
+      <circle cx="24" cy="64" r="1.7" fill="#FFC7BF"></circle>
+      <circle cx="104" cy="64" r="1.7" fill="#FFC7BF"></circle>
+      <text font-family="Archivo, sans-serif" font-weight="800" font-size="6.6" letter-spacing="1.7"
+          fill="#FFE1DC" stroke="#4A140E" stroke-width="0.8" paint-order="stroke" style="stroke-linejoin:round"><textPath href="#arcBotR" startOffset="50%" text-anchor="middle">LIFT LIFE &#183; EST 2026</textPath></text>
+      <circle cx="64" cy="64" r="21" fill="url(#hubR)" stroke="#8A342B" stroke-width="1"></circle>
+      <circle cx="64" cy="64" r="8.5" fill="#141619"></circle>
+      <circle cx="64" cy="64" r="8.5" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"></circle>
+    </svg>
+
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <span style="font-family: Archivo, sans-serif; font-weight: 900; font-size: 30px;
+          letter-spacing: -1.6px; color: #F2F1EC; text-transform: uppercase; line-height: 0.94;">Ironrock</span>
+      <!-- graphite tile so the red plate pops -->
+      <div style="width: 44px; height: 44px; border-radius: 11px;
+          background: linear-gradient(157deg, #2A2E35 0%, #14161A 100%);
+          display: flex; align-items: center; justify-content: center;">
+        <svg viewBox="0 0 128 128" width="38" height="38" aria-hidden="true">
+          <circle cx="64" cy="64" r="57" fill="#FF5247" stroke="#8A342B" stroke-width="2"></circle>
+          <circle cx="64" cy="64" r="48" fill="none" stroke="rgba(60,18,14,0.3)" stroke-width="3"></circle>
+          <circle cx="64" cy="64" r="22" fill="#8E959F"></circle>
+          <circle cx="64" cy="64" r="9" fill="#141619"></circle>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <p style="margin: auto 0 0; font-size: 12.5px; line-height: 1.5; color: #9AA0A8; max-width: 480px;">
+    The same plate anodised iron-red with a steel hub &mdash; full brand colour, sits on a graphite app tile.
+    <span style="color:#646A73;">Trade-off: bolder and more &ldquo;IronRock,&rdquo; but back to a red-dominant icon.</span>
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

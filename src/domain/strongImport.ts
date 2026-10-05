@@ -1,5 +1,5 @@
 import { LIFTS } from './lifts';
-import { LIBRARY } from './library';
+import { LIBRARY, LIBRARY_BY_ID } from './library';
 import type { CustomLift } from '../state/store';
 import { FREESTYLE_KEY } from '../state/store';
 import type { LoggedSet, Session, SessionExercise } from './types';
@@ -75,7 +75,19 @@ const CANON: Record<string, string> = {
   bb: 'barbell',
   bw: 'bodyweight',
   side: 'lateral',
+  // Strong tags leg-abductor/adductor machines "Hip …"; the library calls the
+  // same movements "Thigh …". Fold to one so they match.
+  hip: 'thigh',
 };
+
+/**
+ * Words that never distinguish one movement from another, so they're dropped
+ * from the key. "Machine" is the big one: Strong appends "(Machine)" to most
+ * selectorised movements ("Leg Extension (Machine)") while the library names
+ * them plainly ("Leg Extensions"), and that lone token was the only thing
+ * stopping them from matching.
+ */
+const NOISE = new Set(['machine']);
 
 function singular(t: string): string {
   return t.length > 3 && t.endsWith('s') && !t.endsWith('ss') ? t.slice(0, -1) : t;
@@ -83,9 +95,9 @@ function singular(t: string): string {
 
 /**
  * An order-independent key for a movement: its meaningful words (equipment
- * included), lowercased, de-pluralised, synonym-folded and sorted. So "Bench
- * Press (Barbell)" and the library's "Barbell Bench Press" collapse to the same
- * key, while "Incline Bench Press" stays distinct.
+ * included), lowercased, de-pluralised, synonym-folded, noise-word-stripped and
+ * sorted. So "Bench Press (Barbell)" and the library's "Barbell Bench Press"
+ * collapse to the same key, while "Incline Bench Press" stays distinct.
  */
 export function movementKey(name: string): string {
   const tokens = name
@@ -93,7 +105,8 @@ export function movementKey(name: string): string {
     .replace(/[()]/g, ' ')
     .split(/[^a-z0-9]+/)
     .filter(Boolean)
-    .map((t) => CANON[t] ?? CANON[singular(t)] ?? singular(t));
+    .map((t) => CANON[t] ?? CANON[singular(t)] ?? singular(t))
+    .filter((t) => !NOISE.has(t));
   return Array.from(new Set(tokens)).sort().join('+');
 }
 
@@ -177,6 +190,62 @@ const CURATED_ALIASES: [string, string][] = [
   ['Standing Calf Raise (Machine)', 'calf'],
   ['Standing Calf Raise (Smith Machine)', 'calf'],
   ['Seated Calf Raise (Plate Loaded)', 'seatedcalf'],
+  // Variants/renames of standard movements Strong spells differently from our
+  // catalogue or the bundled library. Targets are catalogue ids where we have a
+  // program lift, otherwise a library exercise id (both resolve on import).
+  ['Bent Over One Arm Row (Dumbbell)', 'dbrow'],
+  ['Chest Fly', 'cablefly'],
+  ['Floor fly', 'cablefly'],
+  ['Chest Fly (Dumbbell)', 'Dumbbell_Flyes'],
+  ['Incline Chest Fly (Dumbbell)', 'Incline_Dumbbell_Flyes'],
+  ['Chest Press (Machine)', 'Leverage_Chest_Press'],
+  ['Incline Chest Press (Machine)', 'Leverage_Incline_Chest_Press'],
+  ['Iso-Lateral Chest Press (Machine)', 'Leverage_Chest_Press'],
+  ['Chest Dip (Assisted)', 'dips'],
+  ['Seated dips', 'dips'],
+  ['Chin Up (Assisted)', 'chinup'],
+  ['Pull Up (Assisted)', 'pullup'],
+  ['Wide Pull Up', 'pullup'],
+  ['Push Up', 'Pushups'],
+  ['Archer pushup', 'Pushups'],
+  ['Decline pushup', 'Decline_Push-Up'],
+  ['Handstand Push Up', 'Handstand_Push-Ups'],
+  ['Crunch (Machine)', 'Ab_Crunch_Machine'],
+  ['Hanging Knee Raise', 'Hanging_Leg_Raise'],
+  ["Knee Raise (Captain's Chair)", 'Hanging_Leg_Raise'],
+  ['Back Extension', 'Hyperextensions_Back_Extensions'],
+  ['Front Raise (Barbell)', 'Standing_Front_Barbell_Raise_Over_Head'],
+  ['Upright Row (Dumbbell)', 'Standing_Dumbbell_Upright_Row'],
+  ['Shrug (Machine)', 'Leverage_Shrug'],
+  ['T Bar Row', 'T-Bar_Row_with_Handle'],
+  ['Seated Row (Machine)', 'Seated_Cable_Rows'],
+  ['Seated Wide-Grip Row (Cable)', 'Seated_Cable_Rows'],
+  ['Iso-Lateral Row (Machine)', 'Seated_Cable_Rows'],
+  ['Shoulder Press (Machine)', 'Machine_Shoulder_Military_Press'],
+  ['Shoulder Press (Plate Loaded)', 'Leverage_Shoulder_Press'],
+  ['Overhead Press (Cable)', 'Cable_Shoulder_Press'],
+  ['Overhead Press (Smith Machine)', 'Smith_Machine_Overhead_Shoulder_Press'],
+  ['Cable pullover', 'Straight-Arm_Dumbbell_Pullover'],
+  ['Pullover (Dumbbell)', 'Straight-Arm_Dumbbell_Pullover'],
+  ['Hammer Curl (Cable)', 'hammer'],
+  ['Triceps Extension (Barbell)', 'skull'],
+  ['Triceps Extension (Dumbbell)', 'ohext'],
+  ['Triceps extension Single arm', 'ohext'],
+  ['Cable crossover triceps extension', 'pushdown'],
+  ['Landmine Press', 'Landmine_Linear_Jammer'],
+  ['Pistol Squat', 'Kettlebell_Pistol_Squat'],
+  ['Lunge (Bodyweight)', 'lunge'],
+  ['Box Jump', 'Box_Jump_Multiple_Response'],
+  ['Ab Wheel', 'Ab_Roller'],
+  ['Calf Press on Leg Press', 'calf'],
+  ['Seated Leg Press (Machine)', 'Leg_Press'],
+  ['Single leg press', 'Leg_Press'],
+  ['Kneeling leg curl', 'Standing_Leg_Curl'],
+  ['Deficit Deadlift (Barbell)', 'deadlift'],
+  ['Wide grip deadlift', 'deadlift'],
+  ['Wide grip romanian deadlift', 'rdl'],
+  ['Smith machine RDL', 'rdl'],
+  ['Squat (Machine)', 'Hack_Squat'],
 ];
 
 /** movementKey → curated id, built once. */
@@ -222,7 +291,12 @@ export function resolveExercise(strongName: string): ResolvedExercise {
   const key = movementKey(name);
 
   const curated = CURATED_BY_KEY[key];
-  if (curated && LIFTS[curated]) return { liftId: curated, name: LIFTS[curated].name };
+  if (curated) {
+    // An alias may point at a curated lift or straight at a library exercise.
+    if (LIFTS[curated]) return { liftId: curated, name: LIFTS[curated].name };
+    const aliased = LIBRARY_BY_ID[curated];
+    if (aliased) return { liftId: aliased.id, name: aliased.name };
+  }
 
   const lib = LIBRARY_BY_KEY[key];
   if (lib) return { liftId: lib.id, name: lib.name };

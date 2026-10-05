@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap');
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; }
+    a { color: #FF5247; } a:hover { color: #CA463B; }
+  </style>
+</helmet>
+
+<div style="width: 560px; height: 420px; box-sizing: border-box; background:
+    radial-gradient(120% 70% at 24% -10%, #1a1c22 0%, #0e0f12 58%);
+    padding: 40px; display: flex; flex-direction: column; gap: 26px; color: #F2F1EC;
+    font-family: Inter, system-ui, sans-serif; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.22em; color: #2DD4BF; text-transform: uppercase;">Direction E</span>
+    <span style="height: 1px; flex-grow: 1; background: #2A2E35;"></span>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.18em; color: #646A73; text-transform: uppercase;">Stamped type</span>
+  </div>
+
+  <div style="display: flex; align-items: flex-end; gap: 22px;">
+    <!-- justified two-line type block -->
+    <div style="width: 116px; height: 116px; border-radius: 26px;
+        background: linear-gradient(157deg, #FF5247 0%, #CA463B 100%);
+        box-shadow: 0 12px 30px -12px rgba(255,82,71,0.55), inset 0 1px 0 rgba(255,255,255,0.18);
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;">
+      <span style="font-family: Archivo, sans-serif; font-weight: 900; font-size: 27px;
+          letter-spacing: 3px; color: #14161A; line-height: 1;">IRON</span>
+      <span style="width: 74px; height: 3px; background: #14161A; opacity: 0.55;"></span>
+      <span style="font-family: Archivo, sans-serif; font-weight: 900; font-size: 27px;
+          letter-spacing: 3px; color: #14161A; line-height: 1;">ROCK</span>
+    </div>
+    <div style="width: 44px; height: 44px; border-radius: 11px;
+        background: linear-gradient(157deg, #FF5247 0%, #CA463B 100%);
+        display: flex; align-items: center; justify-content: center;">
+      <span style="font-family: Archivo, sans-serif; font-weight: 900; font-size: 30px;
+          letter-spacing: -2px; color: #14161A;">IR</span>
+    </div>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em;
+        color: #646A73; text-transform: uppercase; padding-bottom: 4px;">icon &middot; favicon</span>
+  </div>
+
+  <!-- stacked wordmark with divider -->
+  <div style="display: flex; flex-direction: column; margin-top: 2px;">
+    <span style="font-family: Archivo, sans-serif; font-weight: 900; font-size: 30px;
+        letter-spacing: 4px; color: #F2F1EC; line-height: 0.98;">IRON</span>
+    <div style="display: flex; align-items: center; gap: 8px; margin: 3px 0;">
+      <span style="width: 34px; height: 2px; background: #FF5247;"></span>
+      <span style="font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.3em;
+          color: #646A73;">STRENGTH LOG</span>
+    </div>
+    <span style="font-family: Archivo, sans-serif; font-weight: 900; font-size: 30px;
+        letter-spacing: 4px; color: #F2F1EC; line-height: 0.98;">ROCK</span>
+  </div>
+
+  <p style="margin: auto 0 0; font-size: 12.5px; line-height: 1.5; color: #9AA0A8; max-width: 470px;">
+    No pictorial mark &mdash; the wordmark is the logo, stacked and justified like a stamped steel billet.
+    <span style="color:#646A73;">Trade-off: most flexible and timeless, but no standalone symbol.</span>
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

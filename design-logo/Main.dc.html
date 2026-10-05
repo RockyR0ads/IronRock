@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap');
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; }
+    a { color: #FF5247; } a:hover { color: #CA463B; }
+    .subgrad { background: linear-gradient(95deg, #FF5247 0%, #FF7A45 52%, #FF9A3E 100%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+  </style>
+</helmet>
+
+<div style="width: 560px; height: 470px; box-sizing: border-box; background:
+    radial-gradient(120% 70% at 24% -10%, #1a1c22 0%, #0e0f12 58%);
+    padding: 38px 40px; display: flex; flex-direction: column; gap: 22px; color: #F2F1EC;
+    font-family: Inter, system-ui, sans-serif; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.22em; color: #2DD4BF; text-transform: uppercase;">Primary</span>
+    <span style="height: 1px; flex-grow: 1; background: #2A2E35;"></span>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+        letter-spacing: 0.18em; color: #646A73; text-transform: uppercase;">IronRock logo</span>
+  </div>
+
+  <!-- hero: red plate mark + wordmark lockup -->
+  <div style="display: flex; align-items: center; gap: 28px;">
+    <svg viewBox="0 0 128 128" width="168" height="168" aria-hidden="true">
+      <defs>
+        <radialGradient id="redL" cx="38%" cy="30%" r="82%">
+          <stop offset="0%" stop-color="#FF7A6E"></stop>
+          <stop offset="46%" stop-color="#FF5247"></stop>
+          <stop offset="82%" stop-color="#D24A3E"></stop>
+          <stop offset="100%" stop-color="#9E3A31"></stop>
+        </radialGradient>
+        <radialGradient id="hubL" cx="40%" cy="33%" r="74%">
+          <stop offset="0%" stop-color="#D7DCE3"></stop>
+          <stop offset="100%" stop-color="#7B828C"></stop>
+        </radialGradient>
+        <path id="arcTopL" d="M 28 61 A 36 36 0 0 1 100 61" fill="none"></path>
+        <path id="arcBotL" d="M 27 69 A 37 37 0 0 0 101 69" fill="none"></path>
+      </defs>
+      <circle cx="64" cy="64" r="57" fill="url(#redL)" stroke="#8A342B" stroke-width="1.5"></circle>
+      <circle cx="64" cy="64" r="56" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="0.8"></circle>
+      <ellipse cx="49" cy="41" rx="29" ry="15" fill="rgba(255,255,255,0.22)"></ellipse>
+      <circle cx="64" cy="64" r="50" fill="none" stroke="rgba(60,18,14,0.32)" stroke-width="2"></circle>
+      <circle cx="64" cy="64" r="47" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"></circle>
+      <circle cx="64" cy="64" r="33" fill="none" stroke="rgba(40,10,8,0.28)" stroke-width="1"></circle>
+      <!-- name cast in raised metal -->
+      <text font-family="Archivo, sans-serif" font-weight="900" font-size="15" letter-spacing="1.1"
+          fill="rgba(40,8,6,0.5)"><textPath href="#arcTopL" startOffset="50%" text-anchor="middle" dy="1">IRONROCK</textPath></text>
+      <text font-family="Archivo, sans-serif" font-weight="900" font-size="15" letter-spacing="1.1"
+          fill="#FFF3F0" stroke="#4A140E" stroke-width="1.9" paint-order="stroke" style="stroke-linejoin:round"><textPath href="#arcTopL" startOffset="50%" text-anchor="middle">IRONROCK</textPath></text>
+      <text font-family="Archivo, sans-serif" font-weight="800" font-size="6.6" letter-spacing="1.7"
+          fill="#FFE1DC" stroke="#4A140E" stroke-width="0.8" paint-order="stroke" style="stroke-linejoin:round"><textPath href="#arcBotL" startOffset="50%" text-anchor="middle">LIFT LIFE &#183; EST 2026</textPath></text>
+      <!-- steel hub + 50mm hole -->
+      <circle cx="64" cy="64" r="21" fill="url(#hubL)" stroke="#8A342B" stroke-width="1"></circle>
+      <circle cx="64" cy="64" r="8.5" fill="#141619"></circle>
+      <circle cx="64" cy="64" r="8.5" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"></circle>
+    </svg>
+
+    <div style="min-width: 0;">
+      <div style="font-family: Archivo, sans-serif; font-weight: 900; font-size: 42px;
+          letter-spacing: -1.8px; text-transform: uppercase; line-height: 0.92;">
+        <span style="color: #F2F1EC;">Iron</span><span style="color: #FF5247;">Rock</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 9px; margin-top: 10px;">
+        <span style="width: 24px; height: 2px; background: #FF5247;"></span>
+        <span class="subgrad" style="font-family: Archivo, sans-serif; font-weight: 700; font-size: 12.5px;
+            letter-spacing: 0.2em; text-transform: uppercase;">Lift Life &middot; Est 2026</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- app icon + favicon proofs -->
+  <div style="display: flex; align-items: flex-end; gap: 16px; margin-top: 2px;">
+    <div style="width: 72px; height: 72px; border-radius: 17px;
+        background: linear-gradient(157deg, #2A2E35 0%, #14161A 100%);
+        box-shadow: 0 10px 22px -12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08);
+        display: flex; align-items: center; justify-content: center;">
+      <svg viewBox="0 0 128 128" width="62" height="62" aria-hidden="true">
+        <defs>
+          <radialGradient id="redI" cx="38%" cy="30%" r="82%">
+            <stop offset="0%" stop-color="#FF7A6E"></stop>
+            <stop offset="46%" stop-color="#FF5247"></stop>
+            <stop offset="100%" stop-color="#A83E33"></stop>
+          </radialGradient>
+          <path id="arcTopI" d="M 28 63 A 35 35 0 0 1 100 63" fill="none"></path>
+        </defs>
+        <circle cx="64" cy="64" r="57" fill="url(#redI)" stroke="#8A342B" stroke-width="1.5"></circle>
+        <ellipse cx="49" cy="41" rx="29" ry="15" fill="rgba(255,255,255,0.22)"></ellipse>
+        <circle cx="64" cy="64" r="50" fill="none" stroke="rgba(60,18,14,0.3)" stroke-width="2"></circle>
+        <circle cx="64" cy="64" r="30" fill="none" stroke="rgba(40,10,8,0.28)" stroke-width="1"></circle>
+        <text font-family="Archivo, sans-serif" font-weight="900" font-size="15.5" letter-spacing="0"
+            fill="#FFF3F0" stroke="#4A140E" stroke-width="2" paint-order="stroke" style="stroke-linejoin:round"><textPath href="#arcTopI" startOffset="50%" text-anchor="middle">IRONROCK</textPath></text>
+        <circle cx="64" cy="64" r="20" fill="#B9C0C9"></circle>
+        <circle cx="64" cy="64" r="8.5" fill="#141619"></circle>
+      </svg>
+    </div>
+    <div style="width: 44px; height: 44px; border-radius: 11px;
+        background: linear-gradient(157deg, #2A2E35 0%, #14161A 100%);
+        display: flex; align-items: center; justify-content: center;">
+      <svg viewBox="0 0 128 128" width="38" height="38" aria-hidden="true">
+        <defs>
+          <radialGradient id="redF" cx="38%" cy="30%" r="82%">
+            <stop offset="0%" stop-color="#FF7A6E"></stop>
+            <stop offset="100%" stop-color="#B0402F"></stop>
+          </radialGradient>
+        </defs>
+        <circle cx="64" cy="64" r="57" fill="url(#redF)" stroke="#8A342B" stroke-width="2"></circle>
+        <circle cx="64" cy="64" r="48" fill="none" stroke="rgba(60,18,14,0.3)" stroke-width="3"></circle>
+        <circle cx="64" cy="64" r="22" fill="#B9C0C9"></circle>
+        <circle cx="64" cy="64" r="9" fill="#141619"></circle>
+      </svg>
+    </div>
+    <span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em;
+        color: #646A73; text-transform: uppercase; padding-bottom: 5px;">app icon &middot; favicon</span>
+  </div>
+
+  <p style="margin: auto 0 0; font-size: 12.5px; line-height: 1.5; color: #9AA0A8; max-width: 480px;">
+    The plate mark with the wordmark lockup &mdash; IRON in white, ROCK in red, and a red-to-orange gradient
+    across the tagline. <span style="color:#646A73;">Plate alone is the app icon; drop the cast text at favicon size.</span>
+  </p>
+</div>
+</x-dc>
+</body>
+</html>

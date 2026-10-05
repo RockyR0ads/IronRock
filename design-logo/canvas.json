@@ -1,0 +1,25 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Plate logo" },
+    { "id": "page-2", "name": "Earlier explorations" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "page": "page-1", "x": 0, "y": 0, "w": 560, "h": 470 },
+    { "file": "PlateStamp.dc.html", "page": "page-1", "x": 660, "y": 0, "w": 560, "h": 420 },
+    { "file": "PlateMachined.dc.html", "page": "page-1", "x": 0, "y": 590, "w": 560, "h": 420 },
+    { "file": "PlateRed.dc.html", "page": "page-1", "x": 660, "y": 590, "w": 560, "h": 420 },
+
+    { "file": "Emblem.dc.html", "page": "page-2", "x": 0, "y": 0, "w": 560, "h": 420 },
+    { "file": "PlateO.dc.html", "page": "page-2", "x": 660, "y": 0, "w": 560, "h": 420 },
+    { "file": "BendingBar.dc.html", "page": "page-2", "x": 1320, "y": 0, "w": 560, "h": 420 },
+    { "file": "StampedType.dc.html", "page": "page-2", "x": 0, "y": 560, "w": 560, "h": 420 },
+    { "file": "Anvil.dc.html", "page": "page-2", "x": 660, "y": 560, "w": 560, "h": 420 },
+    { "file": "Ascent.dc.html", "page": "page-2", "x": 1320, "y": 560, "w": 560, "h": 420 },
+    { "file": "Monolith.dc.html", "page": "page-2", "x": 0, "y": 1120, "w": 560, "h": 420 }
+  ],
+  "annotations": [
+    { "id": "brief", "page": "page-1", "x": 0, "y": -150, "w": 480, "text": "IronRock logo — FINAL: red plate mark (name cast top, LIFT LIFE · EST 2026 bottom, steel hub) + wordmark with the red-to-orange ROCK gradient. The three variations below are kept for reference. Next: wire it into the app — header, app icon, favicon, splash." },
+    { "id": "brief2", "page": "page-2", "x": 0, "y": -150, "w": 460, "text": "The earlier eight directions, kept for reference. The plate emblem (top-left) is what the current page builds on." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}
