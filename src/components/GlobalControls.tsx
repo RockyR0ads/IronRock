@@ -283,7 +283,9 @@ export function GlobalControls() {
           <input
             ref={fileRef}
             type="file"
-            accept="application/json,.json"
+            // no `accept` filter: Google Drive reports JSON/CSV with generic MIME
+            // types, which greys out the real file in the picker. The content is
+            // validated on read instead.
             onChange={onImportFile}
             className="hidden"
           />
@@ -310,7 +312,7 @@ export function GlobalControls() {
         <input
           ref={strongRef}
           type="file"
-          accept=".csv,text/csv,text/plain"
+          // no `accept` filter — see the backup input above (Drive greys out CSVs)
           onChange={onStrongFile}
           className="hidden"
         />

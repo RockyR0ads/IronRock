@@ -108,7 +108,8 @@ export function DataBanner({ onOpenSettings }: { onOpenSettings?: () => void }) 
       <input
         ref={fileRef}
         type="file"
-        accept="application/json,.json"
+        // no `accept` filter: Google Drive greys out JSON files it reports with
+        // a generic MIME type; the content is validated on read instead.
         onChange={onImport}
         className="hidden"
       />
