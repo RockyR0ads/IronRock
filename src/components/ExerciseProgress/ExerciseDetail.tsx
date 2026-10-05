@@ -3,12 +3,14 @@ import { useStore } from '../../state/StoreContext';
 import { liftById } from '../../state/store';
 import { currentBodyweight } from '../../state/selectors';
 import { exerciseSeries } from '../../domain/progress';
+import { liftRecords } from '../../domain/records';
 import { isBodyweightLoaded } from '../../domain/exerciseConfig';
 import { sessionDayLabel } from '../../domain/session';
 import { ChevronLeft } from '../common/icons';
 import { ExerciseCharts } from './ExerciseCharts';
+import { RecordsTab } from './RecordsTab';
 
-type Tab = 'charts' | 'log';
+type Tab = 'charts' | 'records' | 'log';
 
 /** The exercise page: a tabbed detail view. Charts is the headline tab. */
 export function ExerciseDetail({ liftId, onBack }: { liftId: string; onBack: () => void }) {
@@ -19,6 +21,7 @@ export function ExerciseDetail({ liftId, onBack }: { liftId: string; onBack: () 
   const addWeight =
     cfg?.includeBw && isBodyweightLoaded(lift.unit) ? currentBodyweight(state) : 0;
   const series = exerciseSeries(state.sessions, liftId, state.inc, { addWeight });
+  const records = liftRecords(state.sessions, liftId, state.inc, { addWeight });
 
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6">
@@ -46,6 +49,7 @@ export function ExerciseDetail({ liftId, onBack }: { liftId: string; onBack: () 
         {(
           [
             ['charts', 'Charts'],
+            ['records', 'Records'],
             ['log', 'Log'],
           ] as [Tab, string][]
         ).map(([key, label]) => {
@@ -66,11 +70,9 @@ export function ExerciseDetail({ liftId, onBack }: { liftId: string; onBack: () 
         })}
       </div>
 
-      {tab === 'charts' ? (
-        <ExerciseCharts name={lift.name} series={series} />
-      ) : (
-        <LogTab series={series} />
-      )}
+      {tab === 'charts' && <ExerciseCharts name={lift.name} series={series} />}
+      {tab === 'records' && <RecordsTab records={records} unit="kg" />}
+      {tab === 'log' && <LogTab series={series} />}
     </div>
   );
 }

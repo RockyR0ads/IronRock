@@ -5,6 +5,7 @@ import { ChevronRight } from '../common/icons';
 import { SparklineChart } from './charts';
 import { C } from './charts/chartUtils';
 import { METRICS, metricFor } from './metrics';
+import { RANGES, rangeFor, sliceByRange } from './ranges';
 import { ChartDetailSheet } from './ChartDetailSheet';
 
 /**
@@ -13,6 +14,7 @@ import { ChartDetailSheet } from './ChartDetailSheet';
  */
 export function ExerciseCharts({ name, series }: { name: string; series: ProgressPoint[] }) {
   const [metricKey, setMetricKey] = useState(METRICS[0].key);
+  const [rangeKey, setRangeKey] = useState('all');
   const [detail, setDetail] = useState(false);
 
   if (series.length === 0) {
@@ -27,14 +29,17 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
   }
 
   const metric = metricFor(metricKey);
-  const values = series.map(metric.pick);
-  const labels = series.map((p) => p.label);
+  const range = rangeFor(rangeKey);
+  const view = sliceByRange(series, range.days);
+  const values = view.map(metric.pick);
+  const labels = view.map((p) => p.label);
+  const ats = view.map((p) => new Date(p.at).getTime());
   const delta = seriesDelta(values);
 
   return (
     <div className="mt-4">
       {/* metric toggle — drives the chart and the drill-down */}
-      <div className="flex gap-1.5 rounded-2xl border border-line bg-surface p-1.5">
+      <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-line bg-surface p-1.5 [-ms-overflow-style:none] [scrollbar-width:none]">
         {METRICS.map((m) => {
           const on = m.key === metricKey;
           return (
@@ -43,7 +48,7 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
               type="button"
               onClick={() => setMetricKey(m.key)}
               className={[
-                'flex-1 rounded-xl px-2 py-2 font-display text-[13px] font-bold tracking-[-0.01em] transition-colors',
+                'shrink-0 whitespace-nowrap rounded-xl px-3 py-2 font-display text-[13px] font-bold tracking-[-0.01em] transition-colors',
                 on ? 'bg-surface-3 text-ink' : 'text-muted-2 hover:text-muted',
               ].join(' ')}
             >
@@ -53,12 +58,46 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
         })}
       </div>
 
+      {/* time-range toggle */}
+      {series.length >= 2 && (
+        <div className="mt-2 flex gap-1.5">
+          {RANGES.map((r) => {
+            const on = r.key === rangeKey;
+            // hide windows that wouldn't actually crop anything
+            const spanDays =
+              (ats.length > 0
+                ? new Date(series[series.length - 1].at).getTime() -
+                  new Date(series[0].at).getTime()
+                : 0) / 86_400_000;
+            if (Number.isFinite(r.days) && r.days >= spanDays) return null;
+            return (
+              <button
+                key={r.key}
+                type="button"
+                onClick={() => setRangeKey(r.key)}
+                className={[
+                  'rounded-lg border px-2.5 py-1 font-mono text-[11px] font-bold tracking-[0.04em] transition-colors',
+                  on
+                    ? 'border-secondary/60 bg-secondary/10 text-ink'
+                    : 'border-line bg-surface text-muted-2 hover:text-muted',
+                ].join(' ')}
+              >
+                {r.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <section className="mt-3 rounded-2xl border border-line bg-surface p-4 shadow-card">
         <div className="flex items-center justify-between">
           <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-2">
             {metric.label}
+            {view.length !== series.length && (
+              <span className="ml-1.5 text-muted-2/70">· {view.length} of {series.length}</span>
+            )}
           </span>
-          {series.length >= 2 && (
+          {view.length >= 2 && (
             <span
               className="font-display text-[12px] font-bold"
               style={{ color: delta.abs >= 0 ? C.green : C.accent }}
@@ -72,7 +111,7 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
         </div>
 
         <div className="mt-1">
-          <SparklineChart values={values} labels={labels} color={metric.color} unit={metric.unit} />
+          <SparklineChart values={values} labels={labels} ats={ats} color={metric.color} unit={metric.unit} />
         </div>
 
         {series.length === 1 ? (
@@ -94,7 +133,7 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
       {detail && (
         <ChartDetailSheet
           name={name}
-          series={series}
+          series={view}
           metricKey={metricKey}
           onMetric={setMetricKey}
           onClose={() => setDetail(false)}

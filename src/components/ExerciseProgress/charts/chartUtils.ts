@@ -39,16 +39,31 @@ export interface Plot {
 }
 
 /**
- * Map values to points in the chart's user space. A padded value range keeps
- * the line off the top and bottom edges; a flat series is centred.
+ * Horizontal position of each point as a 0–1 fraction across the plot width.
+ * With `ats` (ms timestamps) points sit on a real time axis, so gaps in
+ * training show as gaps in the line; without it they're evenly spaced by index.
  */
-export function plot(values: number[]): Plot {
+export function xFractions(n: number, ats?: number[]): number[] {
+  if (n <= 1) return [0.5];
+  if (!ats || ats.length !== n) return Array.from({ length: n }, (_, i) => i / (n - 1));
+  const t0 = ats[0];
+  const span = ats[n - 1] - t0 || 1;
+  return ats.map((t) => (t - t0) / span);
+}
+
+/**
+ * Map values to points in the chart's user space. A padded value range keeps
+ * the line off the top and bottom edges; a flat series is centred. Pass `ats`
+ * (ms timestamps aligned to `values`) to space points by time instead of index.
+ */
+export function plot(values: number[], ats?: number[]): Plot {
   const { lo, hi } = bounds(values);
   const range = hi - lo || 1;
   const n = values.length;
+  const fr = xFractions(n, ats);
 
   const pts = values.map((v, i) => {
-    const x = PAD.l + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+    const x = PAD.l + (n === 1 ? innerW / 2 : fr[i] * innerW);
     const y = PAD.t + innerH * (1 - (v - lo) / range);
     return { x, y, v, i };
   });
@@ -111,4 +126,6 @@ export interface ChartProps {
   color: string;
   /** Unit suffix for value labels, e.g. "kg". */
   unit: string;
+  /** Optional ms timestamps aligned to `values`, to space points by time. */
+  ats?: number[];
 }

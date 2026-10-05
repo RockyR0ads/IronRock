@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { C, bounds, fmt, gridLines, smoothPath, type ChartProps, type Pt } from './chartUtils';
+import { C, bounds, fmt, gridLines, smoothPath, xFractions, type ChartProps, type Pt } from './chartUtils';
 
 // A larger, richer take on the area line for the drill-down view: taller box,
 // right-hand value axis, per-point dots, and the peak and latest points called
@@ -10,16 +10,17 @@ const P = { t: 24, r: 46, b: 32, l: 18 };
 const IW = W - P.l - P.r;
 const IH = H - P.t - P.b;
 
-export function DetailAreaChart({ values, labels, color, unit }: ChartProps) {
+export function DetailAreaChart({ values, labels, color, unit, ats }: ChartProps) {
   const gid = useId();
   const { lo, hi } = bounds(values);
   const range = hi - lo || 1;
   const n = values.length;
   const baseY = P.t + IH;
+  const fr = xFractions(n, ats);
 
   const yAt = (v: number) => P.t + IH * (1 - (v - lo) / range);
   const pts: Pt[] = values.map((v, i) => ({
-    x: P.l + (n === 1 ? IW / 2 : (i / (n - 1)) * IW),
+    x: P.l + (n === 1 ? IW / 2 : fr[i] * IW),
     y: yAt(v),
     v,
     i,

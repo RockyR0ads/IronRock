@@ -17,6 +17,7 @@ import { Settings } from './components/Settings/Settings';
 import { ActiveWorkoutBar } from './components/ActiveWorkoutBar';
 import { DataBanner } from './components/DataBanner';
 import { StretchSection } from './components/Stretch/StretchSection';
+import { OverviewDashboard } from './components/Overview/OverviewDashboard';
 import { activeWorkout } from './state/selectors';
 import { useStore } from './state/StoreContext';
 
@@ -29,6 +30,7 @@ type Loc =
   | { p: 'history' }
   | { p: 'weight' }
   | { p: 'stretch' }
+  | { p: 'overview' }
   | { p: 'settings' }
   | { p: 'programMenu' }
   | { p: 'programDetails'; id: string }
@@ -48,6 +50,7 @@ const HOME_DEST: Record<HomeDest, Loc> = {
   exercises: { p: 'exerciseSelector' },
   weight: { p: 'weight' },
   stretch: { p: 'stretch' },
+  overview: { p: 'overview' },
   settings: { p: 'settings' },
 };
 
@@ -134,6 +137,8 @@ export default function App() {
       return <WeightTracker onBack={back} onOpenSettings={() => push({ p: 'settings' })} />;
     case 'stretch':
       return <StretchSection onBack={back} />;
+    case 'overview':
+      return <OverviewDashboard onBack={back} />;
     case 'settings':
       return <Settings onBack={back} />;
     case 'programMenu':

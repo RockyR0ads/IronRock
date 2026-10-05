@@ -17,6 +17,7 @@ import {
   BendingBarbell,
   GearIcon,
   StretchIcon,
+  TrophyIcon,
 } from './common/icons';
 import { PlateMark } from './common/BrandLogo';
 
@@ -26,6 +27,7 @@ export type HomeDest =
   | 'freestyle'
   | 'history'
   | 'progress'
+  | 'overview'
   | 'program'
   | 'reference'
   | 'exercises'
@@ -147,6 +149,12 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
           title="Exercise charts"
           sub="See a lift trend over time"
           onClick={() => onGo('progress')}
+        />
+        <Tile
+          icon={<TrophyIcon className="h-5 w-5" />}
+          title="Overview"
+          sub="Volume, frequency & PRs across all lifts"
+          onClick={() => onGo('overview')}
         />
         <Tile
           icon={<Dumbbell className="h-5 w-5" />}

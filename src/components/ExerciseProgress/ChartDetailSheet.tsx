@@ -35,6 +35,7 @@ export function ChartDetailSheet({
   const metric = metricFor(metricKey);
   const values = series.map(metric.pick);
   const labels = series.map((p) => p.label);
+  const ats = series.map((p) => new Date(p.at).getTime());
   const summary = summarize(values);
   const delta = seriesDelta(values);
   const u = metric.unit;
@@ -86,7 +87,7 @@ export function ChartDetailSheet({
         </header>
 
         {/* metric toggle, shared with the tab underneath */}
-        <div className="mt-3 flex gap-1.5 rounded-2xl border border-line bg-surface p-1.5">
+        <div className="mt-3 flex gap-1.5 overflow-x-auto rounded-2xl border border-line bg-surface p-1.5 [-ms-overflow-style:none] [scrollbar-width:none]">
           {METRICS.map((m) => {
             const on = m.key === metricKey;
             return (
@@ -95,7 +96,7 @@ export function ChartDetailSheet({
                 type="button"
                 onClick={() => onMetric(m.key)}
                 className={[
-                  'flex-1 rounded-xl px-2 py-2 font-display text-[13px] font-bold tracking-[-0.01em] transition-colors',
+                  'shrink-0 whitespace-nowrap rounded-xl px-3 py-2 font-display text-[13px] font-bold tracking-[-0.01em] transition-colors',
                   on ? 'bg-surface-3 text-ink' : 'text-muted-2 hover:text-muted',
                 ].join(' ')}
               >
@@ -106,7 +107,7 @@ export function ChartDetailSheet({
         </div>
 
         <section className="mt-3 rounded-2xl border border-line bg-surface p-4 shadow-card">
-          <DetailAreaChart values={values} labels={labels} color={metric.color} unit={metric.unit} />
+          <DetailAreaChart values={values} labels={labels} ats={ats} color={metric.color} unit={metric.unit} />
         </section>
 
         <div className="mt-3 grid grid-cols-3 gap-2">

@@ -6,9 +6,9 @@ import { C, PAD, VIEW, fmt, innerH, plot, seriesEnds, smoothPath, type ChartProp
  * clean line over a whisper of fill, and a single dot at today. The "at a
  * glance" look.
  */
-export function SparklineChart({ values, color, unit }: ChartProps) {
+export function SparklineChart({ values, color, unit, ats }: ChartProps) {
   const gid = useId();
-  const { pts } = plot(values);
+  const { pts } = plot(values, ats);
   const last = pts[pts.length - 1];
   const { first, latest } = seriesEnds(values);
   const up = latest >= first;

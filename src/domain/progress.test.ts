@@ -24,6 +24,20 @@ describe('exerciseSeries', () => {
     expect(series.map((p) => p.topWeight)).toEqual([90, 100]);
   });
 
+  it('sums reps and averages load into an intensity %', () => {
+    const sessions: Session[] = [
+      session('2026-01-01T10:00:00Z', [
+        set({ w: '80', reps: '5', rpe: '8', done: true }),
+        set({ w: '90', reps: '3', rpe: '9', done: true }),
+      ]),
+    ];
+    const [p] = exerciseSeries(sessions, 'bench', 2.5);
+    expect(p.reps).toBe(8); // 5 + 3
+    // mean load 85 against the day's est. 1RM; a fraction of it, capped at 100
+    expect(p.intensity).toBeGreaterThan(0);
+    expect(p.intensity).toBeLessThanOrEqual(100);
+  });
+
   it('skips sessions where the lift has no counted working set', () => {
     const sessions: Session[] = [
       session('2026-01-01T10:00:00Z', [set({ w: '90', reps: '5', rpe: '8', done: false })]),

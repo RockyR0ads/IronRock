@@ -21,6 +21,13 @@ export interface ProgressPoint {
   volume: number;
   /** Number of working sets that counted. */
   sets: number;
+  /** Total reps across the counted working sets. */
+  reps: number;
+  /**
+   * Mean working-set load as a % of that session's estimated 1RM — a proxy for
+   * how heavy the session was relative to the lifter's strength that day.
+   */
+  intensity: number;
   /** Mean RPE across the working sets that recorded one, or null. */
   avgRpe: number | null;
 }
@@ -65,6 +72,8 @@ export function exerciseSeries(
 
     let topSet: LoggedSet | null = null;
     let volume = 0;
+    let totalReps = 0;
+    let loadSum = 0;
     const rpes: number[] = [];
 
     for (const set of sets) {
@@ -72,6 +81,8 @@ export function exerciseSeries(
       const r = setReps(set);
       const rp = num(set.rpe);
       volume += w * r;
+      totalReps += r;
+      loadSum += w;
       if (rp > 0) rpes.push(rp);
       if (!topSet) {
         topSet = set;
@@ -84,15 +95,22 @@ export function exerciseSeries(
     const tw = num(topSet!.w) + add;
     const tr = num(topSet!.reps);
     const raw = estimate1Rm(tw, tr, num(topSet!.rpe));
+    const e1rm = raw === null ? tw : round(raw, inc);
+    const meanLoad = loadSum / sets.length;
+    // Intensity as a % of the day's estimated 1RM; clamp so an outlier top set
+    // computed from a single hard rep can't push it over 100.
+    const intensity = e1rm > 0 ? Math.min(100, Math.round((meanLoad / e1rm) * 100)) : 0;
 
     points.push({
       at: session.at,
       label: shortDate(session.at),
-      e1rm: raw === null ? tw : round(raw, inc),
+      e1rm,
       topWeight: tw,
       topReps: tr,
       volume: Math.round(volume),
       sets: sets.length,
+      reps: totalReps,
+      intensity,
       avgRpe: rpes.length
         ? Math.round((rpes.reduce((a, b) => a + b, 0) / rpes.length) * 10) / 10
         : null,
