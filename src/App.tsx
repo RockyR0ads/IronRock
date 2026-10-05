@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { App as CapApp } from '@capacitor/app';
 import { ChevronLeft } from './components/common/icons';
 import { ReferenceLifts } from './components/ReferenceLifts/ReferenceLifts';
 import { FreestyleWorkout } from './components/FreestyleWorkout';
@@ -70,6 +71,25 @@ export default function App() {
     const onPop = () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s));
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // Android hardware/gesture back button → navigate the app's own stack (via
+  // history, so popstate unwinds it), and only exit when we're at the home root.
+  const stackRef = useRef(stack);
+  stackRef.current = stack;
+  useEffect(() => {
+    let remove: (() => void) | undefined;
+    CapApp.addListener('backButton', () => {
+      if (stackRef.current.length > 1) window.history.back();
+      else CapApp.exitApp();
+    })
+      .then((handle) => {
+        remove = () => handle.remove();
+      })
+      .catch(() => {
+        /* not on a native platform — the web browser handles back itself */
+      });
+    return () => remove?.();
   }, []);
 
   // resume banner: shown app-wide while a workout is unfinished, except on the
