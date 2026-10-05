@@ -155,6 +155,28 @@ const CURATED_ALIASES: [string, string][] = [
   ['Rear Delt Reverse Fly (Dumbbell)', 'reardelt'],
   ['Standing Calf Raise', 'calf'],
   ['Seated Calf Raise', 'seatedcalf'],
+  // cable / machine isolation commonly logged in Strong → catalogue equivalents
+  ['Lat Pulldown (Cable)', 'latpulldown'],
+  ['Lat Pulldown (Machine)', 'latpulldown'],
+  ['Lat Pulldown - Wide Grip (Cable)', 'latpulldown'],
+  ['Lat Pulldown (Single Arm)', 'latpulldown'],
+  ['Cable Fly', 'cablefly'],
+  ['Reverse Fly (Cable)', 'reversecablefly'],
+  ['Reverse Fly (Dumbbell)', 'reardelt'],
+  ['Reverse Fly (Machine)', 'reardelt'],
+  ['Preacher Curl (Barbell)', 'preacher'],
+  ['Preacher Curl (Dumbbell)', 'preacher'],
+  ['Bicep Curl (Cable)', 'cablecurl'],
+  ['Skullcrusher (Dumbbell)', 'skull'],
+  ['Triceps Pushdown (Cable - Straight Bar)', 'pushdown'],
+  ['Cable Kickback', 'kickback'],
+  ['Dumbell kickback', 'kickback'],
+  ['Chest Dip', 'dips'],
+  ['Lateral Raise (Machine)', 'latraise'],
+  ['Seated Lateral Raise (Dumbbell)', 'seatedlatraise'],
+  ['Standing Calf Raise (Machine)', 'calf'],
+  ['Standing Calf Raise (Smith Machine)', 'calf'],
+  ['Seated Calf Raise (Plate Loaded)', 'seatedcalf'],
 ];
 
 /** movementKey → curated id, built once. */
