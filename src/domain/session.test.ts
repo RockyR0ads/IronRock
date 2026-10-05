@@ -24,6 +24,15 @@ describe('sessionDayLabel', () => {
     expect(label.length).toBeGreaterThan(0);
   });
 
+  it('includes the year for dates outside the current year', () => {
+    const label = sessionDayLabel('2019-10-10T02:54:00', NOW);
+    expect(label).toContain('2019');
+  });
+
+  it('omits the year within the current year', () => {
+    expect(sessionDayLabel('2026-07-10T18:00:00', NOW)).not.toContain('2026');
+  });
+
   it('returns an empty label for an unparseable timestamp', () => {
     expect(sessionDayLabel('not-a-date', NOW)).toBe('');
   });

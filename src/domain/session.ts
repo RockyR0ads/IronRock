@@ -37,7 +37,15 @@ export function sessionDayLabel(at: string, now: Date = new Date()): string {
   const days = Math.round((startOfDay(now) - startOfDay(then)) / DAY_MS);
   if (days === 0) return 'Today';
   if (days === 1) return 'Yesterday';
-  return then.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  // Show the year for anything outside the current year — imported history can
+  // span years, and "Thu, 10 Oct" alone is ambiguous across them.
+  const sameYear = then.getFullYear() === now.getFullYear();
+  return then.toLocaleDateString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
 }
 
 /** Clock time of a session, e.g. "18:42". */
