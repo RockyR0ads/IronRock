@@ -7,6 +7,7 @@ import { programProgress, programCycle } from '../domain/programTracker';
 import { ChevronLeft, ChevronDown } from './common/icons';
 import { DayView } from './DayView/DayView';
 import { DayNav } from './DayView/DayNav';
+import { WorkoutClockBar } from './DayView/WorkoutClockBar';
 import { RestTimerBar } from './RestTimerBar';
 import { ExercisePicker, type PickerRequest } from './ExercisePicker/ExercisePicker';
 
@@ -121,6 +122,8 @@ export function TrainWeek({
           )}
         </div>
       </header>
+
+      <WorkoutClockBar dayKey={state.day} />
 
       <p className="mb-4 text-[13px] text-muted-2">
         Log your sets. Tap a lift to swap it, or add your own.

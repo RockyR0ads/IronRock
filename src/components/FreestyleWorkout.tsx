@@ -8,6 +8,7 @@ import type { WorkoutStats } from '../domain/stats';
 import { workoutTiming, type WorkoutTiming } from '../domain/workoutTiming';
 import { CheckIcon, ChevronLeft, PlusIcon } from './common/icons';
 import { ExerciseCard } from './DayView/ExerciseCard';
+import { WorkoutClockBar } from './DayView/WorkoutClockBar';
 import { RestTimerBar } from './RestTimerBar';
 import { WorkoutSummary } from './WorkoutSummary';
 import { ExercisePicker, type PickerRequest } from './ExercisePicker/ExercisePicker';
@@ -88,6 +89,8 @@ export function FreestyleWorkout({
           </button>
         )}
       </header>
+
+      <WorkoutClockBar dayKey={FREESTYLE_KEY} />
 
       <p className="mb-5 mt-3 max-w-[52ch] text-[14px] leading-relaxed text-muted">
         Add whatever you're training today and log your sets — weight, reps, and RPE. No program,

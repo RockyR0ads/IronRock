@@ -6,8 +6,8 @@ import { dayStats, isBlockComplete } from '../../state/selectors';
 import { defaultDay } from '../../domain/program';
 import { newSessionId } from '../../domain/session';
 import type { WorkoutStats } from '../../domain/stats';
-import { CheckIcon, PlusIcon, ClockIcon } from '../common/icons';
-import { workoutStartedAt, workoutTiming, fmtDuration, type WorkoutTiming } from '../../domain/workoutTiming';
+import { CheckIcon, PlusIcon } from '../common/icons';
+import { workoutTiming, type WorkoutTiming } from '../../domain/workoutTiming';
 import { ExerciseCard } from './ExerciseCard';
 import { WorkoutSummary } from '../WorkoutSummary';
 
@@ -204,18 +204,6 @@ export function DayView({
     window.addEventListener('pointercancel', cancelPre);
   }
 
-  // live whole-workout clock: runs from the first checked set until the day is done
-  const workoutStart = workoutStartedAt(state.logs[state.day] ?? []);
-  const workoutRunning = !!workoutStart && !allDone;
-  const [nowTs, setNowTs] = useState(() => Date.now());
-  useEffect(() => {
-    if (!workoutRunning) return;
-    setNowTs(Date.now());
-    const id = window.setInterval(() => setNowTs(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [workoutRunning, workoutStart]);
-  const workoutElapsed = workoutStart ? (nowTs - Date.parse(workoutStart)) / 1000 : 0;
-
   if (!day) return null;
 
   return (
@@ -229,15 +217,6 @@ export function DayView({
             </span>
           </h3>
           <p className="m-0 mt-1 text-[13px] text-muted">{day.note}</p>
-          {workoutStart && (
-            <p className="m-0 mt-1.5 flex items-center gap-1.5 font-mono text-[12px] font-bold tabular-nums text-secondary">
-              <ClockIcon className="h-3.5 w-3.5" />
-              {fmtDuration(workoutElapsed)}
-              <span className="font-sans text-[11px] font-medium text-muted-2">
-                {workoutRunning ? 'this workout' : 'done'}
-              </span>
-            </p>
-          )}
           {deviated && (
             <p className="m-0 mt-1.5 flex items-center gap-1.5 text-[12px] font-medium text-secondary">
               <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />
