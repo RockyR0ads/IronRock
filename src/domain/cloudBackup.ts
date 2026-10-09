@@ -1,5 +1,5 @@
 import { STORAGE_KEY } from '../state/store';
-import { recordBackup } from './backup';
+import { lastBackupAt, recordBackup } from './backup';
 
 /**
  * Cloud backup to the user's own server (a LeaveNow Azure Function foreign
@@ -16,11 +16,16 @@ const CLOUD_KEY = 'ironrock-cloud-v1';
 /** Suggested endpoint, prefilled in the setup form (user can change it). */
 export const DEFAULT_CLOUD_URL = 'https://leavenow-96391.azurewebsites.net/api/ironrock/backup';
 
+/** Days between automatic cloud backups. */
+export const AUTO_BACKUP_DAYS = 30;
+
 export interface CloudConfig {
   /** Full backup endpoint URL. */
   url: string;
   /** Shared secret, sent as the X-Backup-Secret header. */
   secret: string;
+  /** Back up automatically (~monthly) on launch. Defaults on once set up. */
+  auto: boolean;
 }
 
 export function getCloudConfig(): CloudConfig | null {
@@ -29,18 +34,57 @@ export function getCloudConfig(): CloudConfig | null {
     if (!raw) return null;
     const c = JSON.parse(raw) as Partial<CloudConfig>;
     if (!c.url || !c.secret) return null;
-    return { url: c.url, secret: c.secret };
+    return { url: c.url, secret: c.secret, auto: c.auto !== false };
   } catch {
     return null;
   }
 }
 
-export function setCloudConfig(cfg: CloudConfig): void {
+export function setCloudConfig(cfg: { url: string; secret: string; auto?: boolean }): void {
   try {
-    localStorage.setItem(CLOUD_KEY, JSON.stringify({ url: cfg.url.trim(), secret: cfg.secret.trim() }));
+    localStorage.setItem(
+      CLOUD_KEY,
+      JSON.stringify({ url: cfg.url.trim(), secret: cfg.secret.trim(), auto: cfg.auto !== false })
+    );
   } catch {
     /* best effort */
   }
+}
+
+/** Flip the auto-backup preference without touching the URL/secret. */
+export function setAutoBackup(on: boolean): void {
+  const cfg = getCloudConfig();
+  if (!cfg) return;
+  setCloudConfig({ ...cfg, auto: on });
+}
+
+/** Whether auto-backup is configured and currently enabled. */
+export function isAutoBackupOn(): boolean {
+  return getCloudConfig()?.auto === true;
+}
+
+/**
+ * Due for an automatic backup: cloud is set up, auto is on, there's data, and
+ * it's been at least AUTO_BACKUP_DAYS since the last backup (or there never was
+ * one).
+ */
+export function autoBackupDue(sessionCount: number): boolean {
+  if (sessionCount === 0) return false;
+  const cfg = getCloudConfig();
+  if (!cfg || !cfg.auto) return false;
+  const at = lastBackupAt();
+  if (at === null) return true;
+  return (Date.now() - at) / 86_400_000 >= AUTO_BACKUP_DAYS;
+}
+
+/**
+ * Run a backup if one is due. Returns true if it backed up, false if not due.
+ * Errors propagate so the caller can decide whether to surface or swallow them.
+ */
+export async function runAutoBackupIfDue(sessionCount: number): Promise<boolean> {
+  if (!autoBackupDue(sessionCount)) return false;
+  await cloudBackup(sessionCount);
+  return true;
 }
 
 export function clearCloudConfig(): void {

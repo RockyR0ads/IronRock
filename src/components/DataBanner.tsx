@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import { useStorageHealth } from '../state/storageHealth';
 import { exportBackup, importBackup, recordBackup, shouldNudgeBackup } from '../domain/backup';
-import { isCloudConfigured, cloudBackup } from '../domain/cloudBackup';
+import { isCloudConfigured, isAutoBackupOn, cloudBackup } from '../domain/cloudBackup';
 
 /**
  * A top-of-app safety banner. Priority order:
@@ -19,6 +19,8 @@ export function DataBanner({ onOpenSettings }: { onOpenSettings?: () => void }) 
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const cloudReady = isCloudConfigured();
+  // auto-backup handles it silently — no need to nag when it's on
+  const autoOn = isAutoBackupOn();
 
   async function doCloudBackup() {
     setBusy(true);
@@ -72,7 +74,7 @@ export function DataBanner({ onOpenSettings }: { onOpenSettings?: () => void }) 
     title = 'Storage is full — changes aren’t saving';
     body = 'Export a backup now so nothing is lost, then clear old history to free space.';
     actions = <BtnPrimary onClick={doExport}>Export backup</BtnPrimary>;
-  } else if (!dismissed && shouldNudgeBackup(state.sessions.length)) {
+  } else if (!dismissed && !autoOn && shouldNudgeBackup(state.sessions.length)) {
     tone = 'border-secondary/40 bg-secondary/10';
     if (cloudReady) {
       title = 'Time to back up';

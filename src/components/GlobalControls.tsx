@@ -5,10 +5,12 @@ import { exportBackup, importBackup, recordBackup } from '../domain/backup';
 import {
   getCloudConfig,
   setCloudConfig,
+  setAutoBackup,
   clearCloudConfig,
   cloudBackup,
   cloudRestore,
   DEFAULT_CLOUD_URL,
+  AUTO_BACKUP_DAYS,
 } from '../domain/cloudBackup';
 import { parseStrong, StrongImportError } from '../domain/strongImport';
 
@@ -35,9 +37,15 @@ export function GlobalControls() {
       setCloudStatus('Enter both the server URL and the secret.');
       return;
     }
-    setCloudConfig({ url, secret });
-    setCloud({ url, secret });
-    setCloudStatus('Saved. Try “Back up now”.');
+    setCloudConfig({ url, secret, auto: true });
+    setCloud(getCloudConfig());
+    setCloudStatus('Saved. Auto-backup is on — or tap “Back up now”.');
+  }
+
+  function toggleAuto() {
+    const next = !(cloud?.auto ?? false);
+    setAutoBackup(next);
+    setCloud(getCloudConfig());
   }
 
   function disconnectCloud() {
@@ -212,6 +220,35 @@ export function GlobalControls() {
                 Restore from cloud
               </button>
             </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={cloud.auto}
+              onClick={toggleAuto}
+              className="mt-2.5 flex w-full items-center justify-between rounded-xl border border-line-2 bg-surface-2 px-3 py-2.5 text-left transition-colors hover:border-secondary/50"
+            >
+              <span className="min-w-0 pr-3">
+                <span className="block font-display text-[13px] font-bold tracking-[-0.01em] text-ink">
+                  Auto-backup monthly
+                </span>
+                <span className="block text-[11px] leading-snug text-muted-2">
+                  Backs up on its own about every {AUTO_BACKUP_DAYS} days — no need to remember.
+                </span>
+              </span>
+              <span
+                className={[
+                  'relative h-6 w-10 shrink-0 rounded-full transition-colors',
+                  cloud.auto ? 'bg-secondary' : 'bg-line-2',
+                ].join(' ')}
+              >
+                <span
+                  className={[
+                    'absolute top-0.5 h-5 w-5 rounded-full bg-ink transition-transform',
+                    cloud.auto ? 'translate-x-[18px]' : 'translate-x-0.5',
+                  ].join(' ')}
+                />
+              </span>
+            </button>
             <button
               type="button"
               onClick={disconnectCloud}

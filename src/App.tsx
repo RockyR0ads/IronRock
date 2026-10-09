@@ -20,6 +20,7 @@ import { StretchSection } from './components/Stretch/StretchSection';
 import { OverviewDashboard } from './components/Overview/OverviewDashboard';
 import { activeWorkout } from './state/selectors';
 import { useStore } from './state/StoreContext';
+import { runAutoBackupIfDue } from './domain/cloudBackup';
 
 /** One screen in the navigation stack. */
 type Loc =
@@ -93,6 +94,17 @@ export default function App() {
         /* not on a native platform — the web browser handles back itself */
       });
     return () => remove?.();
+  }, []);
+
+  // Once a month, if cloud backup is set up and auto is on, push a backup on
+  // launch — so a lost phone is never more than ~30 days stale. Fire-and-forget:
+  // a failure (offline, server down) just retries on the next launch.
+  useEffect(() => {
+    runAutoBackupIfDue(state.sessions.length).catch(() => {
+      /* offline or server unreachable — try again next launch */
+    });
+    // run once per app launch
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // resume banner: shown app-wide while a workout is unfinished, except on the

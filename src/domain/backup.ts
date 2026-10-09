@@ -42,6 +42,11 @@ function getLastBackup(): LastBackup | null {
   }
 }
 
+/** When the last backup (local or cloud) was taken, or null if never. */
+export function lastBackupAt(): number | null {
+  return getLastBackup()?.at ?? null;
+}
+
 const NUDGE_SESSIONS = 5;
 const NUDGE_DAYS = 14;
 
