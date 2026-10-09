@@ -23,6 +23,7 @@ import { FeelPicker } from './FeelPicker';
 import { SetTypePicker } from './SetTypePicker';
 import { FEEL_TONE } from '../common/feelTone';
 import { useHoldMenu } from './useHoldMenu';
+import { stepValue, formatStepValue } from '../../domain/steps';
 import type { Block, BlockClass, LiftHistory, LoggedSet, WarmupFeel } from '../../domain/types';
 
 /** Intensity → dot color. */
@@ -405,10 +406,10 @@ function RepsCell({
 }
 
 /**
- * The RPE pill. A tap opens the scale picker; a press-and-hold reveals the same
- * quick-step chips as the other cells (±0.5 / +1), for a fast nudge without the
- * full picker. Its hue comes from the effort itself (green → red), so a hard
- * set reads as hard whether or not it's been ticked.
+ * The RPE pill. A tap opens the scale picker; a horizontal swipe nudges the
+ * value without opening anything — swipe right for +1, left for −1. Its hue
+ * comes from the effort itself (green → red), so a hard set reads as hard
+ * whether or not it's been ticked.
  */
 function RpeButton({
   value,
@@ -428,40 +429,90 @@ function RpeButton({
   const rpe = parseFloat(value);
   const rated = rpe > 0;
   const hue = rated ? rpeHue(rpe) : 0;
-  const hold = useHoldMenu({ kind: 'rpe', base, onApply, onTap: onOpen });
+
+  // swipe-to-adjust: horizontal drag past the threshold applies ±1 and swallows
+  // the trailing click; a plain tap falls through to onClick → open the picker.
+  const SWIPE_MIN = 26;
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const moved = useRef(0);
+  const swiped = useRef(false);
+
+  const onPointerDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (e.button > 0) return;
+    e.stopPropagation(); // keep the row's swipe-to-delete out of it
+    start.current = { x: e.clientX, y: e.clientY };
+    moved.current = 0;
+    swiped.current = false;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture unsupported */
+    }
+  };
+  const onPointerMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!start.current) return;
+    moved.current = Math.max(
+      moved.current,
+      Math.hypot(e.clientX - start.current.x, e.clientY - start.current.y)
+    );
+  };
+  const onPointerUp = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    const s = start.current;
+    start.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* nothing captured */
+    }
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    if (Math.abs(dx) >= SWIPE_MIN && Math.abs(dx) > Math.abs(dy)) {
+      onApply(formatStepValue(stepValue('rpe', base(), dx > 0 ? 1 : -1)));
+      navigator.vibrate?.(10);
+      swiped.current = true; // suppress the click that follows
+    }
+  };
+  const onClick = () => {
+    if (swiped.current) {
+      swiped.current = false;
+      return;
+    }
+    onOpen();
+  };
 
   return (
-    <>
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        aria-label={rated ? `${label}, currently ${value}` : `${label}, not rated`}
-        {...hold.handlers}
-        style={
-          // once a working set is done, the RPE settles into the row's green
-          // rather than keeping its effort hue — one calm colour per done row
-          rated && !done
-            ? {
-                backgroundColor: `hsl(${hue} 60% 45% / 0.14)`,
-                color: `hsl(${hue} 70% 68%)`,
-              }
-            : undefined
-        }
-        className={[
-          'h-11 w-full select-none rounded-[9px] text-center font-mono text-[15px] font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/70',
-          rated
-            ? done
-              ? 'bg-green/20 text-green'
-              : ''
-            : done
-              ? 'bg-green/20 text-green'
-              : 'bg-surface-2 text-muted-2 hover:text-ink',
-        ].join(' ')}
-      >
-        {rated ? value : '–'}
-      </button>
-      {hold.menu}
-    </>
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      aria-label={rated ? `${label}, currently ${value}. Swipe to adjust` : `${label}, not rated. Swipe to adjust`}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onClick={onClick}
+      style={
+        // once a working set is done, the RPE settles into the row's green
+        // rather than keeping its effort hue — one calm colour per done row
+        rated && !done
+          ? {
+              backgroundColor: `hsl(${hue} 60% 45% / 0.14)`,
+              color: `hsl(${hue} 70% 68%)`,
+            }
+          : undefined
+      }
+      className={[
+        'h-11 w-full touch-none select-none rounded-[9px] text-center font-mono text-[15px] font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/70',
+        rated
+          ? done
+            ? 'bg-green/20 text-green'
+            : ''
+          : done
+            ? 'bg-green/20 text-green'
+            : 'bg-surface-2 text-muted-2 hover:text-ink',
+      ].join(' ')}
+    >
+      {rated ? value : '–'}
+    </button>
   );
 }
 
