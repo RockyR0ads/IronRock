@@ -3,8 +3,9 @@ import { useStore } from '../../state/StoreContext';
 import { buildOverview } from '../../domain/overview';
 import type { MuscleGroup } from '../../domain/library';
 import { ChevronLeft } from '../common/icons';
-import { BarChart, SparklineChart } from '../ExerciseProgress/charts';
+import { InteractiveBarChart, InteractiveLineChart } from '../ExerciseProgress/charts';
 import { C } from '../ExerciseProgress/charts/chartUtils';
+import { sessionDayLabel } from '../../domain/session';
 import { RANGES, rangeFor } from '../ExerciseProgress/ranges';
 
 const GROUP_COLOR: Record<MuscleGroup, string> = {
@@ -31,6 +32,7 @@ export function OverviewDashboard({ onBack }: { onBack: () => void }) {
 
   const windowVolume = ov.buckets.reduce((a, b) => a + b.volume, 0);
   const maxGroup = Math.max(1, ...ov.byGroup.map((g) => g.sets));
+  const totalGroupSets = ov.byGroup.reduce((a, g) => a + g.sets, 0) || 1;
   const periodWord = ov.granularity === 'week' ? 'week' : 'month';
 
   return (
@@ -95,19 +97,26 @@ export function OverviewDashboard({ onBack }: { onBack: () => void }) {
             title={`Volume per ${periodWord}`}
             right={`${windowVolume.toLocaleString()}kg total`}
           >
-            <BarChart
-              values={ov.buckets.map((b) => b.volume)}
-              labels={ov.buckets.map((b) => b.label)}
+            <InteractiveBarChart
+              points={ov.buckets.map((b) => ({
+                label: b.label,
+                value: b.volume,
+                sub: `${b.workouts} workout${b.workouts === 1 ? '' : 's'}`,
+              }))}
               color={C.green}
               unit="kg"
+              formatValue={(v) => v.toLocaleString()}
             />
           </Card>
 
           {/* workouts per period */}
           <Card title={`Workouts per ${periodWord}`}>
-            <BarChart
-              values={ov.buckets.map((b) => b.workouts)}
-              labels={ov.buckets.map((b) => b.label)}
+            <InteractiveBarChart
+              points={ov.buckets.map((b) => ({
+                label: b.label,
+                value: b.workouts,
+                sub: `${b.volume.toLocaleString()}kg`,
+              }))}
               color={C.blue}
             />
           </Card>
@@ -135,8 +144,11 @@ export function OverviewDashboard({ onBack }: { onBack: () => void }) {
                           }}
                         />
                       </div>
-                      <span className="w-8 shrink-0 text-right font-mono text-[12px] tabular-nums text-ink">
-                        {g.sets}
+                      <span className="flex w-16 shrink-0 items-baseline justify-end gap-1 font-mono tabular-nums">
+                        <span className="text-[12px] text-ink">{g.sets}</span>
+                        <span className="text-[10px] text-muted-2">
+                          {Math.round((g.sets / totalGroupSets) * 100)}%
+                        </span>
                       </span>
                     </div>
                   ))}
@@ -147,10 +159,12 @@ export function OverviewDashboard({ onBack }: { onBack: () => void }) {
           {/* bodyweight */}
           <Card title="Bodyweight">
             {ov.bodyweight.length >= 2 ? (
-              <SparklineChart
-                values={ov.bodyweight.map((b) => b.kg)}
-                labels={ov.bodyweight.map(() => '')}
-                ats={ov.bodyweight.map((b) => b.at)}
+              <InteractiveLineChart
+                points={ov.bodyweight.map((b) => ({
+                  value: b.kg,
+                  at: b.at,
+                  label: sessionDayLabel(new Date(b.at).toISOString()),
+                }))}
                 color={C.yellow}
                 unit="kg"
               />
