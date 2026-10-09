@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import { workoutStats, volumeParts } from '../domain/stats';
 import { sessionEntries, sessionDayLabel, sessionTimeLabel } from '../domain/session';
+import { sessionDurationSec, fmtDuration } from '../domain/workoutTiming';
 import { rpeHue } from '../domain/format';
 import { FEEL_TONE } from './common/feelTone';
 import { heatColor } from './common/warmupHeat';
@@ -26,10 +27,12 @@ function Totals({ session }: { session: Session }) {
   const { state } = useStore();
   const stats = workoutStats(sessionEntries(session), state.inc);
   const vol = volumeParts(stats.volume);
+  const dur = sessionDurationSec(session);
   return (
     <span className="font-mono text-[11px] text-muted-2">
       {stats.exercises.length} lifts · {stats.sets} sets ·{' '}
       <span className="text-accent">{vol.value}</span> {vol.unit}
+      {dur !== null && ` · ${fmtDuration(dur)}`}
     </span>
   );
 }

@@ -6,6 +6,7 @@ import { ChevronLeft } from '../common/icons';
 import { InteractiveBarChart, InteractiveLineChart } from '../ExerciseProgress/charts';
 import { C } from '../ExerciseProgress/charts/chartUtils';
 import { sessionDayLabel } from '../../domain/session';
+import { fmtDuration } from '../../domain/workoutTiming';
 import { RANGES, rangeFor } from '../ExerciseProgress/ranges';
 
 const GROUP_COLOR: Record<MuscleGroup, string> = {
@@ -120,6 +121,36 @@ export function OverviewDashboard({ onBack }: { onBack: () => void }) {
               color={C.blue}
             />
           </Card>
+
+          {/* session length */}
+          {ov.avgDurationSec !== null && (
+            <Card title={`Session length per ${periodWord}`} right={`${fmtDuration(ov.avgDurationSec)} avg`}>
+              <InteractiveBarChart
+                points={ov.buckets.map((b) => ({
+                  label: b.label,
+                  value: b.timedWorkouts > 0 ? Math.round(b.durationSec / b.timedWorkouts / 60) : 0,
+                  sub: b.timedWorkouts > 0 ? `${b.timedWorkouts} timed` : 'no timed workouts',
+                }))}
+                color={C.yellow}
+                unit="m"
+              />
+            </Card>
+          )}
+
+          {/* training pace (density) */}
+          {ov.avgDurationSec !== null && (
+            <Card title="Volume per minute">
+              <InteractiveBarChart
+                points={ov.buckets.map((b) => ({
+                  label: b.label,
+                  value: b.durationSec > 0 ? Math.round(b.timedVolume / (b.durationSec / 60)) : 0,
+                  sub: b.timedWorkouts > 0 ? `${b.timedWorkouts} timed` : 'no timed workouts',
+                }))}
+                color={'#B78BF0'}
+                unit="kg/min"
+              />
+            </Card>
+          )}
 
           {/* sets per muscle group */}
           <Card title="Sets by muscle group">

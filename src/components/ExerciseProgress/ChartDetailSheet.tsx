@@ -4,7 +4,7 @@ import { seriesDelta, summarize } from '../../domain/progress';
 import { ChevronLeft } from '../common/icons';
 import { DetailAreaChart } from './charts';
 import { C } from './charts/chartUtils';
-import { METRICS, metricFor } from './metrics';
+import { availableMetrics, metricFor } from './metrics';
 
 /**
  * Full-screen drill-down from the minimal chart: a larger, annotated area chart
@@ -32,6 +32,7 @@ export function ChartDetailSheet({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const metrics = availableMetrics(series);
   const metric = metricFor(metricKey);
   const values = series.map(metric.pick);
   const labels = series.map((p) => p.label);
@@ -88,7 +89,7 @@ export function ChartDetailSheet({
 
         {/* metric toggle, shared with the tab underneath */}
         <div className="mt-3 flex gap-1.5 overflow-x-auto rounded-2xl border border-line bg-surface p-1.5 [-ms-overflow-style:none] [scrollbar-width:none]">
-          {METRICS.map((m) => {
+          {metrics.map((m) => {
             const on = m.key === metricKey;
             return (
               <button

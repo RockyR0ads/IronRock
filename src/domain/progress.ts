@@ -30,6 +30,8 @@ export interface ProgressPoint {
   intensity: number;
   /** Mean RPE across the working sets that recorded one, or null. */
   avgRpe: number | null;
+  /** Seconds spent on this lift that session (0 when not timed). */
+  exerciseSec: number;
 }
 
 const num = (s: string) => {
@@ -64,11 +66,10 @@ export function exerciseSeries(
   const points: ProgressPoint[] = [];
 
   for (const session of sessions) {
-    const sets = session.exercises
-      .filter((ex) => ex.liftId === liftId)
-      .flatMap((ex) => ex.sets)
-      .filter(counts);
+    const matching = session.exercises.filter((ex) => ex.liftId === liftId);
+    const sets = matching.flatMap((ex) => ex.sets).filter(counts);
     if (sets.length === 0) continue;
+    const exerciseSec = matching.reduce((a, ex) => a + (ex.durationSec ?? 0), 0);
 
     let topSet: LoggedSet | null = null;
     let volume = 0;
@@ -114,6 +115,7 @@ export function exerciseSeries(
       avgRpe: rpes.length
         ? Math.round((rpes.reduce((a, b) => a + b, 0) / rpes.length) * 10) / 10
         : null,
+      exerciseSec,
     });
   }
 

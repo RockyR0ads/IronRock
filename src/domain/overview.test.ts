@@ -52,6 +52,22 @@ describe('buildOverview', () => {
     expect(ov.streakWeeks).toBe(3);
   });
 
+  it('aggregates session durations into an average and per-bucket totals', () => {
+    const timed: Session[] = [
+      { ...session('2026-09-07T10:00:00Z', 'bench', [set({ w: '100', reps: '5' })]), durationSec: 1800 },
+      { ...session('2026-09-14T10:00:00Z', 'squat', [set({ w: '140', reps: '5' })]), durationSec: 3600 },
+    ];
+    const ov = buildOverview(timed, { days: Infinity });
+    expect(ov.avgDurationSec).toBe(2700); // (1800 + 3600) / 2
+    expect(ov.buckets.reduce((a, b) => a + b.timedWorkouts, 0)).toBe(2);
+    expect(ov.buckets.reduce((a, b) => a + b.durationSec, 0)).toBe(5400);
+  });
+
+  it('leaves avgDurationSec null when no workout is timed', () => {
+    const ov = buildOverview(sessions, { days: Infinity });
+    expect(ov.avgDurationSec).toBeNull();
+  });
+
   it('is empty for no sessions', () => {
     const ov = buildOverview([], {});
     expect(ov.buckets).toHaveLength(0);

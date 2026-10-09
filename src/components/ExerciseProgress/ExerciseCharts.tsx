@@ -4,7 +4,7 @@ import { seriesDelta } from '../../domain/progress';
 import { ChevronRight } from '../common/icons';
 import { SparklineChart } from './charts';
 import { C } from './charts/chartUtils';
-import { METRICS, metricFor } from './metrics';
+import { availableMetrics, metricFor } from './metrics';
 import { RANGES, rangeFor, sliceByRange } from './ranges';
 import { ChartDetailSheet } from './ChartDetailSheet';
 
@@ -13,7 +13,7 @@ import { ChartDetailSheet } from './ChartDetailSheet';
  * button that drills into the annotated area chart.
  */
 export function ExerciseCharts({ name, series }: { name: string; series: ProgressPoint[] }) {
-  const [metricKey, setMetricKey] = useState(METRICS[0].key);
+  const [metricKey, setMetricKey] = useState('e1rm');
   const [rangeKey, setRangeKey] = useState('all');
   const [detail, setDetail] = useState(false);
 
@@ -28,6 +28,7 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
     );
   }
 
+  const metrics = availableMetrics(series);
   const metric = metricFor(metricKey);
   const range = rangeFor(rangeKey);
   const view = sliceByRange(series, range.days);
@@ -40,7 +41,7 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
     <div className="mt-4">
       {/* metric toggle — drives the chart and the drill-down */}
       <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-line bg-surface p-1.5 [-ms-overflow-style:none] [scrollbar-width:none]">
-        {METRICS.map((m) => {
+        {metrics.map((m) => {
           const on = m.key === metricKey;
           return (
             <button
