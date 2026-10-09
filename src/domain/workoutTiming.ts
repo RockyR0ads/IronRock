@@ -1,4 +1,4 @@
-import type { LoggedSet } from './types';
+import type { LoggedSet, Session } from './types';
 
 /**
  * Timing derived from set check-off timestamps. Note we only capture when a set
@@ -37,6 +37,28 @@ export function workoutStartedAt(rows: LoggedSet[][]): string | undefined {
   return times.length ? new Date(times[0]).toISOString() : undefined;
 }
 
+/**
+ * Seconds spent on one exercise: from its Start tap (`startISO`) to the last
+ * timestamp among its logged sets. Undefined when there's no start mark, no
+ * timed set, or the maths doesn't come out positive.
+ */
+export function exerciseDurationSec(
+  startISO: string | undefined,
+  sets: LoggedSet[]
+): number | undefined {
+  if (!startISO) return undefined;
+  const start = Date.parse(startISO);
+  if (Number.isNaN(start)) return undefined;
+  let last = start;
+  for (const s of sets) {
+    if (!s.at) continue;
+    const t = Date.parse(s.at);
+    if (!Number.isNaN(t) && t > last) last = t;
+  }
+  const sec = Math.round((last - start) / 1000);
+  return sec > 0 ? sec : undefined;
+}
+
 /** Compute session timing from the day's log rows and the completion time. */
 export function workoutTiming(rows: LoggedSet[][], endedAtISO: string): WorkoutTiming {
   const times = doneTimes(rows);
@@ -54,6 +76,22 @@ export function workoutTiming(rows: LoggedSet[][], endedAtISO: string): WorkoutT
     sets: times.length,
     avgIntervalSec: gaps > 0 ? Math.round(gapSum / gaps) : null,
   };
+}
+
+/**
+ * A session's length in seconds, however it was recorded: an explicit stored
+ * duration (imported, or native) wins; otherwise derive it from the start and
+ * completion timestamps. Null when neither is available.
+ */
+export function sessionDurationSec(session: Session): number | null {
+  if (typeof session.durationSec === 'number' && session.durationSec > 0) {
+    return session.durationSec;
+  }
+  if (session.startedAt) {
+    const d = (Date.parse(session.at) - Date.parse(session.startedAt)) / 1000;
+    if (Number.isFinite(d) && d > 0) return Math.round(d);
+  }
+  return null;
 }
 
 /** "1h 05m" / "42m" / "0:45" — compact human duration. */

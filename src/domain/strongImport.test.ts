@@ -67,6 +67,21 @@ describe('parseStrong', () => {
     expect(push.exercises[0].sets[0].w).toBe('80');
   });
 
+  it('captures the workout duration ("1h" → 3600s)', () => {
+    const csv = [HEADER, row('2024-01-02 18:00:00', 'Push', 'Squat (Barbell)', '1', '100', '5')].join('\n');
+    const res = parseStrong(csv);
+    expect(res.sessions[0].durationSec).toBe(3600);
+  });
+
+  it('parses a plain-seconds duration', () => {
+    const csv = [
+      'Date;Workout Name;Duration (sec);Exercise Name;Set Order;Weight (kg);Reps;RPE;Notes',
+      '2019-10-10 02:54:18;Day 2;2651;Squat (Barbell);1;97.5;5;;',
+    ].join('\n');
+    const res = parseStrong(csv);
+    expect(res.sessions[0].durationSec).toBe(2651);
+  });
+
   it('is idempotent by session id (same file → same ids)', () => {
     const csv = [HEADER, row('2024-01-02 18:00:00', 'Push', 'Squat (Barbell)', '1', '100', '5')].join('\n');
     const a = parseStrong(csv);

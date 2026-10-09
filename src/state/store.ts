@@ -2,7 +2,7 @@ import { defaultDay, daysForProgram } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
 import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
 import { meaningfulSet } from '../domain/session';
-import { workoutStartedAt } from '../domain/workoutTiming';
+import { workoutStartedAt, exerciseDurationSec } from '../domain/workoutTiming';
 import { DEFAULT_PROGRAM } from '../domain/programs';
 import type { ExerciseConfig } from '../domain/exerciseConfig';
 import type { WeighIn, WeightGoal } from '../domain/weightTracker';
@@ -604,22 +604,34 @@ export function reducer(state: State, action: Action): State {
       // Capture the full session — every performed set, warm-ups included, with
       // its done/warmup flags — so the archive shows exactly what happened. Only
       // stats treat warm-ups and un-checked sets as not counting.
+      const dayStarts = state.exerciseStart[action.dayKey] ?? {};
       const exercises = effBlocks(state, action.dayKey)
-        .map((block, i) => ({
-          liftId: block.lift,
-          name: liftById(state, block.lift).name,
-          sets: setsFor(state, action.dayKey, i).filter(meaningfulSet).map((s) => ({ ...s })),
-        }))
+        .map((block, i) => {
+          const sets = setsFor(state, action.dayKey, i).filter(meaningfulSet).map((s) => ({ ...s }));
+          return {
+            liftId: block.lift,
+            name: liftById(state, block.lift).name,
+            sets,
+            // time on this exercise: Start tap → its last logged set
+            durationSec: exerciseDurationSec(dayStarts[i], sets),
+          };
+        })
         .filter((ex) => ex.sets.length > 0);
       // require at least one real working set to be checked off — otherwise don't
       // archive an empty session, and don't destroy the sets sitting on the day
       const hasWorkingDone = exercises.some((ex) => ex.sets.some((s) => s.done && !s.warmup));
       if (!hasWorkingDone) return state;
 
+      const startedAt = workoutStartedAt(exercises.map((ex) => ex.sets));
+      const endMs = Date.parse(action.at);
+      const startMs = startedAt ? Date.parse(startedAt) : NaN;
+      const durationSec =
+        Number.isFinite(startMs) && endMs > startMs ? Math.round((endMs - startMs) / 1000) : undefined;
       const session: Session = {
         id: action.id,
         at: action.at,
-        startedAt: workoutStartedAt(exercises.map((ex) => ex.sets)),
+        startedAt,
+        durationSec,
         dayKey: action.dayKey,
         title: action.title,
         exercises,
@@ -653,12 +665,20 @@ export function reducer(state: State, action: Action): State {
       // their own workout, e.g. 5/3/1), newest first
       return { ...state, sessions: [action.session, ...state.sessions] };
     case 'importSessions': {
-      // Merge in externally-parsed sessions (e.g. a Strong export). Skip any
-      // whose id is already present so re-importing the same file is a no-op,
-      // and keep existing custom lifts over imported ones (user edits win).
+      // Merge in externally-parsed sessions (e.g. a Strong export). New ids are
+      // added; for ids already present we only *backfill* a missing duration
+      // (so re-importing an export populates session lengths on history that was
+      // imported before durations were captured) — never overwriting existing
+      // data. Existing custom lifts win over imported ones (user edits win).
+      const incoming = new Map(action.sessions.map((s) => [s.id, s]));
       const known = new Set(state.sessions.map((s) => s.id));
+      const merged = state.sessions.map((s) => {
+        if (typeof s.durationSec === 'number') return s;
+        const inc = incoming.get(s.id);
+        return inc && typeof inc.durationSec === 'number' ? { ...s, durationSec: inc.durationSec } : s;
+      });
       const added = action.sessions.filter((s) => !known.has(s.id));
-      const sessions = [...state.sessions, ...added].sort((a, b) => b.at.localeCompare(a.at));
+      const sessions = [...merged, ...added].sort((a, b) => b.at.localeCompare(a.at));
       const customLifts = { ...action.customLifts, ...state.customLifts };
       return { ...state, sessions, customLifts };
     }

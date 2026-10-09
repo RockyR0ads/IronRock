@@ -326,6 +326,25 @@ function toIso(raw: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+/**
+ * Strong's workout duration: usually a plain seconds integer ("2651"), but some
+ * exports write "1h 2m" / "45m" / "1h". Returns whole seconds, or null.
+ */
+function parseDurationSec(raw: string): number | null {
+  const s = raw.trim();
+  if (!s) return null;
+  if (/^\d+$/.test(s)) {
+    const n = parseInt(s, 10);
+    return n > 0 ? n : null;
+  }
+  const hm = s.match(/(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?/i);
+  if (hm && (hm[1] || hm[2])) {
+    const sec = (parseInt(hm[1] ?? '0', 10) * 60 + parseInt(hm[2] ?? '0', 10)) * 60;
+    return sec > 0 ? sec : null;
+  }
+  return null;
+}
+
 /** Locate a column by matching its header against a predicate. */
 function colIndex(headers: string[], pred: (h: string) => boolean): number {
   return headers.findIndex((h) => pred(h.trim().toLowerCase().replace(/^"|"$/g, '')));
@@ -366,6 +385,7 @@ export function parseStrong(text: string): StrongImport {
   const iRpe = colIndex(headers, (h) => h === 'rpe');
   const iNotes = colIndex(headers, (h) => h === 'notes' || h === 'note');
   const iSetOrder = colIndex(headers, (h) => h.includes('set order') || h === 'set');
+  const iDuration = colIndex(headers, (h) => h.startsWith('duration'));
 
   if (iDate === -1 || iExercise === -1) {
     throw new StrongImportError(
@@ -382,7 +402,13 @@ export function parseStrong(text: string): StrongImport {
   const order: string[] = [];
   const groups = new Map<
     string,
-    { at: string; title: string; exOrder: string[]; byEx: Map<string, SessionExercise> }
+    {
+      at: string;
+      title: string;
+      durationSec?: number;
+      exOrder: string[];
+      byEx: Map<string, SessionExercise>;
+    }
   >();
   const customLifts: Record<string, CustomLift> = {};
   const unmatched = new Set<string>();
@@ -405,6 +431,10 @@ export function parseStrong(text: string): StrongImport {
       g = { at, title, exOrder: [], byEx: new Map() };
       groups.set(gk, g);
       order.push(gk);
+    }
+    if (iDuration !== -1 && g.durationSec === undefined) {
+      const d = parseDurationSec(cells[iDuration] ?? '');
+      if (d !== null) g.durationSec = d;
     }
 
     const resolved = resolveExercise(exName);
@@ -444,6 +474,7 @@ export function parseStrong(text: string): StrongImport {
       at: g.at,
       dayKey: FREESTYLE_KEY,
       title: g.title,
+      durationSec: g.durationSec,
       exercises: exList,
     });
   }

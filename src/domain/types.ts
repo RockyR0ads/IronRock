@@ -169,6 +169,12 @@ export interface SessionExercise {
   name: string;
   /** Only the sets that were checked off. */
   sets: LoggedSet[];
+  /**
+   * Seconds spent on this exercise — from tapping its Start button to its last
+   * logged set. Only present for sessions logged after per-exercise timing
+   * shipped; absent on older and imported workouts.
+   */
+  durationSec?: number;
 }
 
 /** A finished workout, archived when the user completes it. */
@@ -178,6 +184,12 @@ export interface Session {
   at: string;
   /** ISO timestamp of the first set checked off — the workout's start, for duration. */
   startedAt?: string;
+  /**
+   * Whole-session length in seconds. Native sessions derive it from
+   * startedAt → completion; imported sessions carry the source app's own
+   * recorded duration. Absent when unknown.
+   */
+  durationSec?: number;
   /** Day it came from: a program day key, or the freestyle key. */
   dayKey: string;
   /** Display name at archive time, e.g. "Push" or "Freestyle". */
