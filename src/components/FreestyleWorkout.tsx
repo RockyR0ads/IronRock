@@ -8,6 +8,7 @@ import type { WorkoutStats } from '../domain/stats';
 import { workoutTiming, type WorkoutTiming } from '../domain/workoutTiming';
 import { CheckIcon, ChevronLeft, PlusIcon } from './common/icons';
 import { ExerciseCard } from './DayView/ExerciseCard';
+import { WorkoutNote } from './DayView/WorkoutNote';
 import { WorkoutClockBar } from './DayView/WorkoutClockBar';
 import { RestTimerBar } from './RestTimerBar';
 import { WorkoutSummary } from './WorkoutSummary';
@@ -130,6 +131,8 @@ export function FreestyleWorkout({
       >
         <PlusIcon className="h-4 w-4" /> Add exercise
       </button>
+
+      <WorkoutNote dayKey={FREESTYLE_KEY} />
 
       {hasLogs && (
         <button

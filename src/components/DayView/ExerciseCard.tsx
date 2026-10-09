@@ -11,7 +11,7 @@ import { setsFor, liftById } from '../../state/store';
 import { blockLoad, doneSetCount, workingSetCount, isBlockComplete } from '../../state/selectors';
 import { repLabel, feelLabel, rpeNum, rpeHue, isPerLeg } from '../../domain/format';
 import { feelOption } from '../../domain/feel';
-import { SwapIcon, TrashIcon, PlusIcon, CheckIcon, ChevronRight, NoteIcon, ClockIcon } from '../common/icons';
+import { SwapIcon, TrashIcon, PlusIcon, CheckIcon, ChevronRight, NoteIcon } from '../common/icons';
 import { PlateBar } from '../common/PlateBar';
 import { heatColor } from '../common/warmupHeat';
 import { barWeight as emptyBarWeight, autoRestOn, warmupSets } from '../../domain/exerciseConfig';
@@ -183,16 +183,6 @@ function SwipeRow({
       </div>
     </div>
   );
-}
-
-/** Seconds → "m:ss" (or "h:mm:ss" past an hour), for the live rest/elapsed clock. */
-function clock(totalSecs: number): string {
-  const s = Math.max(0, Math.floor(totalSecs));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${m}:${pad(ss)}`;
 }
 
 /**
@@ -593,21 +583,6 @@ export function ExerciseCard({
     return () => clearTimeout(t);
   }, [popped]);
 
-  // --- live exercise clock --------------------------------------------------
-  // elapsed since the exercise was started. We deliberately don't time between
-  // sets: set check-offs aren't stopwatch presses, so within-exercise timing
-  // (rest, pace) would be unreliable — only the start-anchored duration is honest.
-  const startedAt = state.exerciseStart[dayKey]?.[index];
-  const clockRunning = !!startedAt && !complete;
-  const [nowTs, setNowTs] = useState(() => Date.now());
-  useEffect(() => {
-    if (!clockRunning) return;
-    setNowTs(Date.now());
-    const id = window.setInterval(() => setNowTs(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [clockRunning, startedAt]);
-  const elapsedSecs = clockRunning && startedAt ? (nowTs - Date.parse(startedAt)) / 1000 : 0;
-
   // the card cheers on the transition into complete — not on every render while
   // it happens to be complete
   useEffect(() => {
@@ -897,27 +872,6 @@ export function ExerciseCard({
           })()}
         </div>
       )}
-
-      {!complete &&
-        (startedAt ? (
-          <div
-            className="relative z-10 mt-3 flex items-center justify-center gap-1.5 font-mono text-[12px]"
-            data-nodrag
-          >
-            <span className="text-muted-2">Elapsed</span>
-            <span className="font-bold tabular-nums text-ink">{clock(elapsedSecs)}</span>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() =>
-              dispatch({ type: 'startExercise', dayKey, index, at: new Date().toISOString() })
-            }
-            className="relative z-10 mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-line-2 py-2 font-display text-[13px] font-bold text-muted transition-colors hover:border-secondary/50 hover:text-secondary"
-          >
-            <ClockIcon className="h-4 w-4" /> Start exercise
-          </button>
-        ))}
 
       <div className="relative z-10 mt-3 flex items-center gap-2 border-t border-line pt-3">
         <button

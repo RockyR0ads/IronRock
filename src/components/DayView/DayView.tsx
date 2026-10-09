@@ -9,6 +9,7 @@ import type { WorkoutStats } from '../../domain/stats';
 import { CheckIcon, PlusIcon } from '../common/icons';
 import { workoutTiming, type WorkoutTiming } from '../../domain/workoutTiming';
 import { ExerciseCard } from './ExerciseCard';
+import { WorkoutNote } from './WorkoutNote';
 import { WorkoutSummary } from '../WorkoutSummary';
 
 const prefersReducedMotion = () =>
@@ -303,6 +304,8 @@ export function DayView({
       >
         <PlusIcon className="h-4 w-4" /> Add exercise
       </button>
+
+      <WorkoutNote dayKey={state.day} />
 
       {hasLogs && (
         <button

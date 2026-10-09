@@ -169,12 +169,6 @@ export interface SessionExercise {
   name: string;
   /** Only the sets that were checked off. */
   sets: LoggedSet[];
-  /**
-   * Seconds spent on this exercise — from tapping its Start button to its last
-   * logged set. Only present for sessions logged after per-exercise timing
-   * shipped; absent on older and imported workouts.
-   */
-  durationSec?: number;
 }
 
 /** A finished workout, archived when the user completes it. */
@@ -194,5 +188,7 @@ export interface Session {
   dayKey: string;
   /** Display name at archive time, e.g. "Push" or "Freestyle". */
   title: string;
+  /** Optional free-text note for the whole workout. */
+  note?: string;
   exercises: SessionExercise[];
 }

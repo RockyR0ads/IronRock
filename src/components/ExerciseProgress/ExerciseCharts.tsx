@@ -4,7 +4,7 @@ import { seriesDelta } from '../../domain/progress';
 import { ChevronRight } from '../common/icons';
 import { SparklineChart } from './charts';
 import { C } from './charts/chartUtils';
-import { availableMetrics, metricFor } from './metrics';
+import { METRICS, metricFor } from './metrics';
 import { RANGES, rangeFor, sliceByRange } from './ranges';
 import { ChartDetailSheet } from './ChartDetailSheet';
 
@@ -28,7 +28,6 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
     );
   }
 
-  const metrics = availableMetrics(series);
   const metric = metricFor(metricKey);
   const range = rangeFor(rangeKey);
   const view = sliceByRange(series, range.days);
@@ -41,7 +40,7 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
     <div className="mt-4">
       {/* metric toggle — drives the chart and the drill-down */}
       <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-line bg-surface p-1.5 [-ms-overflow-style:none] [scrollbar-width:none]">
-        {metrics.map((m) => {
+        {METRICS.map((m) => {
           const on = m.key === metricKey;
           return (
             <button

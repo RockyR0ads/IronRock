@@ -1,11 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  workoutTiming,
-  workoutStartedAt,
-  fmtDuration,
-  exerciseDurationSec,
-  sessionDurationSec,
-} from './workoutTiming';
+import { workoutTiming, workoutStartedAt, fmtDuration, sessionDurationSec } from './workoutTiming';
 import type { LoggedSet, Session } from './types';
 
 const at = (iso: string, extra: Partial<LoggedSet> = {}): LoggedSet => ({
@@ -46,17 +40,6 @@ describe('workoutTiming', () => {
     expect(fmtDuration(45)).toBe('45s');
     expect(fmtDuration(150)).toBe('2m 30s');
     expect(fmtDuration(3720)).toBe('1h 02m');
-  });
-});
-
-describe('exerciseDurationSec', () => {
-  it('measures start → last timed set', () => {
-    const sets = [at('2026-01-01T10:00:00Z'), at('2026-01-01T10:08:00Z')];
-    expect(exerciseDurationSec('2026-01-01T10:00:00Z', sets)).toBe(8 * 60);
-  });
-  it('is undefined without a start mark or without positive span', () => {
-    expect(exerciseDurationSec(undefined, [at('2026-01-01T10:00:00Z')])).toBeUndefined();
-    expect(exerciseDurationSec('2026-01-01T10:00:00Z', [])).toBeUndefined();
   });
 });
 

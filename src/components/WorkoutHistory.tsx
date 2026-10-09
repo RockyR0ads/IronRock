@@ -81,6 +81,15 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
         ))}
       </div>
 
+      {session.note && (
+        <div className="mt-4 rounded-2xl border border-line bg-surface p-4 shadow-card">
+          <div className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-2">
+            <NoteIcon className="h-3.5 w-3.5" /> Note
+          </div>
+          <p className="m-0 whitespace-pre-wrap text-[14px] leading-relaxed text-ink">{session.note}</p>
+        </div>
+      )}
+
       <div className="mt-4 space-y-3">
         {session.exercises.map((ex, i) => (
           <div key={`${ex.liftId}-${i}`} className="rounded-2xl border border-line bg-surface p-4 shadow-card">

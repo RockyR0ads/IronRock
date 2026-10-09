@@ -37,28 +37,6 @@ export function workoutStartedAt(rows: LoggedSet[][]): string | undefined {
   return times.length ? new Date(times[0]).toISOString() : undefined;
 }
 
-/**
- * Seconds spent on one exercise: from its Start tap (`startISO`) to the last
- * timestamp among its logged sets. Undefined when there's no start mark, no
- * timed set, or the maths doesn't come out positive.
- */
-export function exerciseDurationSec(
-  startISO: string | undefined,
-  sets: LoggedSet[]
-): number | undefined {
-  if (!startISO) return undefined;
-  const start = Date.parse(startISO);
-  if (Number.isNaN(start)) return undefined;
-  let last = start;
-  for (const s of sets) {
-    if (!s.at) continue;
-    const t = Date.parse(s.at);
-    if (!Number.isNaN(t) && t > last) last = t;
-  }
-  const sec = Math.round((last - start) / 1000);
-  return sec > 0 ? sec : undefined;
-}
-
 /** Compute session timing from the day's log rows and the completion time. */
 export function workoutTiming(rows: LoggedSet[][], endedAtISO: string): WorkoutTiming {
   const times = doneTimes(rows);

@@ -151,19 +151,20 @@ describe('reducer', () => {
     expect(setsFor(s, 'pushA', 0)[0].at).toBeUndefined();
   });
 
-  it('records an exercise start and clears it when the workout completes', () => {
-    let s = reducer(initialState(), { type: 'startExercise', dayKey: 'pushA', index: 0, at: AT });
-    expect(s.exerciseStart.pushA[0]).toBe(AT);
+  it('archives a workout note onto the session and clears the day note', () => {
+    let s = reducer(initialState(), { type: 'setDayNote', dayKey: 'pushA', note: 'felt strong' });
+    expect(s.dayNote.pushA).toBe('felt strong');
     s = reducer(s, { type: 'addSet', dayKey: 'pushA', index: 0, set: SET('100', '5', '8') });
     s = reducer(s, { type: 'toggleSetDone', dayKey: 'pushA', index: 0, setIndex: 0, at: AT });
     s = reducer(s, { type: 'completeWorkout', dayKey: 'pushA', title: 'Push', at: AT, id: 'x' });
-    expect(s.exerciseStart.pushA).toBeUndefined();
+    expect(s.sessions[0].note).toBe('felt strong');
+    expect(s.dayNote.pushA).toBeUndefined();
   });
 
-  it('drops the day start anchors when a block is removed (indices shift)', () => {
-    let s = reducer(initialState(), { type: 'startExercise', dayKey: 'pushA', index: 1, at: AT });
-    s = reducer(s, { type: 'removeBlock', dayKey: 'pushA', index: 0 });
-    expect(s.exerciseStart.pushA).toBeUndefined();
+  it('clears a day note when its text is emptied', () => {
+    let s = reducer(initialState(), { type: 'setDayNote', dayKey: 'pushA', note: 'x' });
+    s = reducer(s, { type: 'setDayNote', dayKey: 'pushA', note: '   ' });
+    expect(s.dayNote.pushA).toBeUndefined();
   });
 
   it('clearAll keeps inc and day but wipes entries', () => {
