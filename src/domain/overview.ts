@@ -51,6 +51,55 @@ export interface Overview {
 
 const WEEK_MS = 7 * 86_400_000;
 
+export interface DayCell {
+  /** ms at local midnight for this day. */
+  date: number;
+  volume: number;
+  /** Workouts logged that day. */
+  count: number;
+}
+
+const DAY_MS = 86_400_000;
+const startOfDay = (ms: number) => {
+  const d = new Date(ms);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+};
+
+/**
+ * A day-by-day training grid for a contribution-style heatmap: one cell per day
+ * from the Monday `weeks` ago through today, each carrying that day's workout
+ * count and total volume (0 when nothing was trained).
+ */
+export function trainingCalendar(sessions: Session[], weeks = 26, now = Date.now()): DayCell[] {
+  const byDay = new Map<number, { volume: number; count: number }>();
+  for (const s of sessions) {
+    const t = new Date(s.at).getTime();
+    if (!Number.isFinite(t)) continue;
+    const key = startOfDay(t);
+    const cur = byDay.get(key) ?? { volume: 0, count: 0 };
+    cur.count += 1;
+    for (const ex of s.exercises) {
+      for (const set of ex.sets) {
+        if (counts(set)) cur.volume += num(set.w) * setReps(set);
+      }
+    }
+    byDay.set(key, cur);
+  }
+  // start on the Monday of the earliest week in range
+  const todayStart = startOfDay(now);
+  const dow = (new Date(todayStart).getDay() + 6) % 7; // Mon=0
+  const thisMonday = todayStart - dow * DAY_MS;
+  const start = thisMonday - (weeks - 1) * 7 * DAY_MS;
+  const end = thisMonday + 6 * DAY_MS; // Sunday of the current week → whole weeks
+
+  const cells: DayCell[] = [];
+  for (let d = start; d <= end; d += DAY_MS) {
+    const hit = byDay.get(d);
+    cells.push({ date: d, volume: Math.round(hit?.volume ?? 0), count: hit?.count ?? 0 });
+  }
+  return cells;
+}
+
 /** Monday-00:00 (local) for a date. */
 function startOfWeek(ms: number): number {
   const d = new Date(ms);

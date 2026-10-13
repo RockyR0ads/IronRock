@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildOverview, muscleGroupOf } from './overview';
+import { buildOverview, muscleGroupOf, trainingCalendar } from './overview';
 import type { LoggedSet, Session } from './types';
 
 const set = (s: Partial<LoggedSet>): LoggedSet => ({ w: '', reps: '', rpe: '', done: true, ...s });
@@ -72,5 +72,17 @@ describe('buildOverview', () => {
     const ov = buildOverview([], {});
     expect(ov.buckets).toHaveLength(0);
     expect(ov.totalWorkouts).toBe(0);
+  });
+});
+
+describe('trainingCalendar', () => {
+  it('produces whole weeks of day cells ending today, marking trained days', () => {
+    const now = Date.parse('2026-10-14T12:00:00Z'); // a Wednesday
+    const s: Session[] = [session('2026-10-12T10:00:00Z', 'bench', [set({ w: '100', reps: '5' })])];
+    const cells = trainingCalendar(s, 4, now);
+    expect(cells.length % 7).toBe(0);
+    const trained = cells.filter((c) => c.count > 0);
+    expect(trained).toHaveLength(1);
+    expect(trained[0].volume).toBe(500);
   });
 });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../../state/StoreContext';
-import { buildOverview } from '../../domain/overview';
+import { buildOverview, trainingCalendar } from '../../domain/overview';
+import { ConsistencyHeatmap } from './ConsistencyHeatmap';
 import type { MuscleGroup } from '../../domain/library';
 import { ChevronLeft } from '../common/icons';
 import { InteractiveBarChart, InteractiveLineChart } from '../ExerciseProgress/charts';
@@ -31,6 +32,7 @@ export function OverviewDashboard({ onBack }: { onBack: () => void }) {
     weighIns: state.weighIns,
   });
 
+  const calendar = trainingCalendar(state.sessions);
   const windowVolume = ov.buckets.reduce((a, b) => a + b.volume, 0);
   const maxGroup = Math.max(1, ...ov.byGroup.map((g) => g.sets));
   const totalGroupSets = ov.byGroup.reduce((a, g) => a + g.sets, 0) || 1;
@@ -92,6 +94,11 @@ export function OverviewDashboard({ onBack }: { onBack: () => void }) {
             <Stat value={ov.avgPerWeek.toFixed(1)} label="Per week" tone={C.ink} />
             <Stat value={String(ov.windowWorkouts)} label="In range" tone={C.muted} />
           </div>
+
+          {/* consistency heatmap — fixed 26-week window, independent of range */}
+          <Card title="Consistency">
+            <ConsistencyHeatmap cells={calendar} />
+          </Card>
 
           {/* volume per period */}
           <Card
