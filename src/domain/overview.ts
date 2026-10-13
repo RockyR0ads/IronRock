@@ -59,7 +59,6 @@ export interface DayCell {
   count: number;
 }
 
-const DAY_MS = 86_400_000;
 const startOfDay = (ms: number) => {
   const d = new Date(ms);
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -85,15 +84,17 @@ export function trainingCalendar(sessions: Session[], weeks = 26, now = Date.now
     }
     byDay.set(key, cur);
   }
-  // start on the Monday of the earliest week in range
-  const todayStart = startOfDay(now);
-  const dow = (new Date(todayStart).getDay() + 6) % 7; // Mon=0
-  const thisMonday = todayStart - dow * DAY_MS;
-  const start = thisMonday - (weeks - 1) * 7 * DAY_MS;
-  const end = thisMonday + 6 * DAY_MS; // Sunday of the current week → whole weeks
+  // Monday of the current week, then walk back to the window's first Monday.
+  // We step by *calendar date* (not a fixed ms span) so a daylight-saving change
+  // inside the range can't drift the cells off local midnight and miss days.
+  const today = new Date(startOfDay(now));
+  const dow = (today.getDay() + 6) % 7; // Mon=0
+  const first = new Date(today.getFullYear(), today.getMonth(), today.getDate() - dow - (weeks - 1) * 7);
+  const totalDays = weeks * 7; // whole weeks, ending on the current week's Sunday
 
   const cells: DayCell[] = [];
-  for (let d = start; d <= end; d += DAY_MS) {
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(first.getFullYear(), first.getMonth(), first.getDate() + i).getTime();
     const hit = byDay.get(d);
     cells.push({ date: d, volume: Math.round(hit?.volume ?? 0), count: hit?.count ?? 0 });
   }
