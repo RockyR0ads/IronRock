@@ -568,6 +568,8 @@ export function ExerciseCard({
   onSwap,
   onOpenExercise,
   variant = 'program',
+  superset,
+  autoRest = true,
 }: {
   block: Block;
   index: number;
@@ -576,6 +578,10 @@ export function ExerciseCard({
   /** Open this lift's exercise page (history, records, settings). */
   onOpenExercise?: (liftId: string) => void;
   variant?: 'program' | 'freestyle';
+  /** Superset membership: first/last within its group, when part of one. */
+  superset?: { first: boolean; last: boolean };
+  /** Whether checking a set may auto-start rest (false for non-last superset lifts). */
+  autoRest?: boolean;
 }) {
   const { state, dispatch } = useStore();
   const rest = useRestTimer();
@@ -652,7 +658,7 @@ export function ExerciseCard({
         }
       }
     }
-    if (!wasDone && autoRestOn(cfg)) {
+    if (!wasDone && autoRest && autoRestOn(cfg)) {
       rest.start(cfg?.restSeconds, cardId); // per-exercise rest, or the default
 
       setPopped(setIndex);
@@ -698,6 +704,14 @@ export function ExerciseCard({
         />
       )}
       <div className="relative z-10">
+        {superset?.first && (
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <span className="rounded-md bg-secondary/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-secondary">
+              Superset
+            </span>
+            <span className="h-px flex-1 bg-line" />
+          </div>
+        )}
         <div className="flex items-center gap-2.5">
           {complete ? (
             <span
@@ -962,6 +976,12 @@ export function ExerciseCard({
               );
             });
           })()}
+        </div>
+      )}
+
+      {superset && !superset.last && (
+        <div className="relative z-10 mt-2 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-secondary/80">
+          ↓ no rest · straight into the next lift
         </div>
       )}
 

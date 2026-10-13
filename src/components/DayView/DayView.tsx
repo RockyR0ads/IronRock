@@ -274,27 +274,41 @@ export function DayView({
       </div>
 
       <div className="flex flex-col gap-3">
-        {blocks.map((block, i) => (
-          <div
-            key={`${block.lift}-${i}`}
-            ref={(el) => {
-              itemRefs.current[i] = el;
-            }}
-            onPointerDown={(e) => onItemPointerDown(e, i)}
-            className={[
-              'touch-pan-y rounded-2xl',
-              dragFrom === i ? 'relative select-none' : '',
-            ].join(' ')}
-          >
-            <ExerciseCard
-              block={block}
-              index={i}
-              dayKey={state.day}
-              onSwap={onSwap}
-              onOpenExercise={onOpenExercise}
-            />
-          </div>
-        ))}
+        {blocks.map((block, i) => {
+          // superset grouping: consecutive blocks sharing a group id
+          const g = block.group;
+          const prevSame = !!g && blocks[i - 1]?.group === g;
+          const nextSame = !!g && blocks[i + 1]?.group === g;
+          const inSuperset = prevSame || nextSame;
+          const superset = inSuperset ? { first: !prevSame, last: !nextSame } : undefined;
+          // only the last lift in a superset starts the rest timer
+          const autoRest = !inSuperset || !nextSame;
+          return (
+            <div
+              key={`${block.lift}-${i}`}
+              ref={(el) => {
+                itemRefs.current[i] = el;
+              }}
+              onPointerDown={(e) => onItemPointerDown(e, i)}
+              className={[
+                'touch-pan-y rounded-2xl',
+                dragFrom === i ? 'relative select-none' : '',
+                // tighten the gap within a superset so the pair reads as one unit
+                nextSame ? '-mb-2' : '',
+              ].join(' ')}
+            >
+              <ExerciseCard
+                block={block}
+                index={i}
+                dayKey={state.day}
+                onSwap={onSwap}
+                onOpenExercise={onOpenExercise}
+                superset={superset}
+                autoRest={autoRest}
+              />
+            </div>
+          );
+        })}
       </div>
 
       <button

@@ -66,6 +66,11 @@ export interface Block {
   rpe: number | string;
   cls: BlockClass;
   cat: Category;
+  /**
+   * Superset id: consecutive blocks sharing one are run back-to-back as a
+   * superset — no rest between them, rest only after the last.
+   */
+  group?: string;
   /** Per-leg display (overrides/augments the lift's own `uni`). */
   perLeg?: boolean;
   /** Render the RPE as "7→8". */
