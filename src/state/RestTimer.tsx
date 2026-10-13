@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 import { restNotifier } from '../domain/restNotifier';
+import { acquireWake, releaseWake } from '../domain/screenWake';
+import { primeBeep, playBeep } from '../domain/beep';
 
 /** Default rest between sets, in seconds. */
 export const REST_DEFAULT = 120;
@@ -60,6 +62,8 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     // OS-ticked lock-screen countdown immediately (both behind restNotifier).
     restNotifier.requestPermission();
     restNotifier.start(seconds);
+    primeBeep(); // arm the audio context from this user gesture
+    void acquireWake(); // keep the screen on through the countdown
   }, []);
 
   const skip = useCallback(() => {
@@ -67,6 +71,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     setSecondsLeft(0);
     setOwnerId(null);
     restNotifier.stop();
+    void releaseWake();
   }, [stop]);
 
   const addTime = useCallback((delta: number) => {
@@ -84,7 +89,9 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
           if (tick.current) clearInterval(tick.current);
           tick.current = null;
           navigator.vibrate?.(300);
+          if (!document.hidden) playBeep(); // audible chime when you're looking
           restNotifier.complete();
+          void releaseWake();
           return 0;
         }
         // No per-second tray update: re-posting each second buzzes paired
@@ -107,6 +114,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
         if (runningRef.current) restNotifier.background(leftRef.current);
       } else {
         restNotifier.foreground();
+        if (runningRef.current) void acquireWake(); // lock drops on hide — retake it
       }
     };
     document.addEventListener('visibilitychange', onVis);
