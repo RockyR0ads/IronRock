@@ -408,7 +408,7 @@ function PplInfo({ onBack }: { onBack: () => void }) {
   );
 }
 
-/* -------------------------------------------------- Upper / Lower + Arms --- */
+/* ------------------------------------------------ PPL + Volume Upper --- */
 
 const ULA_TABS: ['days' | 'rules', string][] = [
   ['days', 'Days'],
@@ -416,6 +416,10 @@ const ULA_TABS: ['days' | 'rules', string][] = [
 ];
 
 const ULA_RULES: InfoRule[] = [
+  {
+    title: 'Heavy + volume split',
+    body: 'Chest and back are trained twice a week: a heavy day (3–7 reps) to keep strength, and a volume day (8–15 reps) for growth without loading the joints hard twice. Both build muscle when taken close to failure.',
+  },
   {
     title: 'Compounds — RPE 7–8',
     body: 'Bench, row, press, squat, hinge. When every set reaches the top of the rep range at or below the target RPE, add weight next time: +2.5 kg upper, +5 kg squat/deadlift. If set one goes past RPE 9, hold the weight.',
@@ -429,8 +433,8 @@ const ULA_RULES: InfoRule[] = [
     body: 'Legs are kept to low reps and a couple of sets short of failure. On a cut, holding the same squat/deadlift counts as a win — the growth is sent to the arms and delts.',
   },
   {
-    title: 'Deload',
-    body: 'Every 6–8 weeks, or when two compounds stall two sessions running: keep the weights, halve the sets, for one week.',
+    title: 'Deload — on regression, not stalls',
+    body: 'On a cut, stalls are expected and don’t count. Deload when 2+ heavy lifts go backwards for 2 sessions running (fewer reps, or the same work feels ≥1 RPE harder), or after 8 weeks regardless: keep the weights, halve the sets, for one week.',
   },
 ];
 
@@ -447,9 +451,10 @@ const ULA_CUT: InfoRule[] = [
 
 const ULA_NOTES: string[] = [
   'a/b pairs are supersets — run them back to back, then rest.',
-  'Elbows: skull crushers and close-grip bench fall on back-to-back days. If elbows flare up, swap the skull crushers for a second overhead cable extension.',
+  'Low-motivation day? Do just the first 2–3 lifts at your normal weights and leave. Keeping the weight and cutting sets holds strength and muscle far better than skipping.',
+  'Elbows: close-grip bench (Push) and skull crushers (Legs + Arms) load the triceps hard. If elbows flare up, swap the skull crushers for a second overhead cable extension.',
+  'Lower back: heavy rows on Pull and deadlifts on Legs + Arms. If it’s still fried, drop deadlifts to one top set.',
   'Lateral raises: cable and dumbbell grow the side delt about equally — use whichever feels better (tap the exercise to switch).',
-  'Sessions run ~60–70 minutes with the supersets.',
 ];
 
 function UlaInfo({ onBack }: { onBack: () => void }) {
@@ -458,7 +463,7 @@ function UlaInfo({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6">
-      <InfoHeader programId="upper-lower-arms" subtitle="Arms & delts, legs held, cut lean" onBack={onBack} />
+      <InfoHeader programId="upper-lower-arms" subtitle="Heavy + volume upper, cut lean" onBack={onBack} />
       <TabBar tabs={ULA_TABS} tab={tab} setTab={setTab} />
 
       {tab === 'days' && (

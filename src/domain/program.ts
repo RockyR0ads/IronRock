@@ -87,71 +87,70 @@ export const DAYS: Day[] = [
 ];
 
 /**
- * Upper / Lower + Arms — a 4-day plan: grow arms and shoulders, keep legs to
- * low-rep strength, hold muscle on a cut. Compounds at RPE 7–8, isolation to
- * RPE 9–10. (a/b pairs in the source are supersets — run them back to back.)
+ * 4-Day PPL + Volume Upper — grow arms and delts, keep legs to low-rep
+ * strength, hold muscle on a cut. Chest and back are each trained twice: one
+ * heavy day (3–7 reps) and one volume day (8–15). Compounds hold their load;
+ * arms, delts and flyes double-progress to RPE 9–10. (a/b pairs in the source
+ * are supersets — run them back to back.)
  */
 export const ULA_DAYS: Day[] = [
   {
-    key: 'ulaUpperA',
-    label: 'Upper',
-    variant: 'A · strength',
-    note: 'Heavy upper pressing & pulling, then delts and arms.',
+    key: 'pplvPush',
+    label: 'Push',
+    variant: 'Heavy',
+    note: 'Heavy chest & shoulder press, then side delts and triceps.',
     blocks: [
-      { lift: 'bench', sets: 3, reps: [4, 6], rpe: 8, cls: 'r-hi', cat: 'hpress', prog: 'hold' },
-      { lift: 'row', sets: 3, reps: [6, 8], rpe: 8, cls: 'r-hi', cat: 'hpull', prog: 'hold' },
-      { lift: 'ohp', sets: 3, reps: [6, 8], rpe: 8, cls: 'r-hi', cat: 'vpress', prog: 'hold' },
-      { lift: 'latpulldown', sets: 3, reps: [8, 12], rpe: 8, cls: 'r-mid', cat: 'vpull', prog: 'hold' },
+      { lift: 'bench', alts: ['dbbench', 'inclinebench'], sets: 4, reps: [3, 5], rpe: 8, cls: 'r-hi', cat: 'hpress', prog: 'hold' },
+      { lift: 'ohp', alts: ['seatedbb', 'dbohp'], sets: 3, reps: [5, 7], rpe: 8, cls: 'r-hi', cat: 'vpress', prog: 'hold' },
+      { lift: 'cgbench', alts: ['dips'], sets: 3, reps: [6, 8], rpe: 8, cls: 'r-hi', cat: 'triceps', prog: 'hold' },
       { lift: 'cablelatraise', alts: ['latraise'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'latdelt', prog: 'push' },
-      { lift: 'reversecablefly', alts: ['facepull'], sets: 3, reps: [15, 20], rpe: 9, cls: 'r-iso', cat: 'reardelt', prog: 'push' },
-      { lift: 'ezcurl', sets: 3, reps: [8, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
-      { lift: 'pushdown', sets: 3, reps: [8, 12], rpe: 9, cls: 'r-iso', cat: 'triceps', prog: 'push' },
+      { lift: 'cableohext', alts: ['ohext'], sets: 3, reps: [10, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', prog: 'push' },
+      { lift: 'ropepushdown', alts: ['pushdown', 'singlepushdown'], sets: 2, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', prog: 'push' },
     ],
   },
   {
-    key: 'ulaLowerA',
-    label: 'Lower',
-    variant: 'A · + arms',
-    note: 'Low-rep legs, then triceps and biceps volume.',
+    key: 'pplvPull',
+    label: 'Pull',
+    variant: 'Heavy',
+    note: 'Heavy row & chin-up, then rear delts and biceps.',
     blocks: [
-      { lift: 'squat', sets: 3, reps: [3, 5], rpe: 8, cls: 'r-hi', cat: 'squat', prog: 'hold' },
-      { lift: 'rdl', sets: 2, reps: 5, rpe: 7, cls: 'r-hi', cat: 'hinge', drift: true, prog: 'hold' },
-      { lift: 'cgbench', sets: 3, reps: [6, 8], rpe: 8, cls: 'r-hi', cat: 'triceps', prog: 'hold' },
-      { lift: 'inclinecurl', sets: 3, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
-      { lift: 'cableohext', sets: 3, reps: [10, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', prog: 'push' },
-      { lift: 'hammer', sets: 2, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
-      { lift: 'latraise', alts: ['cablelatraise'], sets: 3, reps: [12, 20], rpe: '9–10', cls: 'r-iso', cat: 'latdelt', prog: 'push' },
+      { lift: 'row', alts: ['pendlay', 'csrow', 'dbrow'], sets: 4, reps: [5, 7], rpe: 8, cls: 'r-hi', cat: 'hpull', prog: 'hold' },
+      { lift: 'chinup', alts: ['pullup', 'neutralpullup'], sets: 3, reps: [4, 6], rpe: 8, cls: 'r-hi', cat: 'vpull', prog: 'hold' },
+      { lift: 'facepull', alts: ['reardelt'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'reardelt', prog: 'push' },
+      { lift: 'leanlatraise', alts: ['cablelatraise', 'latraise'], sets: 3, reps: [12, 15], rpe: '9–10', cls: 'r-iso', cat: 'latdelt', prog: 'push' },
+      { lift: 'ezcurl', alts: ['dbcurl'], sets: 3, reps: [6, 10], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
+      { lift: 'inclinecurl', alts: ['spider'], sets: 3, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
     ],
   },
   {
-    key: 'ulaUpperB',
+    key: 'pplvUpper',
     label: 'Upper',
-    variant: 'B · hypertrophy',
-    note: 'Higher-rep upper volume for chest, back and delts.',
+    variant: 'Volume',
+    note: 'Higher-rep chest & back volume, delts and a curl.',
     blocks: [
-      { lift: 'dbincline', sets: 3, reps: [8, 10], rpe: 8, cls: 'r-mid', cat: 'hpress', prog: 'hold' },
-      { lift: 'csrow', sets: 3, reps: [8, 12], rpe: 8, cls: 'r-mid', cat: 'hpull', prog: 'hold' },
-      { lift: 'chinup', sets: 3, reps: [6, 10], rpe: 8, cls: 'r-hi', cat: 'vpull', prog: 'hold' },
-      { lift: 'cablefly', sets: 2, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'hpress', prog: 'push' },
+      { lift: 'dbincline', alts: ['inclinebench', 'dbbench'], sets: 3, reps: [8, 12], rpe: 8, cls: 'r-mid', cat: 'hpress', prog: 'hold' },
+      { lift: 'csrow', alts: ['row', 'dbrow'], sets: 3, reps: [10, 12], rpe: 8, cls: 'r-mid', cat: 'hpull', prog: 'hold' },
+      { lift: 'latpulldown', alts: ['chinup'], sets: 3, reps: [10, 15], rpe: 9, cls: 'r-mid', cat: 'vpull', prog: 'hold' },
+      { lift: 'cablefly', alts: ['dbbench'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'hpress', prog: 'push' },
+      { lift: 'dbrow', alts: ['csrow'], sets: 2, reps: [12, 15], rpe: 9, cls: 'r-mid', cat: 'hpull', prog: 'hold' },
       { lift: 'cableyraise', alts: ['latraise'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'latdelt', prog: 'push' },
-      { lift: 'facepull', sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'reardelt', prog: 'push' },
-      { lift: 'cablecurl', sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
-      { lift: 'ropepushdown', sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', prog: 'push' },
+      { lift: 'reversecablefly', alts: ['facepull'], sets: 3, reps: [15, 20], rpe: 9, cls: 'r-iso', cat: 'reardelt', prog: 'push' },
+      { lift: 'hammer', alts: ['zottman'], sets: 2, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
     ],
   },
   {
-    key: 'ulaLowerB',
-    label: 'Lower',
-    variant: 'B · + arms',
-    note: 'Heavy hinge & paused squat, then arm detail work.',
+    key: 'pplvLegsArms',
+    label: 'Legs + Arms',
+    variant: 'Strength + arms',
+    note: 'Low-rep squat & deadlift, then a superset arm block.',
     blocks: [
-      { lift: 'deadlift', sets: 3, reps: [2, 4], rpe: 8, cls: 'r-hi', cat: 'hinge', prog: 'hold' },
-      { lift: 'pausesquat', sets: 2, reps: 3, rpe: 7, cls: 'r-hi', cat: 'squat', drift: true, prog: 'hold' },
-      { lift: 'skull', sets: 3, reps: [8, 10], rpe: 9, cls: 'r-iso', cat: 'triceps', prog: 'push' },
-      { lift: 'spider', sets: 3, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
-      { lift: 'singlepushdown', sets: 2, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', prog: 'push' },
-      { lift: 'reversecurl', sets: 2, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
-      { lift: 'leanlatraise', alts: ['cablelatraise'], sets: 3, reps: [12, 15], rpe: '9–10', cls: 'r-iso', cat: 'latdelt', prog: 'push' },
+      { lift: 'squat', alts: ['pausesquat', 'frontsquat'], sets: 3, reps: [3, 5], rpe: 8, cls: 'r-hi', cat: 'squat', prog: 'hold' },
+      { lift: 'deadlift', alts: ['rdl', 'stiffleg'], sets: 2, reps: [2, 4], rpe: 8, cls: 'r-hi', cat: 'hinge', prog: 'hold' },
+      { lift: 'spider', alts: ['inclinecurl'], sets: 3, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
+      { lift: 'skull', alts: ['jmpress', 'cableohext'], sets: 3, reps: [8, 10], rpe: 9, cls: 'r-iso', cat: 'triceps', prog: 'push' },
+      { lift: 'cablecurl', alts: ['dbcurl'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
+      { lift: 'singlepushdown', alts: ['ropepushdown', 'pushdown'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', prog: 'push' },
+      { lift: 'latraise', alts: ['cablelatraise'], sets: 3, reps: [12, 20], rpe: '9–10', cls: 'r-iso', cat: 'latdelt', prog: 'push' },
     ],
   },
 ];

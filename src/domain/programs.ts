@@ -42,14 +42,14 @@ export const PROGRAMS: ProgramMeta[] = [
   },
   {
     id: 'upper-lower-arms',
-    name: 'Upper / Lower + Arms',
+    name: 'PPL + Volume Upper',
     tagline: 'Grow arms & delts, hold the legs, cut lean.',
-    focus: 'Four days — two upper, two lower-plus-arms. Compounds at RPE 7–8, isolation to failure.',
+    focus: 'Four days — heavy Push & Pull, an upper volume day, and Legs + a superset arm block. Chest & back hit twice a week; compounds hold, arms & delts to failure.',
     days: 4,
     level: 'Intermediate',
     origin: 'custom',
     ready: true,
-    weeks: 6,
+    weeks: 8,
   },
   {
     id: 'starting-strength',

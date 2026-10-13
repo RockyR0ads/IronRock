@@ -756,7 +756,7 @@ export function loadState(): State {
     const { customDays: legacyCustomDays, ...parsed } = JSON.parse(raw) as Partial<State> & {
       customDays?: Record<string, Block[]>;
     };
-    return {
+    const merged: State = {
       ...base,
       ...parsed,
       customLifts: parsed.customLifts ?? {},
@@ -774,6 +774,14 @@ export function loadState(): State {
       history: parsed.history ?? {},
       sessions: parsed.sessions ?? [],
     };
+    // A saved day key can orphan when a program's days are renamed (e.g. the
+    // ULA refactor) — snap to the active program's first day so the week engine
+    // always resolves.
+    if (!defaultDay(merged.day)) {
+      const days = daysForProgram(merged.activeProgram);
+      if (days[0]) merged.day = days[0].key;
+    }
+    return merged;
   } catch {
     // Data was there but unreadable. Quarantine the raw bytes and flag the
     // failure so saveState refuses to overwrite the original with an empty
