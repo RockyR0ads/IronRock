@@ -24,7 +24,8 @@ import { SetTypePicker } from './SetTypePicker';
 import { FEEL_TONE } from '../common/feelTone';
 import { useHoldMenu } from './useHoldMenu';
 import { stepValue, formatStepValue } from '../../domain/steps';
-import type { Block, BlockClass, LiftHistory, LoggedSet, WarmupFeel } from '../../domain/types';
+import { suggestNext } from '../../domain/progression';
+import type { Block, BlockClass, Increment, LiftHistory, LoggedSet, WarmupFeel } from '../../domain/types';
 
 /** Intensity → dot color. */
 const DOT: Record<BlockClass, string> = {
@@ -204,11 +205,13 @@ function cellBase(sets: LoggedSet[], si: number, field: 'w' | 'reps' | 'rpe' | '
   return 0;
 }
 
-/** Suggested values for the next working set: carry the last one, else last session, else prescription. */
+/** Suggested values for the next working set: carry the last one, else the
+ * progression suggestion from last session, else the prescription. */
 function prefillSet(
   block: Block,
   sets: LoggedSet[],
   targetLoad: number | null,
+  inc: Increment,
   history?: LiftHistory,
   perSideDefault = false
 ): LoggedSet {
@@ -219,6 +222,11 @@ function prefillSet(
     return { w: last.w, reps: last.reps, rpe: last.rpe, done: false, ...side };
   }
   const side = perSideDefault ? { perSide: true, repsR: '' } : {};
+  // first working set of the session: open with the progression suggestion
+  const suggestion = suggestNext(block, history, inc);
+  if (suggestion) {
+    return { w: String(suggestion.w), reps: String(suggestion.reps), rpe: '', done: false, ...side };
+  }
   if (history) return { ...history, done: false, ...side };
   const reps = Array.isArray(block.reps) ? block.reps[1] : block.reps;
   return {
@@ -583,6 +591,7 @@ export function ExerciseCard({
   const sets = setsFor(state, dayKey, index);
   const target = lift.type === 'computed' ? blockLoad(state, block) : null;
   const history = state.history[block.lift];
+  const suggestion = freestyle ? null : suggestNext(block, history, state.inc);
   const done = doneSetCount(sets); // working sets checked off (warm-ups excluded)
   const working = workingSetCount(sets);
   const complete = freestyle ? working > 0 && done === working : isBlockComplete(block, sets);
@@ -732,6 +741,15 @@ export function ExerciseCard({
         {history && (
           <div className="mt-1 font-mono text-[11px] text-muted-2">
             Last {history.w || '–'} kg × {history.reps || '–'} @ RPE {history.rpe || '–'}
+          </div>
+        )}
+        {!freestyle && done === 0 && suggestion && (
+          <div className="mt-0.5 font-mono text-[11px]">
+            <span className="text-muted-2">Next </span>
+            <span className="font-bold text-ink">
+              {suggestion.w} kg × {suggestion.reps}
+            </span>
+            <span className={suggestion.bumped ? 'text-green' : 'text-muted-2'}> · {suggestion.note}</span>
           </div>
         )}
       </div>
@@ -933,7 +951,7 @@ export function ExerciseCard({
               type: 'addSet',
               dayKey,
               index,
-              set: prefillSet(block, sets, target, history, perSideDefault),
+              set: prefillSet(block, sets, target, state.inc, history, perSideDefault),
             })
           }
           className="inline-flex flex-[3] items-center justify-center gap-1.5 rounded-lg bg-secondary/15 px-3 py-2 text-[13px] font-semibold text-secondary transition-colors hover:bg-secondary/25"
