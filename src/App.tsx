@@ -16,6 +16,7 @@ import { WeightTracker } from './components/WeightTracker/WeightTracker';
 import { Settings } from './components/Settings/Settings';
 import { ActiveWorkoutBar } from './components/ActiveWorkoutBar';
 import { DataBanner } from './components/DataBanner';
+import { PrToast } from './components/PrToast';
 import { StretchSection } from './components/Stretch/StretchSection';
 import { OverviewDashboard } from './components/Overview/OverviewDashboard';
 import { activeWorkout } from './state/selectors';
@@ -114,6 +115,7 @@ export default function App() {
 
   return (
     <>
+      <PrToast />
       <DataBanner onOpenSettings={() => push({ p: 'settings' })} />
       {workout && !onWorkoutPage && (
         <ActiveWorkoutBar

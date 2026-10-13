@@ -34,6 +34,42 @@ export interface LiftRecords {
 /** Rep counts above this are lumped together — a "20-rep max" isn't a useful PR. */
 export const REP_CAP = 12;
 
+export interface SetPr {
+  kind: 'e1rm' | 'rep';
+  /** For e1rm: the new estimated 1RM. For rep: the weight lifted. */
+  value: number;
+  reps: number;
+}
+
+/**
+ * Is a just-logged set a personal record for this lift, judged against the
+ * archived history only? Returns the strongest PR kind, or null. A lift with no
+ * prior history isn't a PR (it's just the first entry) — that keeps the first
+ * session of every lift from firing a wall of celebrations.
+ */
+export function detectSetPr(
+  sessions: Session[],
+  liftId: string,
+  inc: Increment,
+  w: number,
+  reps: number,
+  rpe: number
+): SetPr | null {
+  if (w <= 0 || reps <= 0) return null;
+  const prior = liftRecords(sessions, liftId, inc);
+  if (!prior.bestE1rm) return null; // first time logging this lift
+
+  const raw = estimate1Rm(w, reps, rpe);
+  const e1rm = raw === null ? w : round(raw, inc);
+  if (e1rm > prior.bestE1rm.value) return { kind: 'e1rm', value: e1rm, reps };
+
+  if (reps <= REP_CAP) {
+    const atReps = prior.repMaxes.find((m) => m.reps === reps);
+    if (!atReps || w > atReps.weight) return { kind: 'rep', value: w, reps };
+  }
+  return null;
+}
+
 export function liftRecords(
   sessions: Session[],
   liftId: string,

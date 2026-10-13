@@ -25,6 +25,8 @@ import { FEEL_TONE } from '../common/feelTone';
 import { useHoldMenu } from './useHoldMenu';
 import { stepValue, formatStepValue } from '../../domain/steps';
 import { suggestNext } from '../../domain/progression';
+import { detectSetPr } from '../../domain/records';
+import { celebratePr } from '../PrToast';
 import type { Block, BlockClass, Increment, LiftHistory, LoggedSet, WarmupFeel } from '../../domain/types';
 
 /** Intensity → dot color. */
@@ -585,6 +587,8 @@ export function ExerciseCard({
   const [popped, setPopped] = useState<number | null>(null);
   const [cheer, setCheer] = useState(false);
   const wasComplete = useRef(false);
+  /** PRs already celebrated this mount, to avoid re-firing on heavier sets. */
+  const prSeen = useRef<{ e1rm: number; reps: Set<number> }>({ e1rm: 0, reps: new Set() });
   const freestyle = variant === 'freestyle';
   const lift = liftById(state, block.lift);
   const perLeg = isPerLeg(block, lift.uni);
@@ -627,8 +631,27 @@ export function ExerciseCard({
   const badgeText = freestyle ? `${done}/${working}` : `${done}/${block.sets}`;
 
   function toggleDone(setIndex: number) {
-    const wasDone = sets[setIndex]?.done;
+    const set = sets[setIndex];
+    const wasDone = set?.done;
     dispatch({ type: 'toggleSetDone', dayKey, index, setIndex, at: new Date().toISOString() });
+    if (!wasDone && set && !set.warmup) {
+      // celebrate a personal record — judged against archived history, and only
+      // once per lift/effort this session so a heavier set doesn't re-fire
+      const w = parseFloat(set.w);
+      const reps = parseFloat(set.reps);
+      const rpe = parseFloat(set.rpe) || 0;
+      const pr = detectSetPr(state.sessions, block.lift, state.inc, w, reps, rpe);
+      if (pr) {
+        const seen = prSeen.current;
+        if (pr.kind === 'e1rm' && pr.value > seen.e1rm) {
+          seen.e1rm = pr.value;
+          celebratePr({ lift: block.lift, message: `${lift.name} · est. ${pr.value} kg 1RM` });
+        } else if (pr.kind === 'rep' && !seen.reps.has(pr.reps)) {
+          seen.reps.add(pr.reps);
+          celebratePr({ lift: block.lift, message: `${lift.name} · ${pr.value} kg × ${pr.reps}` });
+        }
+      }
+    }
     if (!wasDone && autoRestOn(cfg)) {
       rest.start(cfg?.restSeconds, cardId); // per-exercise rest, or the default
 
