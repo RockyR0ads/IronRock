@@ -76,6 +76,8 @@ export interface State {
   day: string;
   /** ISO date the current program block started, for progression tracking. */
   programStart?: string;
+  /** ISO start of an active deload week, or undefined. Expires after 7 days. */
+  deload?: string;
   /** Id of the currently selected training program. */
   activeProgram: string;
   /** Body-weight weigh-ins for goal tracking (date + kg). */
@@ -197,6 +199,8 @@ export type Action =
   | { type: 'setProfile'; patch: Partial<Profile> }
   | { type: 'setTheme'; patch: Partial<ThemeChoice> }
   | { type: 'startProgram'; at: string }
+  | { type: 'startDeload'; at: string }
+  | { type: 'endDeload' }
   | { type: 'resetProgram' }
   | { type: 'resetWeek' }
   | { type: 'startStretch'; sessionType: StretchSessionType; at: string; week: number; total: number }
@@ -665,6 +669,12 @@ export function reducer(state: State, action: Action): State {
       return { ...state, theme: { ...state.theme, ...action.patch } };
     case 'startProgram':
       return { ...state, programStart: action.at };
+    case 'startDeload':
+      return { ...state, deload: action.at };
+    case 'endDeload': {
+      const { deload: _d, ...rest } = state;
+      return rest;
+    }
     case 'resetProgram': {
       const next = { ...state };
       delete next.programStart;

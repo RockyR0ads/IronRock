@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronDown } from './common/icons';
 import { DayView } from './DayView/DayView';
 import { DayNav } from './DayView/DayNav';
 import { WorkoutClockBar } from './DayView/WorkoutClockBar';
+import { DeloadBanner } from './DeloadBanner';
 import { RestTimerBar } from './RestTimerBar';
 import { ExercisePicker, type PickerRequest } from './ExercisePicker/ExercisePicker';
 
@@ -128,6 +129,7 @@ export function TrainWeek({
       <p className="mb-4 text-[13px] text-muted-2">
         Log your sets. Tap a lift to swap it, or add your own.
       </p>
+      <DeloadBanner />
       <DayView
         onSwap={(index) => setPicker({ kind: 'swap', index })}
         onAdd={() => setPicker({ kind: 'add' })}
