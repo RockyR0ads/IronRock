@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
-import { LIFTS, TOP_LIFTS } from '../../domain/lifts';
+import { LIFTS, TOP_LIFTS, canonicalLiftId } from '../../domain/lifts';
+import { liftById } from '../../state/store';
 import { searchLibrary } from '../../domain/library';
-import { exerciseSeries } from '../../domain/progress';
 import { ChevronLeft, ChevronRight, TrendIcon } from '../common/icons';
 
 interface Row {
@@ -36,45 +36,64 @@ export function ExerciseSelector({
   const [q, setQ] = useState('');
   const query = q.trim();
 
-  const sessionsOf = (id: string) => exerciseSeries(state.sessions, id, state.inc).length;
+  // sessions per lift with at least one counted working set, counted once
+  const counts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of state.sessions) {
+      const hit = new Set<string>();
+      for (const ex of s.exercises) if (ex.sets.some((x) => x.done && !x.warmup)) hit.add(ex.liftId);
+      for (const id of hit) m.set(id, (m.get(id) ?? 0) + 1);
+    }
+    return m;
+  }, [state.sessions]);
+  const sessionsOf = (id: string) => counts.get(id) ?? 0;
 
   const { tracked, rest } = useMemo(() => {
-    const ids = (onlyIds ?? TOP_LIFTS).filter((id) => LIFTS[id]);
-    const rows: Row[] = ids.map((id) => ({
-      id,
-      name: LIFTS[id].name,
-      sessions: sessionsOf(id),
-    }));
+    if (onlyIds) {
+      const rows = onlyIds.filter((id) => LIFTS[id]).map((id) => ({ id, name: LIFTS[id].name, sessions: sessionsOf(id) }));
+      return { tracked: rows.filter((r) => r.sessions > 0), rest: rows.filter((r) => r.sessions === 0) };
+    }
+    // every lift you've actually logged (built-in, library or custom), plus the
+    // whole built-in catalogue — top lifts first — for the rest
+    const logged = new Set<string>();
+    for (const s of state.sessions) for (const ex of s.exercises) logged.add(ex.liftId);
+    const ordered = [...new Set([...TOP_LIFTS, ...Object.keys(LIFTS), ...logged])];
+    const rows: Row[] = ordered.map((id) => ({ id, name: liftById(state, id).name, sessions: sessionsOf(id) }));
     return {
       tracked: rows.filter((r) => r.sessions > 0).sort((a, b) => b.sessions - a.sessions),
-      rest: rows.filter((r) => r.sessions === 0),
+      rest: rows.filter((r) => r.sessions === 0 && LIFTS[r.id]),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.sessions, state.inc, onlyIds]);
+  }, [state.sessions, counts, onlyIds]);
 
   // Search spans custom lifts, curated lifts, and the whole 870+ library — so
   // any exercise is reachable, not just the curated top list. Ignored when a
   // single-lift rollout (`onlyIds`) constrains the page.
   const results = useMemo<Row[] | null>(() => {
     if (!query || onlyIds) return null;
-    const ql = query.toLowerCase();
+    // word-by-word, plural-tolerant: "lateral raises" finds "Cable lateral raise"
+    const norm = (t: string) => (t.length > 3 && t.endsWith('s') && !t.endsWith('ss') ? t.slice(0, -1) : t);
+    const terms = query.toLowerCase().split(/s+/).filter(Boolean).map(norm);
+    const hit = (name: string) => {
+      const words = name.toLowerCase().split(/[^a-z0-9]+/).map(norm);
+      return terms.every((t) => words.some((w) => w.startsWith(t)));
+    };
     const seen = new Set<string>();
     const rows: Row[] = [];
-    const add = (id: string, name: string) => {
+    const add = (rawId: string) => {
+      const id = canonicalLiftId(rawId); // library twins fold onto the built-in lift
       if (seen.has(id)) return;
       seen.add(id);
-      rows.push({ id, name, sessions: sessionsOf(id) });
+      rows.push({ id, name: liftById(state, id).name, sessions: sessionsOf(id) });
     };
-    for (const [id, c] of Object.entries(state.customLifts)) {
-      if (c.name.toLowerCase().includes(ql)) add(id, c.name);
-    }
-    for (const id of TOP_LIFTS) {
-      if (LIFTS[id]?.name.toLowerCase().includes(ql)) add(id, LIFTS[id].name);
-    }
-    for (const ex of searchLibrary(query)) add(ex.id, ex.name);
-    return rows;
+    for (const [id, c] of Object.entries(state.customLifts)) if (hit(c.name)) add(id);
+    for (const id of Object.keys(LIFTS)) if (hit(LIFTS[id].name)) add(id);
+    for (const s of state.sessions) for (const ex of s.exercises) if (hit(liftById(state, ex.liftId).name)) add(ex.liftId);
+    for (const ex of searchLibrary(query)) add(ex.id);
+    // logged lifts first (most used on top), then the rest in match order
+    return rows.sort((a, b) => b.sessions - a.sessions);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, onlyIds, state.customLifts, state.sessions, state.inc]);
+  }, [query, onlyIds, state.customLifts, state.sessions, counts]);
 
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6">
