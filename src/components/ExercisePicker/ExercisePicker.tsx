@@ -10,6 +10,7 @@ import {
   type MuscleGroup,
 } from '../../domain/library';
 import { PlusIcon } from '../common/icons';
+import { LIFTS, canonicalLiftId } from '../../domain/lifts';
 import { ExerciseDetail } from './ExerciseDetail';
 
 export interface PickerRequest {
@@ -23,13 +24,27 @@ interface Row {
   name: string;
   sub: string;
   hasDetail: boolean;
+  /** Library id for the how-to detail view (differs from `id` for built-in twins). */
+  libId?: string;
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function libRow(ex: LibraryExercise): Row {
   const sub = ex.equipment ? cap(ex.equipment) : ex.muscles[0] ? cap(ex.muscles[0]) : 'Exercise';
-  return { id: ex.id, name: ex.name, sub, hasDetail: true };
+  // a library duplicate of a built-in lift picks the built-in, so the movement
+  // keeps one history (and matches what the programs use)
+  const canon = canonicalLiftId(ex.id);
+  if (canon !== ex.id && LIFTS[canon]) {
+    return { id: canon, name: LIFTS[canon].name, sub, hasDetail: true, libId: ex.id };
+  }
+  return { id: ex.id, name: ex.name, sub, hasDetail: true, libId: ex.id };
+}
+
+/** Drop repeat rows (several library twins can fold onto one built-in). */
+function uniqueRows(rows: Row[]): Row[] {
+  const seen = new Set<string>();
+  return rows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
 }
 
 /** Equipment presets for a custom exercise, mapped to a logging unit. */
@@ -106,7 +121,7 @@ export function ExercisePicker({
       : customEntries
           .filter(([, c]) => c.name.toLowerCase().includes(q))
           .map(([id, c]) => ({ id, name: c.name, sub: c.unit || 'Custom', hasDetail: false }));
-    rows = [...custom, ...searchLibrary(query, equip).map(libRow)];
+    rows = uniqueRows([...custom, ...searchLibrary(query, equip).map(libRow)]);
   } else if (group === 'My') {
     rows = customEntries.map(([id, c]) => ({
       id,
@@ -115,7 +130,7 @@ export function ExercisePicker({
       hasDetail: false,
     }));
   } else {
-    rows = libraryInGroup(group, equip).map(libRow);
+    rows = uniqueRows(libraryInGroup(group, equip).map(libRow));
   }
 
   function startCreate(prefillName = '') {
@@ -156,9 +171,9 @@ export function ExercisePicker({
         {detailId ? (
           <ExerciseDetail
             id={detailId}
-            isCurrent={detailId === request.currentId}
+            isCurrent={canonicalLiftId(detailId) === request.currentId}
             onBack={() => setDetailId(null)}
-            onSelect={() => onPick(detailId)}
+            onSelect={() => onPick(canonicalLiftId(detailId))}
           />
         ) : creating ? (
           <div className="flex min-h-0 flex-1 flex-col">
@@ -368,7 +383,7 @@ export function ExercisePicker({
                     <button
                       type="button"
                       aria-label={`View ${row.name} instructions`}
-                      onClick={() => setDetailId(row.id)}
+                      onClick={() => setDetailId(row.libId ?? row.id)}
                       className="mr-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-3 font-mono text-[13px] font-bold text-muted transition-colors hover:text-ink"
                     >
                       i

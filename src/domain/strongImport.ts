@@ -1,4 +1,4 @@
-import { LIFTS } from './lifts';
+import { LIFTS, canonicalLiftId } from './lifts';
 import { LIBRARY, LIBRARY_BY_ID } from './library';
 import type { CustomLift } from '../state/store';
 import { FREESTYLE_KEY } from '../state/store';
@@ -185,7 +185,7 @@ const CURATED_ALIASES: [string, string][] = [
   ['Cable Kickback', 'kickback'],
   ['Dumbell kickback', 'kickback'],
   ['Chest Dip', 'dips'],
-  ['Lateral Raise (Machine)', 'latraise'],
+  ['Lateral Raise (Machine)', 'machinelatraise'],
   ['Seated Lateral Raise (Dumbbell)', 'seatedlatraise'],
   ['Standing Calf Raise (Machine)', 'calf'],
   ['Standing Calf Raise (Smith Machine)', 'calf'],
@@ -290,16 +290,22 @@ export function resolveExercise(strongName: string): ResolvedExercise {
   const name = strongName.trim();
   const key = movementKey(name);
 
+  // A library hit that duplicates a built-in lift files under the built-in id.
+  const libOrBuiltIn = (id: string, libName: string): ResolvedExercise => {
+    const canon = canonicalLiftId(id);
+    return LIFTS[canon] ? { liftId: canon, name: LIFTS[canon].name } : { liftId: id, name: libName };
+  };
+
   const curated = CURATED_BY_KEY[key];
   if (curated) {
     // An alias may point at a curated lift or straight at a library exercise.
     if (LIFTS[curated]) return { liftId: curated, name: LIFTS[curated].name };
     const aliased = LIBRARY_BY_ID[curated];
-    if (aliased) return { liftId: aliased.id, name: aliased.name };
+    if (aliased) return libOrBuiltIn(aliased.id, aliased.name);
   }
 
   const lib = LIBRARY_BY_KEY[key];
-  if (lib) return { liftId: lib.id, name: lib.name };
+  if (lib) return libOrBuiltIn(lib.id, lib.name);
 
   const id = `strong-${key.replace(/\+/g, '-') || 'exercise'}`;
   return { liftId: id, name, custom: { name, unit: unitFor(name), group: 'Other' } };

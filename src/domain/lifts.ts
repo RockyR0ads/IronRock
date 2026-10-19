@@ -82,6 +82,7 @@ export const LIFTS: Record<string, Lift> = {
   cablelatraise: { id: 'cablelatraise', name: 'Cable lateral raise', type: 'manual', unit: 'kg', cats: ['latdelt'] },
   leanlatraise: { id: 'leanlatraise', name: 'Leaning lateral raise', type: 'manual', unit: 'kg / DB', cats: ['latdelt'] },
   seatedlatraise: { id: 'seatedlatraise', name: 'Seated lateral raise', type: 'manual', unit: 'kg / DB', cats: ['latdelt'] },
+  machinelatraise: { id: 'machinelatraise', name: 'Machine lateral raise', type: 'manual', unit: 'kg', cats: ['latdelt'] },
   // rear delt
   facepull: { id: 'facepull', name: 'Face pull', type: 'manual', unit: 'kg', cats: ['reardelt'] },
   reardelt: { id: 'reardelt', name: 'Rear delt fly', type: 'manual', unit: 'kg / DB', cats: ['reardelt'] },
@@ -118,6 +119,86 @@ export const LIFTS: Record<string, Lift> = {
   seatedcalf: { id: 'seatedcalf', name: 'Seated calf raise', type: 'manual', unit: 'kg', cats: ['calf'] },
   singlecalf: { id: 'singlecalf', name: 'Single-leg calf raise', type: 'manual', unit: 'kg', cats: ['calf'], uni: true },
 };
+
+/**
+ * Library exercises that are the *same movement* as a built-in lift. They're
+ * folded into the built-in id everywhere — hidden from the picker, re-filed on
+ * load, and resolved to on import — so one movement keeps one history instead
+ * of splitting across near-identical entries. Genuine variants (other grips,
+ * equipment or bands/chains) are deliberately left out.
+ */
+export const LIB_DUPES: Record<string, string> = {
+  // push
+  'Barbell_Bench_Press_-_Medium_Grip': 'bench',
+  Dumbbell_Bench_Press: 'dbbench',
+  'Barbell_Incline_Bench_Press_-_Medium_Grip': 'inclinebench',
+  Incline_Dumbbell_Press: 'dbincline',
+  Floor_Press: 'floorpress',
+  'Close-Grip_Barbell_Bench_Press': 'cgbench',
+  'Dips_-_Triceps_Version': 'dips',
+  'Dips_-_Chest_Version': 'dips',
+  Parallel_Bar_Dip: 'dips',
+  Barbell_Shoulder_Press: 'ohp',
+  Standing_Military_Press: 'ohp',
+  Seated_Dumbbell_Press: 'dbohp',
+  Dumbbell_Shoulder_Press: 'dbohp',
+  Seated_Barbell_Military_Press: 'seatedbb',
+  Push_Press: 'pushpress',
+  Arnold_Dumbbell_Press: 'arnold',
+  Cable_Crossover: 'cablefly',
+  // pull
+  Bent_Over_Barbell_Row: 'row',
+  'supp-pendlay-row': 'pendlay',
+  'One-Arm_Dumbbell_Row': 'dbrow',
+  Dumbbell_Incline_Row: 'csrow',
+  Pullups: 'pullup',
+  'Chin-Up': 'chinup',
+  'Wide-Grip_Lat_Pulldown': 'latpulldown',
+  // legs
+  Barbell_Full_Squat: 'squat',
+  Barbell_Squat: 'squat',
+  Front_Barbell_Squat: 'frontsquat',
+  Box_Squat: 'boxsquat',
+  Zercher_Squats: 'zercher',
+  Goblet_Squat: 'goblet',
+  Barbell_Deadlift: 'deadlift',
+  Romanian_Deadlift: 'rdl',
+  Good_Morning: 'goodmorning',
+  Split_Squats: 'splitsquat',
+  Dumbbell_Rear_Lunge: 'reverselunge',
+  Standing_Calf_Raises: 'calf',
+  Seated_Calf_Raise: 'seatedcalf',
+  // shoulders
+  'supp-standing-cable-lateral-raise': 'cablelatraise',
+  Side_Lateral_Raise: 'latraise',
+  Seated_Side_Lateral_Raise: 'seatedlatraise',
+  Face_Pull: 'facepull',
+  Cable_Rear_Delt_Fly: 'reversecablefly',
+  Bent_Over_Dumbbell_Rear_Delt_Raise_With_Head_On_Bench: 'reardelt',
+  // arms
+  'EZ-Bar_Curl': 'ezcurl',
+  Dumbbell_Bicep_Curl: 'dbcurl',
+  Incline_Dumbbell_Curl: 'inclinecurl',
+  Hammer_Curls: 'hammer',
+  Preacher_Curl: 'preacher',
+  Concentration_Curls: 'concentration',
+  Spider_Curl: 'spider',
+  Zottman_Curl: 'zottman',
+  Reverse_Cable_Curl: 'reversecurl',
+  'EZ-Bar_Skullcrusher': 'skull',
+  Cable_Rope_Overhead_Triceps_Extension: 'cableohext',
+  Triceps_Overhead_Extension_with_Rope: 'cableohext',
+  JM_Press: 'jmpress',
+  Tate_Press: 'tate',
+  Tricep_Dumbbell_Kickback: 'kickback',
+  Triceps_Pushdown: 'pushdown',
+  'Triceps_Pushdown_-_Rope_Attachment': 'ropepushdown',
+};
+
+/** The id a lift should be filed under: its built-in twin if it's a duplicate. */
+export function canonicalLiftId(id: string): string {
+  return LIB_DUPES[id] ?? id;
+}
 
 /**
  * Curated lift id → free-exercise-db id, linking a catalogue lift to its how-to

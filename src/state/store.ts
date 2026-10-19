@@ -1,5 +1,5 @@
 import { defaultDay, daysForProgram, setCustomDays } from '../domain/program';
-import { LIFTS } from '../domain/lifts';
+import { LIFTS, LIB_DUPES, canonicalLiftId } from '../domain/lifts';
 import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
 import { meaningfulSet } from '../domain/session';
 import { workoutStartedAt } from '../domain/workoutTiming';
@@ -161,7 +161,7 @@ export function initialState(): State {
  * custom exercises, then the bundled library. Falls back to a bare manual lift.
  */
 export function liftById(state: State, id: string): Lift {
-  const curated = LIFTS[id];
+  const curated = LIFTS[canonicalLiftId(id)];
   if (curated) return curated;
   const custom = state.customLifts[id];
   if (custom) return { id, name: custom.name, type: 'manual', unit: custom.unit, cats: [] };
@@ -837,6 +837,52 @@ export function reducer(state: State, action: Action): State {
   }
 }
 
+/**
+ * Re-file anything stored under a library duplicate of a built-in lift (see
+ * LIB_DUPES) onto the built-in id: archived sessions, day/routine layouts,
+ * option picks, last-set history and per-lift settings. Sets are untouched —
+ * only which exercise they belong to changes. Idempotent, so it simply runs on
+ * every load and is a no-op once everything is canonical.
+ */
+export function canonicalizeLifts(state: State): State {
+  const c = canonicalLiftId;
+  const blocks = (bs: Block[]) =>
+    bs.map((b) => ({ ...b, lift: c(b.lift), ...(b.alts ? { alts: [...new Set(b.alts.map(c))] } : {}) }));
+  const byDay = (m: Record<string, Block[]>) =>
+    Object.fromEntries(Object.entries(m).map(([k, v]) => [k, blocks(v)]));
+  // move dupe-keyed entries onto the built-in key, keeping the built-in's own if present
+  function rekey<T>(m: Record<string, T>): Record<string, T> {
+    const out: Record<string, T> = {};
+    for (const [k, v] of Object.entries(m)) if (!(k in LIB_DUPES)) out[k] = v;
+    for (const [k, v] of Object.entries(m)) if (k in LIB_DUPES && !(c(k) in out)) out[c(k)] = v;
+    return out;
+  }
+  return {
+    ...state,
+    sessions: state.sessions.map((s) =>
+      s.exercises.some((ex) => ex.liftId in LIB_DUPES)
+        ? {
+            ...s,
+            exercises: s.exercises.map((ex) =>
+              ex.liftId in LIB_DUPES ? { ...ex, liftId: c(ex.liftId), name: LIFTS[c(ex.liftId)].name } : ex,
+            ),
+          }
+        : s,
+    ),
+    planDays: byDay(state.planDays),
+    sessionDays: byDay(state.sessionDays),
+    routineDays: state.routineDays.map((d) => ({ ...d, blocks: blocks(d.blocks) })),
+    optionPicks: Object.fromEntries(
+      Object.entries(state.optionPicks).map(([day, picks]) => [
+        day,
+        Object.fromEntries(Object.entries(picks).map(([a, p]) => [c(a), c(p)])),
+      ]),
+    ),
+    history: rekey(state.history),
+    exerciseConfig: rekey(state.exerciseConfig),
+  };
+}
+
 /** Load persisted state, merged over defaults. Degrades to defaults on failure. */
 export function loadState(): State {
   const base = initialState();
@@ -853,7 +899,7 @@ export function loadState(): State {
     const { customDays: legacyCustomDays, ...parsed } = JSON.parse(raw) as Partial<State> & {
       customDays?: Record<string, Block[]>;
     };
-    const merged: State = {
+    const merged: State = canonicalizeLifts({
       ...base,
       ...parsed,
       customLifts: parsed.customLifts ?? {},
@@ -871,7 +917,7 @@ export function loadState(): State {
       history: parsed.history ?? {},
       sessions: parsed.sessions ?? [],
       routineDays: parsed.routineDays ?? [],
-    };
+    });
     // mirror the custom routine into the day engine before anything renders
     setCustomDays(merged.routineDays);
     // A saved day key can orphan when a program's days are renamed (e.g. the
