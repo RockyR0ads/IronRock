@@ -1,6 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useStore } from '../../state/StoreContext';
-import { liftById } from '../../state/store';
+import { liftById, liftInLayout } from '../../state/store';
+import { LIFTS } from '../../domain/lifts';
+import { ExercisePicker } from '../ExercisePicker/ExercisePicker';
 import { currentBodyweight } from '../../state/selectors';
 import { exerciseSeries, type ProgressPoint } from '../../domain/progress';
 import { sessionDayLabel } from '../../domain/session';
@@ -116,7 +118,12 @@ export function ExercisePage({ liftId, onBack }: { liftId: string; onBack: () =>
       )}
       {tab === 'history' && <HistoryTab series={series} />}
       {tab === 'records' && <RecordsTab series={series} />}
-      {tab === 'settings' && <SettingsTab lift={lift} />}
+      {tab === 'settings' && (
+        <>
+          <SettingsTab lift={lift} />
+          <ManageSection liftId={liftId} onGone={onBack} />
+        </>
+      )}
     </div>
   );
 }
@@ -447,5 +454,76 @@ function SettingsTab({ lift }: { lift: Lift }) {
         />
       </Section>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------- Manage */
+
+/**
+ * Merge or delete a non-built-in exercise (custom, library or imported). Merge
+ * keeps every set by moving it onto another lift; delete removes the exercise
+ * and its logged sets. Built-in lifts are the backbone of the programs, so they
+ * can't be removed.
+ */
+function ManageSection({ liftId, onGone }: { liftId: string; onGone: () => void }) {
+  const { state, dispatch } = useStore();
+  const [picking, setPicking] = useState(false);
+  if (LIFTS[liftId]) {
+    return (
+      <p className="mt-8 text-center text-[12px] text-muted-2">
+        Built-in exercises can't be deleted.
+      </p>
+    );
+  }
+  const name = liftById(state, liftId).name;
+  const sessions = state.sessions.filter((s) => s.exercises.some((ex) => ex.liftId === liftId)).length;
+  const inLayout = liftInLayout(state, liftId);
+
+  function del() {
+    if (inLayout) {
+      alert(`${name} is in one of your training days. Swap it out there first, then delete it.`);
+      return;
+    }
+    const what = sessions > 0 ? ` and its sets from ${sessions} workout${sessions === 1 ? '' : 's'}` : '';
+    if (!confirm(`Delete ${name}${what}? This can't be undone.`)) return;
+    dispatch({ type: 'deleteLift', id: liftId });
+    onGone();
+  }
+
+  return (
+    <section className="mt-8 rounded-2xl border border-accent/30 bg-accent/5 p-4">
+      <div className="font-display text-[14px] font-bold text-ink">Manage exercise</div>
+      <p className="m-0 mt-1 text-[12px] leading-relaxed text-muted-2">
+        Logged a duplicate by mistake? Merge it into the right exercise to keep the sets, or delete it.
+      </p>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setPicking(true)}
+          className="flex-1 rounded-xl bg-secondary/15 py-2.5 font-display text-[13px] font-bold text-secondary transition-colors hover:bg-secondary/25"
+        >
+          Merge into…
+        </button>
+        <button
+          type="button"
+          onClick={del}
+          className="flex-1 rounded-xl border border-accent/50 py-2.5 font-display text-[13px] font-bold text-accent transition-colors hover:bg-accent/10"
+        >
+          Delete
+        </button>
+      </div>
+      <ExercisePicker
+        request={picking ? { title: `Merge ${name} into…`, currentId: liftId } : null}
+        onClose={() => setPicking(false)}
+        onPick={(to) => {
+          setPicking(false);
+          if (to === liftId) return;
+          const toName = liftById(state, to).name;
+          if (!confirm(`Move ${sessions} workout${sessions === 1 ? '' : 's'} of ${name} onto ${toName}, and remove ${name}?`)) return;
+          dispatch({ type: 'mergeLift', from: liftId, to });
+          onGone();
+        }}
+      />
+    </section>
   );
 }

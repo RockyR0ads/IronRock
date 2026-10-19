@@ -11,6 +11,7 @@ import {
 } from '../../domain/library';
 import { PlusIcon } from '../common/icons';
 import { LIFTS, canonicalLiftId } from '../../domain/lifts';
+import { muscleGroupOf } from '../../domain/overview';
 import { ExerciseDetail } from './ExerciseDetail';
 
 export interface PickerRequest {
@@ -39,6 +40,19 @@ function libRow(ex: LibraryExercise): Row {
     return { id: canon, name: LIFTS[canon].name, sub, hasDetail: true, libId: ex.id };
   }
   return { id: ex.id, name: ex.name, sub, hasDetail: true, libId: ex.id };
+}
+
+/** Built-in lifts as picker rows — matched by search words or by muscle group. */
+const norm = (t: string) => (t.length > 3 && t.endsWith('s') && !t.endsWith('ss') ? t.slice(0, -1) : t);
+function builtInRows(match: { query?: string; group?: MuscleGroup }): Row[] {
+  const terms = (match.query ?? '').toLowerCase().split(/s+/).filter(Boolean).map(norm);
+  return Object.values(LIFTS)
+    .filter((l) => {
+      if (match.group) return muscleGroupOf(l.id, {}) === match.group;
+      const words = l.name.toLowerCase().split(/[^a-z0-9]+/).map(norm);
+      return terms.length > 0 && terms.every((t) => words.some((w) => w.startsWith(t)));
+    })
+    .map((l) => ({ id: l.id, name: l.name, sub: l.unit || 'Built-in', hasDetail: !!l.lib, libId: l.lib }));
 }
 
 /** Drop repeat rows (several library twins can fold onto one built-in). */
@@ -121,7 +135,11 @@ export function ExercisePicker({
       : customEntries
           .filter(([, c]) => c.name.toLowerCase().includes(q))
           .map(([id, c]) => ({ id, name: c.name, sub: c.unit || 'Custom', hasDetail: false }));
-    rows = uniqueRows([...custom, ...searchLibrary(query, equip).map(libRow)]);
+    rows = uniqueRows([
+      ...custom,
+      ...(equip ? [] : builtInRows({ query })),
+      ...searchLibrary(query, equip).map(libRow),
+    ]);
   } else if (group === 'My') {
     rows = customEntries.map(([id, c]) => ({
       id,
@@ -130,7 +148,10 @@ export function ExercisePicker({
       hasDetail: false,
     }));
   } else {
-    rows = uniqueRows(libraryInGroup(group, equip).map(libRow));
+    rows = uniqueRows([
+      ...(equip ? [] : builtInRows({ group })),
+      ...libraryInGroup(group, equip).map(libRow),
+    ]);
   }
 
   function startCreate(prefillName = '') {

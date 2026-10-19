@@ -200,6 +200,8 @@ export type Action =
   | { type: 'completeWorkout'; dayKey: string; title: string; at: string; id: string }
   | { type: 'removeSession'; id: string }
   | { type: 'setActiveProgram'; id: string }
+  | { type: 'deleteLift'; id: string }
+  | { type: 'mergeLift'; from: string; to: string }
   | { type: 'addCustomDay' }
   | { type: 'removeCustomDay'; key: string }
   | { type: 'renameCustomDay'; key: string; label: string }
@@ -287,6 +289,20 @@ function editBase(
   const clone = (bs: Block[]) => bs.map((b) => ({ ...b, alts: b.alts ? [...b.alts] : undefined }));
   if (state.sessionDays[dayKey]) return { blocks: clone(state.sessionDays[dayKey]), layer: 'sessionDays' };
   return { blocks: clone(state.planDays[dayKey] ?? defaultDay(dayKey)?.blocks ?? []), layer: 'planDays' };
+}
+
+/**
+ * Where a lift sits in a training layout (plan edits, today's session, the
+ * custom routine). Deleting it from there would shift logged-set indexes, so
+ * the UI asks you to swap it out first.
+ */
+export function liftInLayout(state: State, id: string): boolean {
+  const inBlocks = (bs: Block[]) => bs.some((b) => b.lift === id);
+  return (
+    Object.values(state.planDays).some(inBlocks) ||
+    Object.values(state.sessionDays).some(inBlocks) ||
+    state.routineDays.some((d) => inBlocks(d.blocks))
+  );
 }
 
 /** Whether a day currently deviates from what its program prescribes. */
@@ -654,6 +670,45 @@ export function reducer(state: State, action: Action): State {
       const days = daysForProgram(action.id);
       const day = days.some((d) => d.key === state.day) ? state.day : (days[0]?.key ?? state.day);
       return { ...state, activeProgram: action.id, day };
+    }
+    case 'deleteLift': {
+      // drop the lift from every archived workout (and any workout left empty),
+      // plus its custom definition, last-set hint and settings
+      const sessions = state.sessions
+        .map((s) => ({ ...s, exercises: s.exercises.filter((ex) => ex.liftId !== action.id) }))
+        .filter((s) => s.exercises.length > 0);
+      const { [action.id]: _c, ...customLifts } = state.customLifts;
+      const { [action.id]: _h, ...history } = state.history;
+      const { [action.id]: _x, ...exerciseConfig } = state.exerciseConfig;
+      return { ...state, sessions, customLifts, history, exerciseConfig };
+    }
+    case 'mergeLift': {
+      // move every set logged under `from` onto `to` and retire `from`
+      const { from, to } = action;
+      if (from === to) return state;
+      const toName = liftById(state, to).name;
+      const swap = (id: string) => (id === from ? to : id);
+      const sessions = state.sessions.map((s) =>
+        s.exercises.some((ex) => ex.liftId === from)
+          ? { ...s, exercises: s.exercises.map((ex) => (ex.liftId === from ? { ...ex, liftId: to, name: toName } : ex)) }
+          : s,
+      );
+      const blocks = (bs: Block[]) =>
+        bs.map((b) => ({ ...b, lift: swap(b.lift), ...(b.alts ? { alts: [...new Set(b.alts.map(swap))] } : {}) }));
+      const byDay = (m: Record<string, Block[]>) => Object.fromEntries(Object.entries(m).map(([k, v]) => [k, blocks(v)]));
+      const { [from]: fromHist, ...history } = state.history;
+      const { [from]: fromCfg, ...exerciseConfig } = state.exerciseConfig;
+      const { [from]: _c, ...customLifts } = state.customLifts;
+      return {
+        ...state,
+        sessions,
+        customLifts,
+        planDays: byDay(state.planDays),
+        sessionDays: byDay(state.sessionDays),
+        routineDays: state.routineDays.map((d) => ({ ...d, blocks: blocks(d.blocks) })),
+        history: history[to] || !fromHist ? history : { ...history, [to]: fromHist },
+        exerciseConfig: exerciseConfig[to] || !fromCfg ? exerciseConfig : { ...exerciseConfig, [to]: fromCfg },
+      };
     }
     case 'addCustomDay': {
       const n = state.routineDays.length + 1;
