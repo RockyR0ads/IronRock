@@ -107,34 +107,44 @@ export function GlobalControls() {
         const ex = byId.get(s.id);
         return ex && typeof ex.durationSec !== 'number' && typeof s.durationSec === 'number';
       }).length;
+      // existing imports whose exercises map differently under the current
+      // resolver — a re-import moves that history onto the right lifts
+      const liftKey = (s: { exercises: { liftId: string }[] }) => s.exercises.map((e) => e.liftId).join('|');
+      const remap = result.sessions.filter((s) => {
+        const ex = byId.get(s.id);
+        return ex && ex.id.startsWith('strong-') && liftKey(ex) !== liftKey(s);
+      }).length;
       const skipped = result.sessions.length - fresh;
-      if (fresh === 0 && backfill === 0) {
+      if (fresh === 0 && backfill === 0 && remap === 0) {
         setStrongStatus(`Nothing new — those ${result.workouts} workouts are already imported.`);
         return;
       }
       const unitNote = result.unit === 'lb' ? ' Weights were converted from lb to kg.' : '';
-      const backfillNote =
-        backfill > 0 ? ` Session length will be filled in on ${backfill} existing workout${backfill === 1 ? '' : 's'}.` : '';
+      const plural = (n: number) => `workout${n === 1 ? '' : 's'}`;
+      const updates = [
+        remap > 0 ? `move ${remap} ${plural(remap)}' exercises onto the right lifts` : '',
+        backfill > 0 ? `add session lengths to ${backfill} ${plural(backfill)}` : '',
+      ].filter(Boolean);
+      const updateNote = updates.length ? ` It will also ${updates.join(' and ')}.` : '';
       const ok =
         fresh === 0
-          ? confirm(
-              `No new workouts, but this will add session lengths to ${backfill} already-imported ` +
-                `workout${backfill === 1 ? '' : 's'}. Continue?`,
-            )
+          ? confirm(`No new workouts, but this will ${updates.join(' and ')} already imported. Continue?`)
           : confirm(
-              `Import ${fresh} workout${fresh === 1 ? '' : 's'} — ${result.exercises} exercises, ` +
-                `${result.sets} sets — from Strong?${skipped > 0 ? ` (${skipped} already imported will be skipped.)` : ''}${unitNote}${backfillNote}\n\n` +
-                `They'll be added to your History; nothing you already have is changed.`,
+              `Import ${fresh} ${plural(fresh)} — ${result.exercises} exercises, ` +
+                `${result.sets} sets — from Strong?${skipped > 0 ? ` (${skipped} already imported will be skipped.)` : ''}${unitNote}${updateNote}\n\n` +
+                `They'll be added to your History.`,
             );
       if (!ok) return;
       dispatch({ type: 'importSessions', sessions: result.sessions, customLifts: result.customLifts });
       const unmatchedNote = result.unmatched.length
         ? ` ${result.unmatched.length} exercise${result.unmatched.length === 1 ? '' : 's'} kept under Strong's own name.`
         : '';
-      const doneNote =
-        fresh === 0
-          ? `Added session lengths to ${backfill} workout${backfill === 1 ? '' : 's'}.`
-          : `Imported ${fresh} workout${fresh === 1 ? '' : 's'}.${backfill > 0 ? ` Filled session length on ${backfill} existing.` : ''}`;
+      const parts = [
+        fresh > 0 ? `Imported ${fresh} ${plural(fresh)}.` : '',
+        remap > 0 ? `Re-mapped ${remap} ${plural(remap)} onto the right lifts.` : '',
+        backfill > 0 ? `Filled session length on ${backfill}.` : '',
+      ].filter(Boolean);
+      const doneNote = parts.join(' ');
       setStrongStatus(`${doneNote}${unmatchedNote}`);
     } catch (err) {
       setStrongStatus(

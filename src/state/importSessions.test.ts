@@ -25,6 +25,29 @@ describe('importSessions', () => {
     expect(s1.sessions[0].durationSec).toBe(3600);
   });
 
+  it('re-maps an already-imported workout onto the freshly resolved lift', () => {
+    // an older importer filed this workout's lateral raises under a custom id
+    const old: Session = {
+      ...sess('strong-1'),
+      exercises: [{ liftId: 'strong-cable-lateral-raise', name: 'Lateral Raise (Cable)', sets: [{ w: '10', reps: '15', rpe: '', done: true }] }],
+    };
+    const fresh: Session = {
+      ...sess('strong-1'),
+      exercises: [{ liftId: 'cablelatraise', name: 'Cable lateral raise', sets: [{ w: '10', reps: '15', rpe: '', done: true }] }],
+    };
+    const s0 = { ...initialState(), sessions: [old] };
+    const s1 = reducer(s0, { type: 'importSessions', sessions: [fresh], customLifts: {} });
+    expect(s1.sessions).toHaveLength(1);
+    expect(s1.sessions[0].exercises[0].liftId).toBe('cablelatraise');
+  });
+
+  it('leaves non-imported workouts untouched on a re-import', () => {
+    const native = { ...sess('a'), exercises: [{ liftId: 'bench', name: 'Bench', sets: [] }] };
+    const incoming = { ...sess('a'), exercises: [{ liftId: 'squat', name: 'Squat', sets: [] }] };
+    const s1 = reducer({ ...initialState(), sessions: [native] }, { type: 'importSessions', sessions: [incoming], customLifts: {} });
+    expect(s1.sessions[0].exercises[0].liftId).toBe('bench');
+  });
+
   it('never overwrites an existing duration', () => {
     const s0 = { ...initialState(), sessions: [sess('a', 1800)] };
     const s1 = reducer(s0, { type: 'importSessions', sessions: [sess('a', 3600)], customLifts: {} });

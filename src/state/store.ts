@@ -706,16 +706,24 @@ export function reducer(state: State, action: Action): State {
       return { ...state, sessions: [action.session, ...state.sessions] };
     case 'importSessions': {
       // Merge in externally-parsed sessions (e.g. a Strong export). New ids are
-      // added; for ids already present we only *backfill* a missing duration
-      // (so re-importing an export populates session lengths on history that was
-      // imported before durations were captured) — never overwriting existing
-      // data. Existing custom lifts win over imported ones (user edits win).
+      // added; for imported ids already present, re-importing re-maps their
+      // exercises with the current resolver and backfills a missing duration.
+      // Existing custom lifts win over imported ones (user edits win).
       const incoming = new Map(action.sessions.map((s) => [s.id, s]));
       const known = new Set(state.sessions.map((s) => s.id));
       const merged = state.sessions.map((s) => {
-        if (typeof s.durationSec === 'number') return s;
         const inc = incoming.get(s.id);
-        return inc && typeof inc.durationSec === 'number' ? { ...s, durationSec: inc.durationSec } : s;
+        if (!inc) return s;
+        let next = s;
+        // Re-map: an imported workout's exercises are rebuilt from the fresh
+        // parse, so lifts an older importer filed under the wrong id (or a
+        // custom stand-in) land on the right exercise. Imported sessions are
+        // archive-only, so nothing the user made is overwritten.
+        if (s.id.startsWith('strong-')) next = { ...next, exercises: inc.exercises };
+        if (typeof s.durationSec !== 'number' && typeof inc.durationSec === 'number') {
+          next = { ...next, durationSec: inc.durationSec };
+        }
+        return next;
       });
       const added = action.sessions.filter((s) => !known.has(s.id));
       const sessions = [...merged, ...added].sort((a, b) => b.at.localeCompare(a.at));
