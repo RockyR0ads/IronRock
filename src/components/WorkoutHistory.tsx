@@ -6,9 +6,10 @@ import { sessionDurationSec, fmtDuration } from '../domain/workoutTiming';
 import { rpeHue } from '../domain/format';
 import { FEEL_TONE } from './common/feelTone';
 import { heatColor } from './common/warmupHeat';
-import { ChevronLeft, ChevronRight, Dumbbell, TrashIcon, NoteIcon } from './common/icons';
+import { ChevronLeft, Dumbbell, TrashIcon, NoteIcon } from './common/icons';
 import { QUALITY_BY_ID, FLAG_BY_ID, setTypeMeta } from '../domain/setTags';
 import type { Session } from '../domain/types';
+import { HistoryBrowser } from './HistoryBrowser';
 
 /** A small coloured set-tag chip (quality / flag) shown under an archived set. */
 function Tag({ color, children }: { color: string; children: React.ReactNode }) {
@@ -243,31 +244,7 @@ export function WorkoutHistory({ onBack }: { onBack: () => void }) {
               </p>
             </div>
           ) : (
-            <div className="mt-5 flex flex-col gap-2">
-              {state.sessions.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setOpenId(s.id)}
-                  className="flex items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-secondary/50"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-baseline gap-2">
-                      <span className="truncate font-display text-[15px] font-bold tracking-[-0.01em]">
-                        {s.title}
-                      </span>
-                      <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-2">
-                        {sessionDayLabel(s.at)}
-                      </span>
-                    </span>
-                    <span className="mt-1 block">
-                      <Totals session={s} />
-                    </span>
-                  </span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-2" />
-                </button>
-              ))}
-            </div>
+            <HistoryBrowser onOpen={setOpenId} renderTotals={(s) => <Totals session={s} />} />
           )}
         </>
       )}
