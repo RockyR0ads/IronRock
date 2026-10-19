@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import { deloadStatus, isDeloadActive } from '../domain/deload';
 
@@ -10,7 +9,6 @@ import { deloadStatus, isDeloadActive } from '../domain/deload';
  */
 export function DeloadBanner() {
   const { state, dispatch } = useStore();
-  const [dismissed, setDismissed] = useState(false);
   const active = isDeloadActive(state);
 
   if (active) {
@@ -33,7 +31,6 @@ export function DeloadBanner() {
     );
   }
 
-  if (dismissed) return null;
   const status = deloadStatus(state);
   if (!status.due) return null;
 
@@ -56,7 +53,12 @@ export function DeloadBanner() {
         </button>
         <button
           type="button"
-          onClick={() => setDismissed(true)}
+          onClick={() =>
+            dispatch({
+              type: 'snoozeDeload',
+              until: new Date(Date.now() + 14 * 86_400_000).toISOString(),
+            })
+          }
           className="rounded-xl border border-line-2 bg-surface-2 px-3.5 py-2 font-display text-[13px] font-bold text-ink transition-colors hover:border-secondary/50"
         >
           Not now

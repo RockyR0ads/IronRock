@@ -82,6 +82,10 @@ export interface State {
   programStart?: string;
   /** ISO start of an active deload week, or undefined. Expires after 7 days. */
   deload?: string;
+  /** ISO start of the most recent deload — the block clock restarts from here. */
+  lastDeload?: string;
+  /** ISO time until which the deload prompt stays hidden ("Not now"). */
+  deloadSnoozeUntil?: string;
   /** Id of the currently selected training program. */
   activeProgram: string;
   /** Body-weight weigh-ins for goal tracking (date + kg). */
@@ -214,6 +218,7 @@ export type Action =
   | { type: 'startProgram'; at: string }
   | { type: 'startDeload'; at: string }
   | { type: 'endDeload' }
+  | { type: 'snoozeDeload'; until: string }
   | { type: 'resetProgram' }
   | { type: 'resetWeek' }
   | { type: 'startStretch'; sessionType: StretchSessionType; at: string; week: number; total: number }
@@ -749,7 +754,10 @@ export function reducer(state: State, action: Action): State {
     case 'startProgram':
       return { ...state, programStart: action.at };
     case 'startDeload':
-      return { ...state, deload: action.at };
+      // a deload closes the block: restart its clock and clear any snooze
+      return { ...state, deload: action.at, lastDeload: action.at, deloadSnoozeUntil: undefined };
+    case 'snoozeDeload':
+      return { ...state, deloadSnoozeUntil: action.until };
     case 'endDeload': {
       const { deload: _d, ...rest } = state;
       return rest;

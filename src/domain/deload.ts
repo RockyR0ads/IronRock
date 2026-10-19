@@ -29,9 +29,19 @@ function heavyLiftIds(state: State): string[] {
   return [...ids];
 }
 
-export function deloadStatus(state: State): DeloadStatus {
+/** After a deload, don't prompt again for at least this long. */
+const GRACE_MS = 3 * WEEK_MS;
+
+export function deloadStatus(state: State, now = Date.now()): DeloadStatus {
   const reasons: string[] = [];
   const regressing: string[] = [];
+  const quiet: DeloadStatus = { due: false, reasons, regressing };
+
+  // "Not now" snoozes the prompt; a recent deload earns a grace period
+  const snooze = state.deloadSnoozeUntil ? Date.parse(state.deloadSnoozeUntil) : NaN;
+  if (Number.isFinite(snooze) && now < snooze) return quiet;
+  const last = state.lastDeload ? Date.parse(state.lastDeload) : NaN;
+  if (Number.isFinite(last) && now - last < GRACE_MS) return quiet;
 
   for (const liftId of heavyLiftIds(state)) {
     const pts = exerciseSeries(state.sessions, liftId, state.inc);
@@ -46,10 +56,15 @@ export function deloadStatus(state: State): DeloadStatus {
     reasons.push(`${regressing.length} heavy lifts have gone backwards two sessions running`);
   }
 
+  // block clock: from the later of the program start and the last deload, so
+  // it fires once per block instead of forever after the first one runs out
   const weeks = programMeta(state.activeProgram)?.weeks ?? 8;
-  if (state.programStart) {
-    const elapsedWeeks = (Date.now() - Date.parse(state.programStart)) / WEEK_MS;
-    if (Number.isFinite(elapsedWeeks) && elapsedWeeks >= weeks) {
+  const starts = [state.programStart, state.lastDeload]
+    .map((s) => (s ? Date.parse(s) : NaN))
+    .filter(Number.isFinite);
+  if (starts.length) {
+    const elapsedWeeks = (now - Math.max(...starts)) / WEEK_MS;
+    if (elapsedWeeks >= weeks) {
       reasons.push(`it's been ${Math.floor(elapsedWeeks)} weeks since this block started`);
     }
   }
