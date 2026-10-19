@@ -101,7 +101,9 @@ export function ProgramMenu({
                   </span>
                   <span className="mt-1.5 flex flex-wrap gap-1.5">
                     <Chip>{p.level}</Chip>
-                    <Chip>{p.days} days/wk</Chip>
+                    <Chip>
+                      {p.id === 'custom' ? state.routineDays.length || '—' : p.days} days/wk
+                    </Chip>
                     {p.weeks && <Chip>{p.weeks}-wk block</Chip>}
                   </span>
                   <span className="mt-2 block text-[13px] font-medium text-ink">{p.tagline}</span>

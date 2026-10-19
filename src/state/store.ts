@@ -1,4 +1,4 @@
-import { defaultDay, daysForProgram } from '../domain/program';
+import { defaultDay, daysForProgram, setCustomDays } from '../domain/program';
 import { LIFTS } from '../domain/lifts';
 import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
 import { meaningfulSet } from '../domain/session';
@@ -13,11 +13,13 @@ import type { StretchSession, FlexBenchmark, FlexMetric } from '../domain/stretc
 import { getStorageHealth, markLoadFailed, markQuotaFailed } from './storageHealth';
 import type {
   Block,
+  Day,
   Increment,
   Lift,
   LiftHistory,
   LoggedSet,
   RefSet,
+  Reps,
   Session,
   WarmupFeel,
 } from '../domain/types';
@@ -74,6 +76,8 @@ export interface State {
   inc: Increment;
   /** Active day key. */
   day: string;
+  /** The user's custom routine days (the 'custom' program). */
+  routineDays: Day[];
   /** ISO date the current program block started, for progression tracking. */
   programStart?: string;
   /** ISO start of an active deload week, or undefined. Expires after 7 days. */
@@ -138,6 +142,7 @@ export function initialState(): State {
     bw: '',
     inc: 2.5,
     day: 'pushA',
+    routineDays: [],
     activeProgram: DEFAULT_PROGRAM,
     weighIns: [],
     weightGoal: {},
@@ -191,6 +196,14 @@ export type Action =
   | { type: 'completeWorkout'; dayKey: string; title: string; at: string; id: string }
   | { type: 'removeSession'; id: string }
   | { type: 'setActiveProgram'; id: string }
+  | { type: 'addCustomDay' }
+  | { type: 'removeCustomDay'; key: string }
+  | { type: 'renameCustomDay'; key: string; label: string }
+  | { type: 'customAddBlock'; key: string; liftId: string }
+  | { type: 'customRemoveBlock'; key: string; index: number }
+  | { type: 'customMoveBlock'; key: string; from: number; to: number }
+  | { type: 'customSwapBlock'; key: string; index: number; liftId: string }
+  | { type: 'customSetScheme'; key: string; index: number; sets: number; reps: Reps; rpe: number | string }
   | { type: 'archiveSession'; session: Session }
   | { type: 'importSessions'; sessions: Session[]; customLifts: Record<string, CustomLift> }
   | { type: 'logWeight'; at: string; kg: number }
@@ -291,6 +304,14 @@ function cloneDayLog(state: State, dayKey: string, minLength = 0): LoggedSet[][]
   const rows = (state.logs[dayKey] ?? []).map((sets) => sets.map((s) => ({ ...s })));
   while (rows.length < minLength) rows.push([]);
   return rows;
+}
+
+/** Apply a transform to one custom day's block list, returning fresh state. */
+function updateCustomDay(state: State, key: string, fn: (blocks: Block[]) => Block[]): State {
+  return {
+    ...state,
+    routineDays: state.routineDays.map((d) => (d.key === key ? { ...d, blocks: fn(d.blocks) } : d)),
+  };
 }
 
 /** A new block with a sensible default scheme for the given (resolved) lift. */
@@ -629,6 +650,56 @@ export function reducer(state: State, action: Action): State {
       const day = days.some((d) => d.key === state.day) ? state.day : (days[0]?.key ?? state.day);
       return { ...state, activeProgram: action.id, day };
     }
+    case 'addCustomDay': {
+      const n = state.routineDays.length + 1;
+      const day: Day = {
+        key: `custom-${Date.now().toString(36)}`,
+        label: `Day ${n}`,
+        variant: 'Custom',
+        note: 'Your own lifts — add, reorder and set the scheme.',
+        blocks: [],
+      };
+      return { ...state, routineDays: [...state.routineDays, day] };
+    }
+    case 'removeCustomDay':
+      return { ...state, routineDays: state.routineDays.filter((d) => d.key !== action.key) };
+    case 'renameCustomDay':
+      return {
+        ...state,
+        routineDays: state.routineDays.map((d) =>
+          d.key === action.key ? { ...d, label: action.label || d.label } : d
+        ),
+      };
+    case 'customAddBlock':
+      return updateCustomDay(state, action.key, (blocks) => [
+        ...blocks,
+        newBlock(liftById(state, action.liftId)),
+      ]);
+    case 'customRemoveBlock':
+      return updateCustomDay(state, action.key, (blocks) =>
+        blocks.filter((_, i) => i !== action.index)
+      );
+    case 'customMoveBlock':
+      return updateCustomDay(state, action.key, (blocks) => {
+        const { from, to } = action;
+        if (from === to || from < 0 || to < 0 || from >= blocks.length || to >= blocks.length) {
+          return blocks;
+        }
+        const next = [...blocks];
+        const [moved] = next.splice(from, 1);
+        next.splice(to, 0, moved);
+        return next;
+      });
+    case 'customSwapBlock':
+      return updateCustomDay(state, action.key, (blocks) =>
+        blocks.map((b, i) => (i === action.index ? { ...newBlock(liftById(state, action.liftId)), sets: b.sets, reps: b.reps, rpe: b.rpe } : b))
+      );
+    case 'customSetScheme':
+      return updateCustomDay(state, action.key, (blocks) =>
+        blocks.map((b, i) =>
+          i === action.index ? { ...b, sets: action.sets, reps: action.reps, rpe: action.rpe } : b
+        )
+      );
     case 'archiveSession':
       // a fully-formed session archived directly (used by programs that build
       // their own workout, e.g. 5/3/1), newest first
@@ -783,7 +854,10 @@ export function loadState(): State {
       dayNote: parsed.dayNote ?? {},
       history: parsed.history ?? {},
       sessions: parsed.sessions ?? [],
+      routineDays: parsed.routineDays ?? [],
     };
+    // mirror the custom routine into the day engine before anything renders
+    setCustomDays(merged.routineDays);
     // A saved day key can orphan when a program's days are renamed (e.g. the
     // ULA refactor) — snap to the active program's first day so the week engine
     // always resolves.

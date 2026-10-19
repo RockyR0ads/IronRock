@@ -161,14 +161,31 @@ export const PROGRAM_DAYS: Record<string, Day[]> = {
   'upper-lower-arms': ULA_DAYS,
 };
 
+/** The program id of the user-built routine. */
+export const CUSTOM_PROGRAM_ID = 'custom';
+
+/**
+ * The user's custom routine days, mirrored here from state so the pure day
+ * engine (daysForProgram / defaultDay / pickBase) can resolve them without
+ * threading state through every caller. The store keeps this in sync.
+ */
+let CUSTOM_DAYS: Day[] = [];
+export function setCustomDays(days: Day[]): void {
+  CUSTOM_DAYS = days;
+}
+export function getCustomDays(): Day[] {
+  return CUSTOM_DAYS;
+}
+
 /** The day list for a program (falls back to the PPL days). */
 export function daysForProgram(programId: string): Day[] {
+  if (programId === CUSTOM_PROGRAM_ID) return CUSTOM_DAYS;
   return PROGRAM_DAYS[programId] ?? DAYS;
 }
 
 /** Resolve a day by key across every registered program (day keys are unique). */
 export function defaultDay(key: string): Day | undefined {
-  for (const days of Object.values(PROGRAM_DAYS)) {
+  for (const days of [...Object.values(PROGRAM_DAYS), CUSTOM_DAYS]) {
     const found = days.find((d) => d.key === key);
     if (found) return found;
   }

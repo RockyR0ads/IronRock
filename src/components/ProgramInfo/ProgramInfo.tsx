@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { DAYS, ULA_DAYS } from '../../domain/program';
+import { RoutineBuilder } from './RoutineBuilder';
 import type { Day } from '../../domain/types';
 import { LIFTS } from '../../domain/lifts';
 import { useStore } from '../../state/StoreContext';
@@ -26,6 +27,7 @@ import { ReferencePanels } from '../ReferencePanels';
 
 /** Route the details page to the opened program's own content. */
 export function ProgramInfo({ programId, onBack }: { programId: string; onBack: () => void }) {
+  if (programId === 'custom') return <RoutineBuilder onBack={onBack} />;
   if (programId === 'wendler-531') return <Wendler531Info onBack={onBack} />;
   if (programId === 'upper-lower-arms') return <UlaInfo onBack={onBack} />;
   return <PplInfo onBack={onBack} />;

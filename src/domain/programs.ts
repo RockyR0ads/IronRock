@@ -30,6 +30,16 @@ export interface ProgramMeta {
  */
 export const PROGRAMS: ProgramMeta[] = [
   {
+    id: 'custom',
+    name: 'Custom routine',
+    tagline: 'Build your own — your days, your lifts, your scheme.',
+    focus: 'Add training days, fill each with exercises from the library, and set sets, reps and RPE per lift.',
+    days: 0,
+    level: 'Intermediate',
+    origin: 'custom',
+    ready: true,
+  },
+  {
     id: 'ppl-cut',
     name: 'PPL · Cut',
     tagline: PROGRAM_PROFILE.tagline,
@@ -145,7 +155,9 @@ export const PROGRAMS: ProgramMeta[] = [
   },
 ];
 
-export const DEFAULT_PROGRAM = PROGRAMS[0].id;
+/** The app's canonical default plan (not the first catalogue entry, which may
+ * be the empty custom routine). */
+export const DEFAULT_PROGRAM = 'ppl-cut';
 
 export function programMeta(id: string): ProgramMeta | undefined {
   return PROGRAMS.find((p) => p.id === id);

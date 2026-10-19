@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useStore } from '../state/StoreContext';
 import { effBlocks, setsFor, liftById, computedInUse } from '../state/store';
 import { doneSetCount, e1rmFor } from '../state/selectors';
-import { defaultDay, PROGRAM_DAYS } from '../domain/program';
+import { defaultDay, PROGRAM_DAYS, CUSTOM_PROGRAM_ID } from '../domain/program';
 import { sessionDayLabel } from '../domain/session';
 import { programMeta } from '../domain/programs';
 import { cycleWeek, WAVE_LABEL, CYCLE_WEEKS } from '../domain/wendler531';
@@ -53,7 +53,8 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
 
   // the hero adapts to the active program (only the PPL cut runs its day engine)
   const prog = programMeta(state.activeProgram);
-  const isDayProgram = !!PROGRAM_DAYS[state.activeProgram]; // runs the day engine (PPL, U/L+Arms…)
+  // runs the day engine (PPL, U/L+Arms, and the user's custom routine)
+  const isDayProgram = !!PROGRAM_DAYS[state.activeProgram] || state.activeProgram === CUSTOM_PROGRAM_ID;
   const is531 = state.activeProgram === 'wendler-531';
   const week531 = is531 ? cycleWeek(state.programStart) : 0;
   const heroKicker = isDayProgram ? (done > 0 ? 'Continue training' : "Today's session") : 'Active program';

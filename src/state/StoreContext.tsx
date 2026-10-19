@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react';
 import { loadState, reducer, saveState, type Action, type State } from './store';
+import { setCustomDays } from '../domain/program';
 import { applyTheme } from '../domain/theme';
 import { requestPersistentStorage } from '../domain/backup';
 
@@ -21,6 +22,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyTheme(state.theme);
   }, [state.theme]);
+
+  // keep the day engine's view of the custom routine in sync with state
+  useEffect(() => {
+    setCustomDays(state.routineDays);
+  }, [state.routineDays]);
 
   // ask the browser not to evict our data (localStorage is the only copy)
   useEffect(() => {
