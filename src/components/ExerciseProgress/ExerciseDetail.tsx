@@ -8,6 +8,7 @@ import { isBodyweightLoaded } from '../../domain/exerciseConfig';
 import { sessionDayLabel } from '../../domain/session';
 import { ChevronLeft } from '../common/icons';
 import { ExerciseCharts } from './ExerciseCharts';
+import { liftMeasure } from '../../domain/measure';
 import { RecordsTab } from './RecordsTab';
 
 type Tab = 'charts' | 'records' | 'log';
@@ -70,7 +71,7 @@ export function ExerciseDetail({ liftId, onBack }: { liftId: string; onBack: () 
         })}
       </div>
 
-      {tab === 'charts' && <ExerciseCharts name={lift.name} series={series} />}
+      {tab === 'charts' && <ExerciseCharts name={lift.name} series={series} measure={liftMeasure(lift)} />}
       {tab === 'records' && <RecordsTab records={records} unit="kg" />}
       {tab === 'log' && <LogTab series={series} />}
     </div>

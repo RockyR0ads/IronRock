@@ -4,7 +4,8 @@ import { seriesDelta, summarize } from '../../domain/progress';
 import { ChevronLeft } from '../common/icons';
 import { DetailAreaChart } from './charts';
 import { C } from './charts/chartUtils';
-import { METRICS, metricFor } from './metrics';
+import { metricsFor, metricFor } from './metrics';
+import type { Measure } from '../../domain/measure';
 
 /**
  * Full-screen drill-down from the minimal chart: a larger, annotated area chart
@@ -15,12 +16,14 @@ export function ChartDetailSheet({
   name,
   series,
   metricKey,
+  measure = 'weight',
   onMetric,
   onClose,
 }: {
   name: string;
   series: ProgressPoint[];
   metricKey: string;
+  measure?: Measure;
   onMetric: (key: string) => void;
   onClose: () => void;
 }) {
@@ -32,6 +35,7 @@ export function ChartDetailSheet({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  const METRICS = metricsFor(measure);
   const metric = metricFor(metricKey);
   const values = series.map(metric.pick);
   const labels = series.map((p) => p.label);

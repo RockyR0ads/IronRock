@@ -30,6 +30,12 @@ export interface ProgressPoint {
   intensity: number;
   /** Mean RPE across the working sets that recorded one, or null. */
   avgRpe: number | null;
+  /** Longest single timed set (seconds) — holds. */
+  bestSecs: number;
+  /** Time summed over the counted sets (seconds). */
+  totalSecs: number;
+  /** Distance summed over the counted sets (metres). */
+  dist: number;
 }
 
 const num = (s: string) => {
@@ -74,6 +80,9 @@ export function exerciseSeries(
     let volume = 0;
     let totalReps = 0;
     let loadSum = 0;
+    let bestSecs = 0;
+    let totalSecs = 0;
+    let dist = 0;
     const rpes: number[] = [];
 
     for (const set of sets) {
@@ -83,6 +92,10 @@ export function exerciseSeries(
       volume += w * r;
       totalReps += r;
       loadSum += w;
+      const secs = num(set.secs ?? '');
+      bestSecs = Math.max(bestSecs, secs);
+      totalSecs += secs;
+      dist += num(set.dist ?? '');
       if (rp > 0) rpes.push(rp);
       if (!topSet) {
         topSet = set;
@@ -111,6 +124,9 @@ export function exerciseSeries(
       sets: sets.length,
       reps: totalReps,
       intensity,
+      bestSecs,
+      totalSecs,
+      dist: Math.round(dist),
       avgRpe: rpes.length
         ? Math.round((rpes.reduce((a, b) => a + b, 0) / rpes.length) * 10) / 10
         : null,

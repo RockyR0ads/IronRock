@@ -4,7 +4,8 @@ import { seriesDelta } from '../../domain/progress';
 import { ChevronRight } from '../common/icons';
 import { SparklineChart } from './charts';
 import { C } from './charts/chartUtils';
-import { METRICS, metricFor } from './metrics';
+import { metricsFor, metricFor } from './metrics';
+import type { Measure } from '../../domain/measure';
 import { RANGES, rangeFor, sliceByRange } from './ranges';
 import { ChartDetailSheet } from './ChartDetailSheet';
 
@@ -12,8 +13,17 @@ import { ChartDetailSheet } from './ChartDetailSheet';
  * The Charts tab: the minimal chart for the selected metric, with a Details
  * button that drills into the annotated area chart.
  */
-export function ExerciseCharts({ name, series }: { name: string; series: ProgressPoint[] }) {
-  const [metricKey, setMetricKey] = useState('e1rm');
+export function ExerciseCharts({
+  name,
+  series,
+  measure = 'weight',
+}: {
+  name: string;
+  series: ProgressPoint[];
+  measure?: Measure;
+}) {
+  const METRICS = metricsFor(measure);
+  const [metricKey, setMetricKey] = useState(METRICS[0].key);
   const [rangeKey, setRangeKey] = useState('all');
   const [detail, setDetail] = useState(false);
 
@@ -135,6 +145,7 @@ export function ExerciseCharts({ name, series }: { name: string; series: Progres
           name={name}
           series={view}
           metricKey={metricKey}
+          measure={measure}
           onMetric={setMetricKey}
           onClose={() => setDetail(false)}
         />

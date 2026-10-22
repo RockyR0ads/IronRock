@@ -1,4 +1,5 @@
-import { DAYS } from './program';
+import { DAYS, daysForProgram } from './program';
+import { programMeta } from './programs';
 import { W531_DAYS } from './wendler531';
 import type { Session } from './types';
 
@@ -31,9 +32,24 @@ export const W531_CYCLE: ProgramCycle = {
   counts: (s) => W531_KEYS.has(s.dayKey),
 };
 
+/** Day keys a program used before its days were renamed, so old sessions still count. */
+const LEGACY_KEYS: Record<string, string[]> = {
+  'upper-lower-arms': ['pplvPush', 'pplvPull', 'pplvUpper', 'pplvLegsArms'],
+};
+
 /** The tracking cycle for a program id (defaults to the PPL cut). */
 export function programCycle(programId: string): ProgramCycle {
-  return programId === 'wendler-531' ? W531_CYCLE : PPL_CYCLE;
+  if (programId === 'wendler-531') return W531_CYCLE;
+  if (programId === 'ppl-cut') return PPL_CYCLE;
+  // any other day-based program: its own block length, days a week and day keys
+  const days = daysForProgram(programId);
+  const keys = new Set([...days.map((d) => d.key), ...(LEGACY_KEYS[programId] ?? [])]);
+  const meta = programMeta(programId);
+  return {
+    cycleWeeks: meta?.weeks ?? 8,
+    targetSessions: meta?.days || days.length || 3,
+    counts: (s) => keys.has(s.dayKey),
+  };
 }
 
 export interface ProgramProgress {
@@ -107,4 +123,29 @@ export function programProgress(
     cycleWeeks,
     targetSessions,
   };
+}
+
+/**
+ * When the current block really began: local midnight of the first workout
+ * this program counts, on or after the later of the tapped start and the last
+ * deload. Tapping Start and then training something else doesn't start the
+ * clock — the first real session does. Undefined until there is one.
+ */
+export function blockStart(
+  sessions: Session[],
+  cycle: ProgramCycle,
+  programStart?: string,
+  lastDeload?: string
+): string | undefined {
+  const from = Math.max(
+    ...[programStart, lastDeload].map((d) => (d ? Date.parse(d) : 0)).filter(Number.isFinite),
+    0
+  );
+  const first = sessions
+    .filter((s) => cycle.counts(s) && Date.parse(s.at) >= from)
+    .reduce<number | undefined>((min, s) => Math.min(min ?? Infinity, Date.parse(s.at)), undefined);
+  if (first === undefined) return undefined;
+  const d = new Date(first);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
 }

@@ -1,3 +1,4 @@
+import { ATTACHMENTS, attachmentFor, attachmentLabel } from '../../domain/attachments';
 import {
   useEffect,
   useRef,
@@ -25,6 +26,7 @@ import { FEEL_TONE } from '../common/feelTone';
 import { useHoldMenu } from './useHoldMenu';
 import { stepValue, formatStepValue } from '../../domain/steps';
 import { suggestNext } from '../../domain/progression';
+import { liftMeasure, fmtSecs, parseSecs } from '../../domain/measure';
 import { detectSetPr } from '../../domain/records';
 import { celebratePr } from '../PrToast';
 import type { Block, BlockClass, Increment, LiftHistory, LoggedSet, WarmupFeel } from '../../domain/types';
@@ -221,7 +223,11 @@ function prefillSet(
   if (last) {
     // a new row inherits the previous set's per-side choice
     const side = last.perSide ? { perSide: true, repsR: last.repsR ?? '' } : {};
-    return { w: last.w, reps: last.reps, rpe: last.rpe, done: false, ...side };
+    const timed = {
+      ...(last.secs ? { secs: last.secs } : {}),
+      ...(last.dist ? { dist: last.dist } : {}),
+    };
+    return { w: last.w, reps: last.reps, rpe: last.rpe, done: false, ...side, ...timed };
   }
   const side = perSideDefault ? { perSide: true, repsR: '' } : {};
   // first working set of the session: open with the progression suggestion
@@ -331,6 +337,57 @@ function SetInput({
       />
       {hold.menu}
     </>
+  );
+}
+
+/**
+ * A plain value cell for timed / distance sets. Time accepts "90" or "1:30" and
+ * is stored as seconds; it commits on blur so typing "1:" isn't rejected
+ * mid-entry. Styled to match the weight / reps inputs.
+ */
+function MeasureCell({
+  value,
+  kind,
+  label,
+  done,
+  onCommit,
+}: {
+  value: string;
+  kind: 'time' | 'dist';
+  label: string;
+  done: boolean;
+  onCommit: (v: string) => void;
+}) {
+  const shown = kind === 'time' && value ? fmtSecs(Number(value)) : value;
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    if (kind === 'time') {
+      const secs = parseSecs(draft);
+      onCommit(secs === null ? '' : String(secs));
+    } else {
+      const m = parseFloat(draft);
+      onCommit(Number.isFinite(m) && m > 0 ? String(Math.round(m)) : '');
+    }
+    setDraft(null);
+  };
+  return (
+    <input
+      type="text"
+      inputMode={kind === 'time' ? 'text' : 'decimal'}
+      value={draft ?? shown}
+      placeholder={kind === 'time' ? 'm:ss' : 'm'}
+      aria-label={label}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+      }}
+      className={[
+        'h-11 w-full rounded-[9px] text-center font-mono text-[15px] font-bold transition-colors placeholder:font-normal placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-secondary/70',
+        done ? 'bg-green/20 text-green' : 'bg-surface-2 text-ink',
+      ].join(' ')}
+    />
   );
 }
 
@@ -597,6 +654,7 @@ export function ExerciseCard({
   const prSeen = useRef<{ e1rm: number; reps: Set<number> }>({ e1rm: 0, reps: new Set() });
   const freestyle = variant === 'freestyle';
   const lift = liftById(state, block.lift);
+  const attachment = attachmentFor(lift, state.exerciseConfig[block.lift]?.attachment);
   const perLeg = isPerLeg(block, lift.uni);
   const sets = setsFor(state, dayKey, index);
   const target = lift.type === 'computed' ? blockLoad(state, block) : null;
@@ -605,7 +663,11 @@ export function ExerciseCard({
   const done = doneSetCount(sets); // working sets checked off (warm-ups excluded)
   const working = workingSetCount(sets);
   const complete = freestyle ? working > 0 && done === working : isBlockComplete(block, sets);
-  const scheme = `${block.sets} × ${repLabel(block.reps)}${perLeg ? '/leg' : ''}`;
+  const measure = liftMeasure(lift);
+  const scheme =
+    measure === 'weight'
+      ? `${block.sets} × ${repLabel(block.reps)}${perLeg ? '/leg' : ''}`
+      : `${block.sets} ${block.sets === 1 ? 'set' : 'sets'} · ${measure === 'time' ? 'timed' : 'distance'}`;
   const cardId = `blk-${dayKey}-${index}`;
   // if any set logs reps per side, widen the reps column and split its header
   const anyPerSide = sets.some((s) => s.perSide);
@@ -740,6 +802,20 @@ export function ExerciseCard({
               {lift.name}
             </span>
           )}
+          {attachment && (
+            <select
+              value={attachment}
+              onChange={(e) => dispatch({ type: 'setExerciseConfig', id: block.lift, patch: { attachment: e.target.value } })}
+              aria-label={`${lift.name} cable attachment`}
+              className="shrink-0 rounded-full border border-line-2 bg-surface-2 py-1 pl-2.5 pr-1 text-[12px] font-semibold text-ink outline-none"
+            >
+              {ATTACHMENTS.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {attachmentLabel(a.id)}
+                </option>
+              ))}
+            </select>
+          )}
           {isBarbell && barWeight > 0 ? (
             <span className="min-w-[48px] flex-1">
               <PlateBar weight={barWeight} bar={emptyBar} />
@@ -775,7 +851,7 @@ export function ExerciseCard({
           </div>
         )}
 
-        {history && (
+        {history && measure === 'weight' && (
           <div className="mt-1 font-mono text-[11px] text-muted-2">
             Last {history.w || '–'} kg × {history.reps || '–'} @ RPE {history.rpe || '–'}
           </div>
@@ -797,8 +873,10 @@ export function ExerciseCard({
           <div className={`grid ${gridCols} gap-2 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-2`}>
             <span className="text-center">Set</span>
             <span aria-hidden />
-            <span className="text-center">kg</span>
-            {anyPerSide ? (
+            <span className="text-center">{measure === 'distance' ? 'm' : 'kg'}</span>
+            {measure !== 'weight' ? (
+              <span className="text-center">time</span>
+            ) : anyPerSide ? (
               <span className="flex items-center justify-between px-1">
                 <span className="text-accent">L</span>
                 <span>reps</span>
@@ -887,6 +965,17 @@ export function ExerciseCard({
                       />
                     )}
                   </button>
+                  {measure === 'distance' ? (
+                    <MeasureCell
+                      kind="dist"
+                      value={set.dist ?? ''}
+                      done={!!set.done}
+                      label={`${lift.name} set ${rowLabel} distance in metres`}
+                      onCommit={(v) =>
+                        dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'dist', value: v })
+                      }
+                    />
+                  ) : (
                   <SetInput
                     value={set.w}
                     mode="decimal"
@@ -900,6 +989,18 @@ export function ExerciseCard({
                       dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'w', value: v })
                     }
                   />
+                  )}
+                  {measure !== 'weight' ? (
+                    <MeasureCell
+                      kind="time"
+                      value={set.secs ?? ''}
+                      done={!!set.done}
+                      label={`${lift.name} set ${rowLabel} time`}
+                      onCommit={(v) =>
+                        dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'secs', value: v })
+                      }
+                    />
+                  ) : (
                   <RepsCell
                     set={set}
                     perSide={!!set.perSide}
@@ -917,6 +1018,7 @@ export function ExerciseCard({
                     }
                     onToggle={() => dispatch({ type: 'toggleSetPerSide', dayKey, index, setIndex: si })}
                   />
+                  )}
                   {warm ? (
                     <FeelButton
                       value={set.feel}
@@ -994,7 +1096,9 @@ export function ExerciseCard({
               type: 'addSet',
               dayKey,
               index,
-              set: prefillSet(block, sets, target, state.inc, history, perSideDefault),
+              set: measure === 'weight'
+                ? prefillSet(block, sets, target, state.inc, history, perSideDefault)
+                : { ...prefillSet(block, sets, target, state.inc, history, perSideDefault), reps: '' },
             })
           }
           className="inline-flex flex-[3] items-center justify-center gap-1.5 rounded-lg bg-secondary/15 px-3 py-2 text-[13px] font-semibold text-secondary transition-colors hover:bg-secondary/25"

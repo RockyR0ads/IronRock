@@ -186,6 +186,15 @@ const CURATED_ALIASES: [string, string][] = [
   ['Dumbell kickback', 'kickback'],
   ['Chest Dip', 'dips'],
   ['Lateral Raise (Machine)', 'machinelatraise'],
+  ['Running (Treadmill)', 'run'],
+  ['Running', 'run'],
+  ['Running (Outdoor)', 'run'],
+  ['Hang', 'deadhang'],
+  ['Dead Hang', 'deadhang'],
+  ['Plank', 'plank'],
+  ['Rowing (Machine)', 'rowerg'],
+  ['Cycling', 'bike'],
+  ['Cycling (Indoor)', 'bike'],
   ['Seated Lateral Raise (Dumbbell)', 'seatedlatraise'],
   ['Standing Calf Raise (Machine)', 'calf'],
   ['Standing Calf Raise (Smith Machine)', 'calf'],
@@ -392,6 +401,11 @@ export function parseStrong(text: string): StrongImport {
   const iNotes = colIndex(headers, (h) => h === 'notes' || h === 'note');
   const iSetOrder = colIndex(headers, (h) => h.includes('set order') || h === 'set');
   const iDuration = colIndex(headers, (h) => h.startsWith('duration'));
+  const iSecs = colIndex(headers, (h) => h.startsWith('seconds'));
+  const iDist = colIndex(headers, (h) => h.startsWith('distance'));
+  // Strong labels the distance column with its unit
+  const distHeader = (headers[iDist] ?? '').toLowerCase();
+  const distToM = /mile/.test(distHeader) ? 1609.344 : /km|kilomet/.test(distHeader) ? 1000 : 1;
 
   if (iDate === -1 || iExercise === -1) {
     throw new StrongImportError(
@@ -426,9 +440,14 @@ export function parseStrong(text: string): StrongImport {
     const exName = (cells[iExercise] ?? '').trim();
     if (!at || !exName) continue;
 
+    const setOrder = (cells[iSetOrder] ?? '').trim().toLowerCase();
+    if (setOrder.includes('rest')) continue; // Strong's rest-timer rows aren't sets
     const w = fmtWeight(cells[iWeight] ?? '', lbs);
     const reps = fmtInt(cells[iReps] ?? '');
-    if (!w && !reps) continue; // cardio / empty / rest-only row — nothing to log
+    const secs = iSecs === -1 ? '' : fmtInt(cells[iSecs] ?? '');
+    const distNum = iDist === -1 ? 0 : parseFloat(cells[iDist] ?? '') * distToM;
+    const dist = Number.isFinite(distNum) && distNum > 0 ? String(Math.round(distNum)) : '';
+    if (!w && !reps && !secs && !dist) continue; // empty row — nothing to log
 
     const title = (cells[iWorkout] ?? '').trim() || 'Imported workout';
     const gk = `${rawDate.trim()}||${title}`;
@@ -445,22 +464,26 @@ export function parseStrong(text: string): StrongImport {
 
     const resolved = resolveExercise(exName);
     if (resolved.custom) {
-      customLifts[resolved.liftId] = resolved.custom;
+      // an unknown timed / distance exercise becomes a custom lift measured that way
+      const unit = dist ? 'distance' : secs && !reps ? 'time' : resolved.custom.unit;
+      customLifts[resolved.liftId] = { ...resolved.custom, unit };
       unmatched.add(exName);
     }
     let ex = g.byEx.get(resolved.liftId);
     if (!ex) {
-      ex = { liftId: resolved.liftId, name: resolved.name, sets: [] };
+      const attachment = attachmentFromName(exName);
+      ex = { liftId: resolved.liftId, name: resolved.name, sets: [], ...(attachment ? { attachment } : {}) };
       g.byEx.set(resolved.liftId, ex);
       g.exOrder.push(resolved.liftId);
     }
 
-    const setOrder = (cells[iSetOrder] ?? '').trim().toLowerCase();
     const warmup = setOrder.startsWith('w') || setOrder === 'warmup';
     const rpe = iRpe === -1 ? '' : fmtInt(cells[iRpe] ?? '') || '';
     const note = iNotes === -1 ? '' : (cells[iNotes] ?? '').trim();
 
     const set: LoggedSet = { w, reps, rpe, done: true };
+    if (secs) set.secs = secs;
+    if (dist) set.dist = dist;
     if (warmup) set.warmup = true;
     if (note) set.note = note;
     ex.sets.push(set);
@@ -499,4 +522,15 @@ export function parseStrong(text: string): StrongImport {
     sets,
     unit,
   };
+}
+
+/** Strong spells the cable handle into the name, e.g. "Triceps Pushdown (Cable - Straight Bar)". */
+export function attachmentFromName(name: string): string | undefined {
+  if (!/cable|pulldown|pushdown/i.test(name)) return undefined;
+  if (/rope/i.test(name)) return 'rope';
+  if (/straight bar/i.test(name)) return 'straight';
+  if (/ez/i.test(name)) return 'ez';
+  if (/v[- ]?bar/i.test(name)) return 'vbar';
+  if (/pulldown.*wide|wide.*pulldown/i.test(name)) return 'lat';
+  return undefined;
 }

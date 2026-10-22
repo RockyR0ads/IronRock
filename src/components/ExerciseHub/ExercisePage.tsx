@@ -1,3 +1,5 @@
+import { attachmentFor, isCable } from '../../domain/attachments';
+import { AttachmentChips } from '../AttachmentChips';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { liftById, liftInLayout } from '../../state/store';
@@ -405,6 +407,12 @@ function SettingsTab({ lift }: { lift: Lift }) {
               );
             })}
           </div>
+        </Section>
+      )}
+
+      {isCable(lift) && (
+        <Section title="Cable attachment" hint="The handle you use on this lift. Saved with every workout, so history shows rope vs bar.">
+          <AttachmentChips value={attachmentFor(lift, config.attachment)} onPick={(attachment) => set({ attachment })} />
         </Section>
       )}
 

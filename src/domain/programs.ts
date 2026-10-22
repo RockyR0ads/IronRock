@@ -52,9 +52,9 @@ export const PROGRAMS: ProgramMeta[] = [
   },
   {
     id: 'upper-lower-arms',
-    name: 'PPL + Volume Upper',
-    tagline: 'Grow arms & delts, hold the legs, cut lean.',
-    focus: 'Four days — heavy Push & Pull, an upper volume day, and Legs + a superset arm block. Chest & back hit twice a week; compounds hold, arms & delts to failure.',
+    name: '4-Day PPL · Heavy + Volume',
+    tagline: 'Grow arms & shoulders, hold the legs, cut 85 → 80 kg.',
+    focus: 'Push / Pull / Push / Legs + Pull. Chest and back twice a week — one heavy day (3–7 reps), one volume day (8–15). No rows on push days. Mon · Tue · Thu · Fri.',
     days: 4,
     level: 'Intermediate',
     origin: 'custom',
@@ -69,6 +69,7 @@ export const PROGRAMS: ProgramMeta[] = [
     days: 3,
     level: 'Beginner',
     origin: 'staple',
+    ready: true,
   },
   {
     id: 'stronglifts-5x5',
@@ -78,6 +79,7 @@ export const PROGRAMS: ProgramMeta[] = [
     days: 3,
     level: 'Beginner',
     origin: 'staple',
+    ready: true,
   },
   {
     id: 'gzclp',
@@ -87,6 +89,7 @@ export const PROGRAMS: ProgramMeta[] = [
     days: 4,
     level: 'Beginner',
     origin: 'staple',
+    ready: true,
   },
   {
     id: 'madcow-5x5',
@@ -96,6 +99,7 @@ export const PROGRAMS: ProgramMeta[] = [
     days: 3,
     level: 'Intermediate',
     origin: 'staple',
+    ready: true,
   },
   {
     id: 'texas-method',
@@ -105,6 +109,7 @@ export const PROGRAMS: ProgramMeta[] = [
     days: 3,
     level: 'Intermediate',
     origin: 'staple',
+    ready: true,
   },
   {
     id: 'wendler-531',
@@ -125,6 +130,7 @@ export const PROGRAMS: ProgramMeta[] = [
     days: 5,
     level: 'Intermediate',
     origin: 'staple',
+    ready: true,
   },
   {
     id: 'phul',
@@ -134,6 +140,7 @@ export const PROGRAMS: ProgramMeta[] = [
     days: 4,
     level: 'Intermediate',
     origin: 'staple',
+    ready: true,
   },
   {
     id: 'phat',
@@ -143,6 +150,7 @@ export const PROGRAMS: ProgramMeta[] = [
     days: 5,
     level: 'Advanced',
     origin: 'staple',
+    ready: true,
   },
   {
     id: 'reddit-ppl',
@@ -152,6 +160,7 @@ export const PROGRAMS: ProgramMeta[] = [
     days: 6,
     level: 'Intermediate',
     origin: 'staple',
+    ready: true,
   },
 ];
 

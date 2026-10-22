@@ -1,4 +1,5 @@
 import type { Day } from './types';
+import { STAPLE_DAYS } from './staplePrograms';
 
 /**
  * The six-day Push/Pull/Legs week, ported exactly from the reference.
@@ -87,70 +88,71 @@ export const DAYS: Day[] = [
 ];
 
 /**
- * 4-Day PPL + Volume Upper — grow arms and delts, keep legs to low-rep
- * strength, hold muscle on a cut. Chest and back are each trained twice: one
- * heavy day (3–7 reps) and one volume day (8–15). Compounds hold their load;
- * arms, delts and flyes double-progress to RPE 9–10. (a/b pairs in the source
- * are supersets — run them back to back.)
+ * 4-Day PPL (Heavy + Volume) — grow arms and delts, keep legs to low-rep
+ * strength, hold muscle on a cut. Push / Pull / Push / Legs + Pull: chest and
+ * back each get one heavy day (3–7 reps) and one volume day (8–15). No rowing
+ * on push days. Single cable tower — anything needing two stacks is on
+ * dumbbells. Compounds hold their load; arms and delts double-progress to
+ * RPE 9–10. (a/b pairs in the source are supersets — run them back to back.)
  */
 export const ULA_DAYS: Day[] = [
   {
-    key: 'pplvPush',
+    key: 'ppl4PushH',
     label: 'Push',
     variant: 'Heavy',
-    note: 'Heavy chest & shoulder press, then side delts and triceps.',
+    note: 'Heavy bench and press, side delts, then close-grip bench and a triceps superset. ~60 min.',
     blocks: [
-      { lift: 'bench', alts: ['dbbench', 'inclinebench'], sets: 4, reps: [3, 5], rpe: 8, cls: 'r-hi', cat: 'hpress', prog: 'hold' },
-      { lift: 'ohp', alts: ['seatedbb', 'dbohp'], sets: 3, reps: [5, 7], rpe: 8, cls: 'r-hi', cat: 'vpress', prog: 'hold' },
-      { lift: 'cgbench', alts: ['dips'], sets: 3, reps: [6, 8], rpe: 8, cls: 'r-hi', cat: 'triceps', prog: 'hold' },
+      { lift: 'bench', alts: ['dbbench'], sets: 4, reps: [3, 5], rpe: 8, cls: 'r-hi', cat: 'hpress', prog: 'hold' },
+      { lift: 'ohp', alts: ['dbohp'], sets: 3, reps: [5, 7], rpe: 8, cls: 'r-hi', cat: 'vpress', prog: 'hold' },
       { lift: 'cablelatraise', alts: ['latraise'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'latdelt', prog: 'push' },
-      { lift: 'cableohext', alts: ['ohext'], sets: 3, reps: [10, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', group: 'push-tri', prog: 'push' },
-      { lift: 'ropepushdown', alts: ['pushdown', 'singlepushdown'], sets: 2, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', group: 'push-tri', prog: 'push' },
+      { lift: 'cgbench', alts: ['dips'], sets: 3, reps: [6, 8], rpe: 8, cls: 'r-hi', cat: 'triceps', prog: 'hold' },
+      { lift: 'cableohext', alts: ['ohext'], sets: 3, reps: [10, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', group: 'ph-tri', prog: 'push' },
+      { lift: 'ropepushdown', alts: ['pushdown'], sets: 2, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', group: 'ph-tri', prog: 'push' },
     ],
   },
   {
-    key: 'pplvPull',
+    key: 'ppl4PullH',
     label: 'Pull',
     variant: 'Heavy',
-    note: 'Heavy row & chin-up, then rear delts and biceps.',
+    note: 'Heavy row and weighted chin-up, a single-arm cable row, then rear/side delts and curls. No dip belt? Hold a DB between your feet, or do bodyweight chins for 6–10. ~65 min.',
     blocks: [
-      { lift: 'row', alts: ['pendlay', 'csrow', 'dbrow'], sets: 4, reps: [5, 7], rpe: 8, cls: 'r-hi', cat: 'hpull', prog: 'hold' },
-      { lift: 'chinup', alts: ['pullup', 'neutralpullup'], sets: 3, reps: [4, 6], rpe: 8, cls: 'r-hi', cat: 'vpull', prog: 'hold' },
-      { lift: 'facepull', alts: ['reardelt'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'reardelt', group: 'pull-delt', prog: 'push' },
-      { lift: 'leanlatraise', alts: ['cablelatraise', 'latraise'], sets: 3, reps: [12, 15], rpe: '9–10', cls: 'r-iso', cat: 'latdelt', group: 'pull-delt', prog: 'push' },
+      { lift: 'row', alts: ['pendlay'], sets: 4, reps: [5, 7], rpe: 8, cls: 'r-hi', cat: 'hpull', prog: 'hold' },
+      { lift: 'chinup', alts: ['pullup'], sets: 3, reps: [4, 6], rpe: 8, cls: 'r-hi', cat: 'vpull', prog: 'hold' },
+      { lift: 'singlecablerow', alts: ['dbrow'], sets: 3, reps: [8, 12], rpe: 8, cls: 'r-mid', cat: 'hpull', prog: 'hold' },
+      { lift: 'facepull', alts: ['reardelt'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'reardelt', group: 'pl-delt', prog: 'push' },
+      { lift: 'leanlatraise', alts: ['cablelatraise', 'latraise'], sets: 3, reps: [12, 15], rpe: '9–10', cls: 'r-iso', cat: 'latdelt', group: 'pl-delt', prog: 'push' },
       { lift: 'ezcurl', alts: ['dbcurl'], sets: 3, reps: [6, 10], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
-      { lift: 'inclinecurl', alts: ['spider'], sets: 3, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
+      { lift: 'inclinecurl', alts: ['dbcurl'], sets: 3, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
     ],
   },
   {
-    key: 'pplvUpper',
-    label: 'Upper',
+    key: 'ppl4PushV',
+    label: 'Push',
     variant: 'Volume',
-    note: 'Higher-rep chest & back volume, delts and a curl.',
+    note: 'Incline barbell volume, then triceps and side-delt supersets. Elbows cranky? Swap skull crushers for more overhead cable extensions. ~45 min.',
     blocks: [
-      { lift: 'dbincline', alts: ['inclinebench', 'dbbench'], sets: 3, reps: [8, 12], rpe: 8, cls: 'r-mid', cat: 'hpress', prog: 'hold' },
-      { lift: 'csrow', alts: ['row', 'dbrow'], sets: 3, reps: [10, 12], rpe: 8, cls: 'r-mid', cat: 'hpull', prog: 'hold' },
-      { lift: 'latpulldown', alts: ['chinup'], sets: 3, reps: [10, 15], rpe: 9, cls: 'r-mid', cat: 'vpull', prog: 'hold' },
-      { lift: 'cablefly', alts: ['dbbench'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'hpress', prog: 'push' },
-      { lift: 'dbrow', alts: ['csrow'], sets: 2, reps: [12, 15], rpe: 9, cls: 'r-mid', cat: 'hpull', prog: 'hold' },
-      { lift: 'cableyraise', alts: ['latraise'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'latdelt', group: 'upper-delt', prog: 'push' },
-      { lift: 'reversecablefly', alts: ['facepull'], sets: 3, reps: [15, 20], rpe: 9, cls: 'r-iso', cat: 'reardelt', group: 'upper-delt', prog: 'push' },
-      { lift: 'hammer', alts: ['zottman'], sets: 2, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
+      { lift: 'inclinebench', alts: ['dbincline'], sets: 3, reps: [8, 12], rpe: 8, cls: 'r-mid', cat: 'hpress', prog: 'hold' },
+      { lift: 'cableohext', alts: ['ohext'], sets: 3, reps: [10, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', prog: 'push' },
+      { lift: 'skull', alts: ['cableohext'], sets: 3, reps: [8, 10], rpe: 9, cls: 'r-iso', cat: 'triceps', group: 'pv-a', prog: 'push' },
+      { lift: 'leanlatraise', alts: ['cablelatraise', 'latraise'], sets: 3, reps: [12, 15], rpe: '9–10', cls: 'r-iso', cat: 'latdelt', group: 'pv-a', prog: 'push' },
+      { lift: 'singlepushdown', alts: ['ropepushdown', 'pushdown'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', group: 'pv-b', prog: 'push' },
+      { lift: 'latraise', alts: ['cablelatraise'], sets: 3, reps: [12, 20], rpe: '9–10', cls: 'r-iso', cat: 'latdelt', group: 'pv-b', prog: 'push' },
     ],
   },
   {
-    key: 'pplvLegsArms',
-    label: 'Legs + Arms',
-    variant: 'Strength + arms',
-    note: 'Low-rep squat & deadlift, then a superset arm block.',
+    key: 'ppl4LegsPull',
+    label: 'Legs + Pull',
+    variant: 'Volume',
+    note: 'Deadlift first, then squat, back volume and curls. Squat form slipping after deadlifts? Cut squats to 2 sets or drop the load 5–10%. Longest day — short on time, cut the straight-arm pulldowns first. ~70 min.',
     blocks: [
-      { lift: 'squat', alts: ['pausesquat', 'frontsquat'], sets: 3, reps: [3, 5], rpe: 8, cls: 'r-hi', cat: 'squat', prog: 'hold' },
-      { lift: 'deadlift', alts: ['rdl', 'stiffleg'], sets: 2, reps: [2, 4], rpe: 8, cls: 'r-hi', cat: 'hinge', prog: 'hold' },
-      { lift: 'spider', alts: ['inclinecurl'], sets: 3, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', group: 'la-arm1', prog: 'push' },
-      { lift: 'skull', alts: ['jmpress', 'cableohext'], sets: 3, reps: [8, 10], rpe: 9, cls: 'r-iso', cat: 'triceps', group: 'la-arm1', prog: 'push' },
-      { lift: 'cablecurl', alts: ['dbcurl'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'biceps', group: 'la-arm2', prog: 'push' },
-      { lift: 'singlepushdown', alts: ['ropepushdown', 'pushdown'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'triceps', group: 'la-arm2', prog: 'push' },
-      { lift: 'latraise', alts: ['cablelatraise'], sets: 3, reps: [12, 20], rpe: '9–10', cls: 'r-iso', cat: 'latdelt', prog: 'push' },
+      { lift: 'deadlift', alts: ['rdl'], sets: 2, reps: [2, 4], rpe: 8, cls: 'r-hi', cat: 'hinge', prog: 'hold' },
+      { lift: 'squat', alts: ['pausesquat'], sets: 3, reps: [3, 5], rpe: 8, cls: 'r-hi', cat: 'squat', prog: 'hold' },
+      { lift: 'latpulldown', alts: ['chinup'], sets: 3, reps: [10, 15], rpe: 9, cls: 'r-mid', cat: 'vpull', prog: 'hold' },
+      { lift: 'csrow', alts: ['dbrow'], sets: 3, reps: [10, 12], rpe: 8, cls: 'r-mid', cat: 'hpull', prog: 'hold' },
+      { lift: 'spider', alts: ['inclinecurl'], sets: 3, reps: [10, 12], rpe: 9, cls: 'r-iso', cat: 'biceps', group: 'lp-arm', prog: 'push' },
+      { lift: 'reardelt', alts: ['facepull'], sets: 3, reps: [15, 20], rpe: 9, cls: 'r-iso', cat: 'reardelt', group: 'lp-arm', prog: 'push' },
+      { lift: 'straightarmpd', alts: ['latpulldown'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'vpull', prog: 'push' },
+      { lift: 'cablecurl', alts: ['dbcurl'], sets: 3, reps: [12, 15], rpe: 9, cls: 'r-iso', cat: 'biceps', prog: 'push' },
     ],
   },
 ];
@@ -159,6 +161,7 @@ export const ULA_DAYS: Day[] = [
 export const PROGRAM_DAYS: Record<string, Day[]> = {
   'ppl-cut': DAYS,
   'upper-lower-arms': ULA_DAYS,
+  ...STAPLE_DAYS,
 };
 
 /** The program id of the user-built routine. */

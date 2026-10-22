@@ -85,3 +85,15 @@ describe('programProgress', () => {
     expect(programProgress([], start, W531_CYCLE, at(28)).block).toBe(2);
   });
 });
+
+describe('blockStart', () => {
+  it('starts the clock at the first workout of the program, not the tapped start', async () => {
+    const { blockStart, programCycle, programProgress } = await import('./programTracker');
+    const cycle = programCycle('upper-lower-arms');
+    const s = (at: string, dayKey: string) => ({ id: at, at, dayKey, title: '', exercises: [] });
+    const sessions = [s('2026-10-20T10:00:00Z', 'pplvPull'), s('2026-10-18T12:00:00Z', 'pplvPush'), s('2026-10-03T11:00:00Z', 'freestyle')];
+    const start = blockStart(sessions, cycle, '2026-09-29T10:00:00Z')!;
+    expect(new Date(start).getDate()).toBe(18);
+    expect(programProgress(sessions, start, cycle, new Date('2026-10-22T12:00:00Z')).weekInBlock).toBe(1);
+  });
+});

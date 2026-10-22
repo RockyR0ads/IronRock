@@ -149,6 +149,7 @@ export function HistoryBrowser({
                         <span className="truncate font-display text-[15px] font-bold tracking-[-0.01em]">
                           {s.title}
                         </span>
+                        {s.offPlan && <OffPlanTag />}
                         <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-2">
                           {sessionDayLabel(s.at)}
                         </span>
@@ -173,5 +174,17 @@ export function HistoryBrowser({
         </div>
       )}
     </div>
+  );
+}
+
+/** Marks a workout trained differently from its program day. */
+export function OffPlanTag() {
+  return (
+    <span
+      title="Trained differently from the plan — counted in history, kept out of progression"
+      className="shrink-0 rounded-md bg-yellow/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-yellow"
+    >
+      Off-plan
+    </span>
   );
 }

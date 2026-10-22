@@ -126,6 +126,10 @@ export interface LoggedSet {
   perSide?: boolean;
   /** Right-side reps, used only when `perSide` is set. */
   repsR?: string;
+  /** Duration in seconds — timed holds and conditioning (see domain/measure). */
+  secs?: string;
+  /** Distance in metres — runs, rows, rides, carries. */
+  dist?: string;
   /** Explicitly checked off as completed. Drives card completion. */
   done?: boolean;
   /**
@@ -174,6 +178,14 @@ export interface SessionExercise {
   name: string;
   /** Only the sets that were checked off. */
   sets: LoggedSet[];
+  /**
+   * Trained differently from the plan (a lift the day doesn't prescribe, or
+   * reps well outside its range). Still counts in history and charts, but is
+   * kept out of the program's progression and deload logic.
+   */
+  offPlan?: boolean;
+  /** Cable attachment used (see ATTACHMENTS), for cable lifts. */
+  attachment?: string;
 }
 
 /** A finished workout, archived when the user completes it. */
@@ -195,5 +207,7 @@ export interface Session {
   title: string;
   /** Optional free-text note for the whole workout. */
   note?: string;
+  /** At least one exercise was trained off-plan. */
+  offPlan?: boolean;
   exercises: SessionExercise[];
 }

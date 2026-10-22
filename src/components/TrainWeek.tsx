@@ -1,9 +1,10 @@
+import { isDeloadActive } from '../domain/deload';
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import { effBlocks } from '../state/store';
 import { defaultDay, daysForProgram } from '../domain/program';
 import { programMeta } from '../domain/programs';
-import { programProgress, programCycle } from '../domain/programTracker';
+import { programProgress, programCycle, blockStart } from '../domain/programTracker';
 import { ChevronLeft, ChevronDown } from './common/icons';
 import { DayView } from './DayView/DayView';
 import { DayNav } from './DayView/DayNav';
@@ -67,10 +68,11 @@ export function TrainWeek({
   const programName = programMeta(state.activeProgram)?.name ?? 'Training';
 
   // Where the lifter is in the block, so the header can name the week.
-  const prog = state.programStart
-    ? programProgress(state.sessions, state.programStart, programCycle(state.activeProgram))
-    : null;
-  const weekLabel = prog ? (prog.isDeload ? 'Deload week' : `Week ${prog.weekInBlock}`) : 'Week 1';
+  // A taken deload restarts the block, so count from whichever is later.
+  const cycle = programCycle(state.activeProgram);
+  const start = blockStart(state.sessions, cycle, state.programStart, state.lastDeload);
+  const prog = start ? programProgress(state.sessions, start, cycle) : null;
+  const weekLabel = isDeloadActive(state) || prog?.isDeload ? 'Deload week' : `Week ${prog?.weekInBlock ?? 1}`;
 
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6 sm:pb-16">

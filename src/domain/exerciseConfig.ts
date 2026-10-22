@@ -22,6 +22,8 @@ export interface ExerciseConfig {
   warmupRamp?: string;
   /** Tempo cue, e.g. "3-1-1" or "paused". Display-only. */
   tempo?: string;
+  /** Cable attachment id (see ATTACHMENTS). Only meaningful for cable lifts. */
+  attachment?: string;
   /** Personal cues / notes, shown under the stock instructions. */
   notes?: string;
 }

@@ -3,8 +3,10 @@ import { LIFTS, LIB_DUPES, canonicalLiftId } from '../domain/lifts';
 import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
 import { meaningfulSet } from '../domain/session';
 import { workoutStartedAt } from '../domain/workoutTiming';
+import { setOnPlan, exerciseOnPlan } from '../domain/onPlan';
 import { DEFAULT_PROGRAM } from '../domain/programs';
 import type { ExerciseConfig } from '../domain/exerciseConfig';
+import { attachmentFor } from '../domain/attachments';
 import type { WeighIn, WeightGoal } from '../domain/weightTracker';
 import type { Profile } from '../domain/calories';
 import { DEFAULT_THEME, type ThemeChoice } from '../domain/theme';
@@ -189,7 +191,7 @@ export type Action =
   | { type: 'revertDay'; dayKey: string }
   | { type: 'saveDayToProgram'; dayKey: string }
   | { type: 'addSet'; dayKey: string; index: number; set: LoggedSet }
-  | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe' | 'repsR' | 'note'; value: string }
+  | { type: 'updateSet'; dayKey: string; index: number; setIndex: number; field: 'w' | 'reps' | 'rpe' | 'repsR' | 'note' | 'secs' | 'dist'; value: string }
   | { type: 'patchSet'; dayKey: string; index: number; setIndex: number; patch: Partial<LoggedSet> }
   | { type: 'toggleSetPerSide'; dayKey: string; index: number; setIndex: number }
   | { type: 'setFeel'; dayKey: string; index: number; setIndex: number; value: WarmupFeel | '' }
@@ -202,7 +204,8 @@ export type Action =
   | { type: 'setActiveProgram'; id: string }
   | { type: 'deleteLift'; id: string }
   | { type: 'mergeLift'; from: string; to: string }
-  | { type: 'addCustomDay' }
+  | { type: 'addCustomDay'; label?: string; blocks?: Block[] }
+  | { type: 'updateSession'; session: Session }
   | { type: 'removeCustomDay'; key: string }
   | { type: 'renameCustomDay'; key: string; label: string }
   | { type: 'customAddBlock'; key: string; liftId: string }
@@ -303,6 +306,36 @@ export function liftInLayout(state: State, id: string): boolean {
     Object.values(state.sessionDays).some(inBlocks) ||
     state.routineDays.some((d) => inBlocks(d.blocks))
   );
+}
+
+/**
+ * What a day prescribes, ignoring today's one-off changes: saved plan edits,
+ * else the program template. Null when the day has no prescription (freestyle).
+ */
+export function planBlocks(state: State, dayKey: string): Block[] | null {
+  return state.planDays[dayKey] ?? defaultDay(dayKey)?.blocks ?? null;
+}
+
+/**
+ * Turn a logged workout into routine-day blocks: one slot per exercise, with
+ * its working-set count, the rep range it was actually done in, and its mean
+ * RPE (falling back to the lift's sensible defaults where nothing was logged).
+ */
+export function blocksFromSession(state: State, session: Session): Block[] {
+  return session.exercises.map((ex) => {
+    const base = newBlock(liftById(state, ex.liftId));
+    const working = ex.sets.filter((s) => !s.warmup);
+    const reps = working.map((s) => parseFloat(s.reps)).filter((n) => n > 0);
+    const rpes = working.map((s) => parseFloat(s.rpe)).filter((n) => n > 0);
+    const lo = reps.length ? Math.min(...reps) : 0;
+    const hi = reps.length ? Math.max(...reps) : 0;
+    return {
+      ...base,
+      sets: Math.max(1, working.length || base.sets),
+      reps: lo ? (hi > lo ? ([lo, hi] as [number, number]) : lo) : base.reps,
+      rpe: rpes.length ? Math.round((rpes.reduce((a, b) => a + b, 0) / rpes.length) * 2) / 2 : base.rpe,
+    };
+  });
 }
 
 /** Whether a day currently deviates from what its program prescribes. */
@@ -589,7 +622,8 @@ export function reducer(state: State, action: Action): State {
       let history = state.history;
       if (nowDone && !set.warmup) {
         const liftId = effBlocks(state, action.dayKey)[action.index]?.lift;
-        if (liftId) {
+        // only an on-plan set becomes the "last time" the next load builds on
+        if (liftId && setOnPlan(planBlocks(state, action.dayKey), liftId, set)) {
           history = { ...history, [liftId]: { w: set.w, reps: set.reps, rpe: set.rpe } };
         }
       }
@@ -617,12 +651,23 @@ export function reducer(state: State, action: Action): State {
       // Capture the full session — every performed set, warm-ups included, with
       // its done/warmup flags — so the archive shows exactly what happened. Only
       // stats treat warm-ups and un-checked sets as not counting.
+      // tag anything trained differently from the plan (counts, but doesn't steer
+      // progression or deload); freestyle has no plan, so nothing is off-plan
+      const plan = planBlocks(state, action.dayKey);
       const exercises = effBlocks(state, action.dayKey)
-        .map((block, i) => ({
-          liftId: block.lift,
-          name: liftById(state, block.lift).name,
-          sets: setsFor(state, action.dayKey, i).filter(meaningfulSet).map((s) => ({ ...s })),
-        }))
+        .map((block, i) => {
+          const sets = setsFor(state, action.dayKey, i).filter(meaningfulSet).map((s) => ({ ...s }));
+          const offPlan = !exerciseOnPlan(plan, block.lift, sets);
+          const lift = liftById(state, block.lift);
+          const attachment = attachmentFor(lift, state.exerciseConfig[block.lift]?.attachment);
+          return {
+            liftId: block.lift,
+            name: lift.name,
+            sets,
+            ...(attachment ? { attachment } : {}),
+            ...(offPlan ? { offPlan: true } : {}),
+          };
+        })
         .filter((ex) => ex.sets.length > 0);
       // require at least one real working set to be checked off — otherwise don't
       // archive an empty session, and don't destroy the sets sitting on the day
@@ -643,6 +688,7 @@ export function reducer(state: State, action: Action): State {
         dayKey: action.dayKey,
         title: action.title,
         note: note || undefined,
+        ...(exercises.some((ex) => ex.offPlan) ? { offPlan: true } : {}),
         exercises,
       };
       const logs = { ...state.logs };
@@ -714,12 +760,23 @@ export function reducer(state: State, action: Action): State {
       const n = state.routineDays.length + 1;
       const day: Day = {
         key: `custom-${Date.now().toString(36)}`,
-        label: `Day ${n}`,
+        label: action.label?.trim() || `Day ${n}`,
         variant: 'Custom',
         note: 'Your own lifts — add, reorder and set the scheme.',
-        blocks: [],
+        blocks: action.blocks ?? [],
       };
       return { ...state, routineDays: [...state.routineDays, day] };
+    }
+    case 'updateSession': {
+      // an edited archived workout: drop exercises left with no sets (and the
+      // workout itself if nothing remains), and keep history newest-first in
+      // case the date moved
+      const exercises = action.session.exercises.filter((ex) => ex.sets.length > 0);
+      const others = state.sessions.filter((s) => s.id !== action.session.id);
+      const sessions = exercises.length
+        ? [...others, { ...action.session, exercises }].sort((a, b) => b.at.localeCompare(a.at))
+        : others;
+      return { ...state, sessions };
     }
     case 'removeCustomDay':
       return { ...state, routineDays: state.routineDays.filter((d) => d.key !== action.key) };

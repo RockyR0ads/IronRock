@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { DAYS, ULA_DAYS } from '../../domain/program';
 import { RoutineBuilder } from './RoutineBuilder';
+import { STAPLE_DAYS } from '../../domain/staplePrograms';
 import type { Day } from '../../domain/types';
 import { LIFTS } from '../../domain/lifts';
 import { useStore } from '../../state/StoreContext';
@@ -30,6 +31,7 @@ export function ProgramInfo({ programId, onBack }: { programId: string; onBack: 
   if (programId === 'custom') return <RoutineBuilder onBack={onBack} />;
   if (programId === 'wendler-531') return <Wendler531Info onBack={onBack} />;
   if (programId === 'upper-lower-arms') return <UlaInfo onBack={onBack} />;
+  if (STAPLE_DAYS[programId]) return <StapleInfo programId={programId} onBack={onBack} />;
   return <PplInfo onBack={onBack} />;
 }
 
@@ -423,27 +425,31 @@ const ULA_RULES: InfoRule[] = [
     body: 'Chest and back are trained twice a week: a heavy day (3–7 reps) to keep strength, and a volume day (8–15 reps) for growth without loading the joints hard twice. Both build muscle when taken close to failure.',
   },
   {
-    title: 'Compounds — RPE 7–8',
-    body: 'Bench, row, press, squat, hinge. When every set reaches the top of the rep range at or below the target RPE, add weight next time: +2.5 kg upper, +5 kg squat/deadlift. If set one goes past RPE 9, hold the weight.',
+    title: 'Compounds — heavy days at RPE 8',
+    body: 'When every set reaches the top of the rep range at or below RPE 8, add weight next session: +2.5 kg upper body, +5 kg squat and deadlift. If the first set goes past RPE 9, keep the weight. On the cut, holding your heavy weights counts as a win.',
   },
   {
-    title: 'Isolation — RPE 9–10',
-    body: 'Arms, delts and flyes use double progression: build reps to the top of the range, then add the smallest jump (one cable plate / the next dumbbell). Take the last set to RPE 10 — within a rep of failure. Strict form, no swinging.',
+    title: 'Isolation — RPE 9–10, double progression',
+    body: 'Build reps until every set hits the top of the range, then add the smallest jump (one cable plate or the next dumbbell). Take the last set of each isolation lift to RPE 10, or within a rep of failure. Strict form, controlled tempo — no swinging.',
   },
   {
-    title: 'Legs stay low-volume on purpose',
-    body: 'Legs are kept to low reps and a couple of sets short of failure. On a cut, holding the same squat/deadlift counts as a win — the growth is sent to the arms and delts.',
+    title: 'RPE check every 2 weeks',
+    body: 'Take the last set of lateral raises and one curl to true failure, and compare with what you’d have guessed. Lifters underestimate reps left, especially above 12 reps — this keeps RPE 9–10 honest.',
   },
   {
     title: 'Deload — on regression, not stalls',
-    body: 'On a cut, stalls are expected and don’t count. Deload when 2+ heavy lifts go backwards for 2 sessions running (fewer reps, or the same work feels ≥1 RPE harder), or after 8 weeks regardless: keep the weights, halve the sets, for one week.',
+    body: 'On a cut, stalls are expected and don’t count. Deload when 2+ heavy lifts go backwards for 2 sessions in a row (fewer reps at the same weight, or the same work feels 1+ RPE harder), or after 8 weeks regardless: keep the weights, halve the sets, for one week.',
   },
 ];
 
 const ULA_CUT: InfoRule[] = [
   {
     title: 'Rate & protein',
-    body: 'Aim ~0.5 kg/week (~0.6% of bodyweight) — about 10 weeks from 85 to 80 kg. Protein ~170 g/day (2 g/kg).',
+    body: 'Aim for ~0.5 kg/week (~0.6% of bodyweight) — about 10 weeks to 80 kg. Protein ~170 g/day (2 g/kg), fixed; take calorie changes from carbs and fat.',
+  },
+  {
+    title: 'Weekly adjustment loop',
+    body: 'Weigh every morning after the toilet, before eating, and track the 7-day average. Every 2 weeks: losing < 0.3 kg/week → cut ~200 kcal/day; 0.3–0.8 → no change; > 0.8 → add ~200 kcal/day.',
   },
   {
     title: 'If recovery or performance drops off',
@@ -452,10 +458,13 @@ const ULA_CUT: InfoRule[] = [
 ];
 
 const ULA_NOTES: string[] = [
+  'Schedule: Mon Push (heavy) · Tue Pull (heavy) · Thu Push (volume) · Fri Legs + Pull (volume). Missed a session? Do it next and keep going in order — don’t skip it.',
   'a/b pairs are supersets — run them back to back, then rest.',
   'Low-motivation day? Do just the first 2–3 lifts at your normal weights and leave. Keeping the weight and cutting sets holds strength and muscle far better than skipping.',
-  'Elbows: close-grip bench (Push) and skull crushers (Legs + Arms) load the triceps hard. If elbows flare up, swap the skull crushers for a second overhead cable extension.',
-  'Lower back: heavy rows on Pull and deadlifts on Legs + Arms. If it’s still fried, drop deadlifts to one top set.',
+  'Equipment: single cable tower (one stack, high and low pulley, ankle strap) — anything needing two stacks is done with dumbbells. Flat-only bench? Swap incline bench, incline curls and spider curls for flat bench, standing DB curls and preacher-style cable curls.',
+  'Lower back: heavy rows Tuesday, deadlifts Friday. Friday’s row is chest-supported so it adds no lower-back load. Deadlifts go first on Friday, so squats come with a tired lower back — if squat form breaks down, cut to 2 sets or drop the load 5–10%.',
+  'Legs stay at 5 sets a week on purpose — low volume, RPE 8 cap, deficit. Leg growth isn’t the goal.',
+  'Elbows: Monday has close-grip bench plus two triceps lifts, Thursday skull crushers plus two more. If elbows get irritated, swap the skull crushers for a second overhead cable extension.',
   'Lateral raises: cable and dumbbell grow the side delt about equally — use whichever feels better (tap the exercise to switch).',
 ];
 
@@ -465,7 +474,7 @@ function UlaInfo({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6">
-      <InfoHeader programId="upper-lower-arms" subtitle="Heavy + volume upper, cut lean" onBack={onBack} />
+      <InfoHeader programId="upper-lower-arms" subtitle="Heavy + volume, cut lean" onBack={onBack} />
       <TabBar tabs={ULA_TABS} tab={tab} setTab={setTab} />
 
       {tab === 'days' && (
@@ -640,6 +649,46 @@ function Wendler531Info({ onBack }: { onBack: () => void }) {
           </div>
         </Section>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------ Staple programs */
+
+const STAPLE_RULES: InfoRule[] = [
+  {
+    title: "Runs on the app's progression",
+    body: "Lifts, days and sets × reps follow the published program. Loading uses IronRock's rule: a compound adds weight once its top reps land at or under the target RPE (+2.5 kg upper, +5 kg squat/deadlift); accessories build reps, then add the smallest jump. The program's own percentage tables aren't replicated.",
+  },
+  {
+    title: "AMRAP and ramped sets",
+    body: "Where the program calls for an AMRAP set or ramping up to a top set, the day's note says so — log what you actually did and it feeds the next suggestion.",
+  },
+  {
+    title: "Make it yours",
+    body: "Tap any lift on a day to swap it, or save your own version into the Custom routine.",
+  },
+];
+
+/** Generic details page for the published programs: summary, days and how it runs. */
+function StapleInfo({ programId, onBack }: { programId: string; onBack: () => void }) {
+  const meta = programMeta(programId);
+  const days = STAPLE_DAYS[programId];
+  return (
+    <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6">
+      <InfoHeader programId={programId} subtitle={meta?.level ?? 'Program'} onBack={onBack} />
+      <div className="mt-4 rounded-2xl border border-line bg-surface p-4 shadow-card">
+        <div className="font-display text-[15px] font-bold tracking-[-0.01em]">{meta?.tagline}</div>
+        <p className="m-0 mt-1.5 text-[13px] leading-relaxed text-muted">{meta?.focus}</p>
+      </div>
+      <DaysConfig days={days} />
+      <Section label="How it runs">
+        <div className="flex flex-col gap-2">
+          {STAPLE_RULES.map((r) => (
+            <RuleCard key={r.title} rule={r} />
+          ))}
+        </div>
+      </Section>
     </div>
   );
 }

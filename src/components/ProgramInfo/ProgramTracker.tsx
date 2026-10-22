@@ -1,5 +1,5 @@
 import { useStore } from '../../state/StoreContext';
-import { programProgress, programCycle } from '../../domain/programTracker';
+import { programProgress, programCycle, blockStart } from '../../domain/programTracker';
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
@@ -59,7 +59,11 @@ export function ProgramTracker({ programId }: { programId: string }) {
     );
   }
 
-  const p = programProgress(state.sessions, state.programStart, cycle);
+  const p = programProgress(
+    state.sessions,
+    blockStart(state.sessions, cycle, state.programStart, state.lastDeload) ?? state.programStart,
+    cycle
+  );
   const pct = Math.min(100, Math.round((p.sessionsThisWeek / p.targetSessions) * 100));
 
   return (

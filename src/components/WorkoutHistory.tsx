@@ -1,3 +1,4 @@
+import { attachmentLabel } from '../domain/attachments';
 import { useState } from 'react';
 import { useStore } from '../state/StoreContext';
 import { workoutStats, volumeParts } from '../domain/stats';
@@ -9,7 +10,10 @@ import { heatColor } from './common/warmupHeat';
 import { ChevronLeft, Dumbbell, TrashIcon, NoteIcon } from './common/icons';
 import { QUALITY_BY_ID, FLAG_BY_ID, setTypeMeta } from '../domain/setTags';
 import type { Session } from '../domain/types';
-import { HistoryBrowser } from './HistoryBrowser';
+import { HistoryBrowser, OffPlanTag } from './HistoryBrowser';
+import { SessionEditor } from './SessionEditor';
+import { blocksFromSession, liftById } from '../state/store';
+import { liftMeasure, fmtSecs, fmtDist } from '../domain/measure';
 
 /** A small coloured set-tag chip (quality / flag) shown under an archived set. */
 function Tag({ color, children }: { color: string; children: React.ReactNode }) {
@@ -40,7 +44,15 @@ function Totals({ session }: { session: Session }) {
 
 function SessionDetail({ session, onBack }: { session: Session; onBack: () => void }) {
   const { state, dispatch } = useStore();
+  const [editing, setEditing] = useState(false);
   const stats = workoutStats(sessionEntries(session), state.inc);
+
+  function saveAsRoutine() {
+    const label = prompt('Name this routine day', session.title);
+    if (label === null) return;
+    dispatch({ type: 'addCustomDay', label, blocks: blocksFromSession(state, session) });
+    alert(`Saved "${label || session.title}" to your Custom routine (Programs → Custom routine).`);
+  }
 
   return (
     <div>
@@ -61,7 +73,21 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
             {sessionDayLabel(session.at)} · {sessionTimeLabel(session.at)}
           </div>
         </div>
+        {!editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="ml-auto shrink-0 rounded-xl border border-line-2 bg-surface-2 px-3 py-2 font-display text-[13px] font-bold text-ink transition-colors hover:border-secondary/50"
+          >
+            Edit
+          </button>
+        )}
       </header>
+
+      {editing ? (
+        <SessionEditor session={session} onDone={() => setEditing(false)} />
+      ) : (
+      <>
 
       <div className="mt-4 grid grid-cols-4 gap-2">
         {[
@@ -94,7 +120,11 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
       <div className="mt-4 space-y-3">
         {session.exercises.map((ex, i) => (
           <div key={`${ex.liftId}-${i}`} className="rounded-2xl border border-line bg-surface p-4 shadow-card">
-            <div className="font-display text-[15px] font-bold tracking-[-0.01em]">{ex.name}</div>
+            <div className="flex items-center gap-2">
+              <span className="font-display text-[15px] font-bold tracking-[-0.01em]">{ex.name}</span>
+              {ex.attachment && <span className="text-[12px] text-muted-2">{attachmentLabel(ex.attachment)}</span>}
+              {ex.offPlan && <OffPlanTag />}
+            </div>
             <div className="mt-2.5 space-y-1.5">
               {(() => {
                 let wn = 0;
@@ -123,15 +153,23 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
                       >
                         {warm ? 'W' : typeMeta ? typeMeta.short : wn}
                       </span>
-                      <span className="font-bold tabular-nums">
-                        {set.w || '–'} <span className="text-[10px] font-normal text-muted-2">kg</span>
-                      </span>
-                      <span className="font-bold tabular-nums">
-                        {set.perSide
-                          ? `${set.reps || '–'}/${set.repsR || '–'}`
-                          : set.reps || '–'}{' '}
-                        <span className="text-[10px] font-normal text-muted-2">reps</span>
-                      </span>
+                      {measureOf(ex.liftId) === 'distance' ? (
+                        <span className="font-bold tabular-nums">{set.dist ? fmtDist(Number(set.dist)) : '–'}</span>
+                      ) : (
+                        <span className="font-bold tabular-nums">
+                          {set.w || '–'} <span className="text-[10px] font-normal text-muted-2">kg</span>
+                        </span>
+                      )}
+                      {measureOf(ex.liftId) !== 'weight' ? (
+                        <span className="font-bold tabular-nums">{set.secs ? fmtSecs(Number(set.secs)) : '–'}</span>
+                      ) : (
+                        <span className="font-bold tabular-nums">
+                          {set.perSide
+                            ? `${set.reps || '–'}/${set.repsR || '–'}`
+                            : set.reps || '–'}{' '}
+                          <span className="text-[10px] font-normal text-muted-2">reps</span>
+                        </span>
+                      )}
                       {warm && set.feel ? (
                         <span
                           className={`rounded-md border px-1 py-0.5 text-center font-display text-[12px] font-black ${FEEL_TONE[set.feel]}`}
@@ -184,6 +222,13 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
 
       <button
         type="button"
+        onClick={saveAsRoutine}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-line-2 bg-surface py-3 font-display text-[14px] font-bold text-secondary transition-colors hover:border-secondary/50"
+      >
+        Save as routine day
+      </button>
+      <button
+        type="button"
         onClick={() => {
           if (confirm('Delete this workout from your history? This cannot be undone.')) {
             dispatch({ type: 'removeSession', id: session.id });
@@ -194,8 +239,14 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
       >
         <TrashIcon className="h-4 w-4" /> Delete workout
       </button>
+      </>
+      )}
     </div>
   );
+
+  function measureOf(liftId: string) {
+    return liftMeasure(liftById(state, liftId));
+  }
 }
 
 /**

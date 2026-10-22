@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
+import { liftById } from '../../state/store';
+import { attachmentFor, isCable } from '../../domain/attachments';
+import { AttachmentChips } from '../AttachmentChips';
 import {
   EQUIP_OPTIONS,
   GROUP_ORDER,
@@ -88,6 +91,7 @@ export function ExercisePicker({
   const [equip, setEquip] = useState<EquipKey | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [attachFor, setAttachFor] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', group: 'Chest' as MuscleGroup, unit: 'kg on bar' });
 
   const open = !!request;
@@ -100,6 +104,7 @@ export function ExercisePicker({
     setEquip(null);
     setDetailId(null);
     setCreating(false);
+    setAttachFor(null);
     setForm({ name: '', group: 'Chest', unit: 'kg on bar' });
     setTimeout(() => searchRef.current?.focus(), 50);
   }, [open]);
@@ -108,7 +113,8 @@ export function ExercisePicker({
     if (!request) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (detailId) setDetailId(null);
+      if (attachFor) setAttachFor(null);
+      else if (detailId) setDetailId(null);
       else if (creating) setCreating(false);
       else onClose();
     };
@@ -119,7 +125,7 @@ export function ExercisePicker({
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
     };
-  }, [request, detailId, creating, onClose]);
+  }, [request, detailId, creating, attachFor, onClose]);
 
   if (!request) return null;
 
@@ -152,6 +158,12 @@ export function ExercisePicker({
       ...(equip ? [] : builtInRows({ group })),
       ...libraryInGroup(group, equip).map(libRow),
     ]);
+  }
+
+  /** Cable lifts stop at the attachment step first; everything else picks straight away. */
+  function pick(id: string) {
+    if (isCable(liftById(state, id))) setAttachFor(id);
+    else onPick(id);
   }
 
   function startCreate(prefillName = '') {
@@ -189,12 +201,22 @@ export function ExercisePicker({
           <span className="h-1.5 w-10 rounded-full bg-line-2" />
         </div>
 
-        {detailId ? (
+        {attachFor ? (
+          <AttachmentStep
+            name={liftById(state, attachFor).name}
+            value={attachmentFor(liftById(state, attachFor), state.exerciseConfig[attachFor]?.attachment)}
+            onBack={() => setAttachFor(null)}
+            onPick={(attachment) => {
+              dispatch({ type: 'setExerciseConfig', id: attachFor, patch: { attachment } });
+              onPick(attachFor);
+            }}
+          />
+        ) : detailId ? (
           <ExerciseDetail
             id={detailId}
             isCurrent={canonicalLiftId(detailId) === request.currentId}
             onBack={() => setDetailId(null)}
-            onSelect={() => onPick(canonicalLiftId(detailId))}
+            onSelect={() => pick(canonicalLiftId(detailId))}
           />
         ) : creating ? (
           <div className="flex min-h-0 flex-1 flex-col">
@@ -387,7 +409,7 @@ export function ExercisePicker({
                 >
                   <button
                     type="button"
-                    onClick={() => onPick(row.id)}
+                    onClick={() => pick(row.id)}
                     className="flex min-h-[52px] min-w-0 flex-1 flex-col justify-center px-3.5 py-2 text-left"
                   >
                     <span className="truncate font-display text-[14px] font-bold tracking-[-0.01em]">
@@ -415,6 +437,32 @@ export function ExercisePicker({
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Second step for cable lifts: which handle is on the cable. */
+function AttachmentStep({
+  name,
+  value,
+  onBack,
+  onPick,
+}: {
+  name: string;
+  value: string | undefined;
+  onBack: () => void;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-6 pt-4">
+      <button type="button" onClick={onBack} className="self-start text-[13px] font-semibold text-muted hover:text-ink">
+        ← Back
+      </button>
+      <h2 className="mt-3 font-display text-[20px] font-bold tracking-[-0.01em]">{name}</h2>
+      <p className="mt-1 text-[13px] text-muted">Which attachment is on the cable? You can change it on the workout card.</p>
+      <div className="mt-5">
+        <AttachmentChips value={value} onPick={onPick} />
       </div>
     </div>
   );

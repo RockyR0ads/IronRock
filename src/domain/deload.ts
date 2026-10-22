@@ -43,8 +43,13 @@ export function deloadStatus(state: State, now = Date.now()): DeloadStatus {
   const last = state.lastDeload ? Date.parse(state.lastDeload) : NaN;
   if (Number.isFinite(last) && now - last < GRACE_MS) return quiet;
 
+  // off-plan work (a light, high-rep day, a swapped lift) counts in history but
+  // isn't evidence of regression — judge only sets trained as prescribed
+  const onPlan = state.sessions.map((s) =>
+    s.offPlan ? { ...s, exercises: s.exercises.filter((ex) => !ex.offPlan) } : s
+  );
   for (const liftId of heavyLiftIds(state)) {
-    const pts = exerciseSeries(state.sessions, liftId, state.inc);
+    const pts = exerciseSeries(onPlan, liftId, state.inc);
     const n = pts.length;
     if (n < 3) continue;
     // two consecutive drops in estimated 1RM = backwards two sessions running
