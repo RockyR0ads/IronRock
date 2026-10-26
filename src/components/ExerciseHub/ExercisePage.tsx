@@ -1,4 +1,6 @@
-import { attachmentFor, isCable } from '../../domain/attachments';
+import { attachmentChoosable, attachmentFor } from '../../domain/attachments';
+import { loadEntryFor } from '../../domain/loadEntry';
+import { liftMeasure } from '../../domain/measure';
 import { AttachmentChips } from '../AttachmentChips';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useStore } from '../../state/StoreContext';
@@ -410,9 +412,25 @@ function SettingsTab({ lift }: { lift: Lift }) {
         </Section>
       )}
 
-      {isCable(lift) && (
+      {attachmentChoosable(lift) && (
         <Section title="Cable attachment" hint="The handle you use on this lift. Saved with every workout, so history shows rope vs bar.">
           <AttachmentChips value={attachmentFor(lift, config.attachment)} onPick={(attachment) => set({ attachment })} />
+        </Section>
+      )}
+
+      {liftMeasure(lift) === 'weight' && (
+        <Section
+          title="Weight you enter"
+          hint="Per side: the weight of one dumbbell, handle or machine arm — volume counts it twice. Total: everything moved, counted once. Logged L/R sets always count each side once."
+        >
+          <ChipRow
+            options={[
+              { key: 'total', label: 'Total' },
+              { key: 'perSide', label: 'Per side (×2)' },
+            ]}
+            value={config.loadEntry ?? loadEntryFor(liftId)}
+            onPick={(loadEntry) => set({ loadEntry })}
+          />
         </Section>
       )}
 

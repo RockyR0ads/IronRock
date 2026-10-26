@@ -25,6 +25,7 @@ export default {
         // intensity / plate accents
         red: '#FF5247', // heavy compound
         blue: '#4C8DF0', // volume lead
+        orange: '#FF9A3C', // last-done: due soon
         yellow: '#F0BE4B', // isolation
         green: '#41C277', // light
       },

@@ -1,3 +1,4 @@
+import { setLoadEntries } from '../domain/loadEntry';
 import { defaultDay, daysForProgram, setCustomDays } from '../domain/program';
 import { LIFTS, LIB_DUPES, canonicalLiftId } from '../domain/lifts';
 import { LIBRARY_BY_ID, libraryLift } from '../domain/library';
@@ -1032,6 +1033,7 @@ export function loadState(): State {
     });
     // mirror the custom routine into the day engine before anything renders
     setCustomDays(merged.routineDays);
+    setLoadEntries(merged.exerciseConfig);
     // A saved day key can orphan when a program's days are renamed (e.g. the
     // ULA refactor) — snap to the active program's first day so the week engine
     // always resolves.

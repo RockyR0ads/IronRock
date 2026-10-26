@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { liftById } from '../../state/store';
-import { attachmentFor, isCable } from '../../domain/attachments';
+import { attachmentChoosable, attachmentFor } from '../../domain/attachments';
 import { AttachmentChips } from '../AttachmentChips';
 import {
   EQUIP_OPTIONS,
@@ -162,7 +162,7 @@ export function ExercisePicker({
 
   /** Cable lifts stop at the attachment step first; everything else picks straight away. */
   function pick(id: string) {
-    if (isCable(liftById(state, id))) setAttachFor(id);
+    if (attachmentChoosable(liftById(state, id))) setAttachFor(id);
     else onPick(id);
   }
 

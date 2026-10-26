@@ -22,7 +22,7 @@ export function newSessionId(): string {
 
 /** Feed an archived session to the stats calculator. */
 export function sessionEntries(session: Session): StatsEntry[] {
-  return session.exercises.map((ex) => ({ name: ex.name, sets: ex.sets }));
+  return session.exercises.map((ex) => ({ name: ex.name, liftId: ex.liftId, sets: ex.sets }));
 }
 
 /** Sets that were actually checked off — the only ones worth archiving. */

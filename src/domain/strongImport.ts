@@ -472,7 +472,13 @@ export function parseStrong(text: string): StrongImport {
     let ex = g.byEx.get(resolved.liftId);
     if (!ex) {
       const attachment = attachmentFromName(exName);
-      ex = { liftId: resolved.liftId, name: resolved.name, sets: [], ...(attachment ? { attachment } : {}) };
+      ex = {
+        liftId: resolved.liftId,
+        name: resolved.name,
+        sets: [],
+        ...(attachment ? { attachment } : {}),
+        ...(exName !== resolved.name ? { srcName: exName } : {}),
+      };
       g.byEx.set(resolved.liftId, ex);
       g.exOrder.push(resolved.liftId);
     }

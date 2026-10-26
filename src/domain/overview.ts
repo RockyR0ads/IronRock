@@ -1,6 +1,6 @@
+import { setVolume } from './loadEntry';
 import { LIFTS } from './lifts';
 import { LIBRARY_BY_ID, groupOfMuscles, type MuscleGroup } from './library';
-import { setReps } from './stats';
 import { sessionDurationSec } from './workoutTiming';
 import type { Session } from './types';
 import type { WeighIn } from './weightTracker';
@@ -12,10 +12,6 @@ import type { WeighIn } from './weightTracker';
  * to a trailing time window.
  */
 
-const num = (s: string) => {
-  const n = parseFloat(s);
-  return Number.isFinite(n) ? n : 0;
-};
 const counts = (s: { done?: boolean; warmup?: boolean }) => !!s.done && !s.warmup;
 
 export type Granularity = 'week' | 'month';
@@ -79,7 +75,7 @@ export function trainingCalendar(sessions: Session[], weeks = 26, now = Date.now
     cur.count += 1;
     for (const ex of s.exercises) {
       for (const set of ex.sets) {
-        if (counts(set)) cur.volume += num(set.w) * setReps(set);
+        if (counts(set)) cur.volume += setVolume(ex.liftId, set);
       }
     }
     byDay.set(key, cur);
@@ -218,7 +214,7 @@ export function buildOverview(sessions: Session[], opts: OverviewOpts = {}): Ove
       const g = muscleGroupOf(ex.liftId, customGroups);
       for (const set of ex.sets) {
         if (!counts(set)) continue;
-        const v = num(set.w) * setReps(set);
+        const v = setVolume(ex.liftId, set);
         sessionVol += v;
         byGroupSets.set(g, (byGroupSets.get(g) ?? 0) + 1);
       }

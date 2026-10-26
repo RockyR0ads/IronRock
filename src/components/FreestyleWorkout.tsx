@@ -24,9 +24,12 @@ type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
 export function FreestyleWorkout({
   onBack,
   onOpenExercise,
+  onOpenSession,
 }: {
   onBack: () => void;
   onOpenExercise?: (liftId: string) => void;
+  /** Open an archived workout in History. */
+  onOpenSession?: (sessionId: string) => void;
 }) {
   const { state, dispatch } = useStore();
   const rest = useRestTimer();
@@ -119,6 +122,7 @@ export function FreestyleWorkout({
               variant="freestyle"
               onSwap={(index) => setPicker({ kind: 'swap', index })}
               onOpenExercise={onOpenExercise}
+                onOpenSession={onOpenSession}
             />
           ))}
         </div>

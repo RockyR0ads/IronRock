@@ -120,6 +120,7 @@ export function activeWorkout(state: State): ActiveWorkout | null {
 export function dayStats(state: State, dayKey: string): WorkoutStats {
   const entries = effBlocks(state, dayKey).map((block, i) => ({
     name: liftById(state, block.lift).name,
+    liftId: block.lift,
     // pass everything logged — workoutStats itself ignores warm-ups
     sets: setsFor(state, dayKey, i),
   }));

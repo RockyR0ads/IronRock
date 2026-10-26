@@ -1,9 +1,12 @@
+import { setVolume } from './loadEntry';
 import { estimate1Rm, round } from './calc';
 import type { Increment, LoggedSet } from './types';
 
 /** One exercise's logged work, as handed to the stats calculator. */
 export interface StatsEntry {
   name: string;
+  /** Lift id, so volume can honour how its weight is entered (total / per side). */
+  liftId?: string;
   sets: LoggedSet[];
 }
 
@@ -57,7 +60,7 @@ function statsForEntry(entry: StatsEntry, inc: Increment): ExerciseStats {
     const w = num(set.w);
     const r = setReps(set);
     reps += r;
-    volume += w * r;
+    volume += setVolume(entry.liftId, set);
     if (!topSet) {
       topSet = set;
     } else {

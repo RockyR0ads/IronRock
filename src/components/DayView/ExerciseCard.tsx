@@ -1,6 +1,10 @@
-import { ATTACHMENTS, attachmentFor, attachmentLabel } from '../../domain/attachments';
+import { attachmentChoosable, attachmentFor, attachmentLabel } from '../../domain/attachments';
+import { AttachmentIcon } from '../AttachmentIcon';
+import { AttachmentSheet } from '../AttachmentChips';
+import { loadEntryFor } from '../../domain/loadEntry';
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -624,6 +628,7 @@ export function ExerciseCard({
   dayKey,
   onSwap,
   onOpenExercise,
+  onOpenSession,
   variant = 'program',
   superset,
   autoRest = true,
@@ -634,9 +639,11 @@ export function ExerciseCard({
   onSwap: (index: number) => void;
   /** Open this lift's exercise page (history, records, settings). */
   onOpenExercise?: (liftId: string) => void;
+  /** Open an archived workout in History (the last-done pill). */
+  onOpenSession?: (sessionId: string) => void;
   variant?: 'program' | 'freestyle';
   /** Superset membership: first/last within its group, when part of one. */
-  superset?: { first: boolean; last: boolean };
+  superset?: { first: boolean; last: boolean; label: string; next?: string };
   /** Whether checking a set may auto-start rest (false for non-last superset lifts). */
   autoRest?: boolean;
 }) {
@@ -655,6 +662,9 @@ export function ExerciseCard({
   const freestyle = variant === 'freestyle';
   const lift = liftById(state, block.lift);
   const attachment = attachmentFor(lift, state.exerciseConfig[block.lift]?.attachment);
+  const choosable = attachmentChoosable(lift);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const lastDone = useMemo(() => lastDoneLabel(state.sessions, block.lift), [state.sessions, block.lift]);
   const perLeg = isPerLeg(block, lift.uni);
   const sets = setsFor(state, dayKey, index);
   const target = lift.type === 'computed' ? blockLoad(state, block) : null;
@@ -766,14 +776,6 @@ export function ExerciseCard({
         />
       )}
       <div className="relative z-10">
-        {superset?.first && (
-          <div className="mb-1.5 flex items-center gap-1.5">
-            <span className="rounded-md bg-secondary/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-secondary">
-              Superset
-            </span>
-            <span className="h-px flex-1 bg-line" />
-          </div>
-        )}
         <div className="flex items-center gap-2.5">
           {complete ? (
             <span
@@ -784,6 +786,11 @@ export function ExerciseCard({
             </span>
           ) : (
             <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[block.cls]}`} aria-hidden />
+          )}
+          {superset && (
+            <span className="shrink-0 rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[11px] font-black text-bg">
+              {superset.label}
+            </span>
           )}
           {onOpenExercise ? (
             <button
@@ -802,19 +809,29 @@ export function ExerciseCard({
               {lift.name}
             </span>
           )}
-          {attachment && (
-            <select
-              value={attachment}
-              onChange={(e) => dispatch({ type: 'setExerciseConfig', id: block.lift, patch: { attachment: e.target.value } })}
-              aria-label={`${lift.name} cable attachment`}
-              className="shrink-0 rounded-full border border-line-2 bg-surface-2 py-1 pl-2.5 pr-1 text-[12px] font-semibold text-ink outline-none"
+          {lastDone && (
+            <button
+              type="button"
+              disabled={!onOpenSession}
+              onClick={() => onOpenSession?.(lastDone.sessionId)}
+              className={`shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[10px] font-bold tabular-nums ${lastDone.days <= 3 ? 'bg-green/15 text-green' : lastDone.days <= 7 ? 'bg-orange/15 text-orange' : 'bg-red/15 text-red'}`}
+              title={`Last done ${lastDone.date}`}
+              aria-label={`Last done ${lastDone.date} — open that workout`}
             >
-              {ATTACHMENTS.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {attachmentLabel(a.id)}
-                </option>
-              ))}
-            </select>
+              {lastDone.ago}
+            </button>
+          )}
+          {attachment && (
+            <button
+              type="button"
+              disabled={!choosable}
+              onClick={() => setAttachOpen(true)}
+              aria-label={`${lift.name} cable attachment: ${attachmentLabel(attachment)}`}
+              className="flex shrink-0 items-center gap-1 rounded-full border border-line-2 bg-surface-2 py-0.5 pl-1 pr-2.5 text-[12px] font-semibold text-ink disabled:border-transparent disabled:text-muted"
+            >
+              <AttachmentIcon id={attachment} className="h-5 w-5" />
+              {attachmentLabel(attachment)}
+            </button>
           )}
           {isBarbell && barWeight > 0 ? (
             <span className="min-w-[48px] flex-1">
@@ -873,7 +890,9 @@ export function ExerciseCard({
           <div className={`grid ${gridCols} gap-2 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-2`}>
             <span className="text-center">Set</span>
             <span aria-hidden />
-            <span className="text-center">{measure === 'distance' ? 'm' : 'kg'}</span>
+            <span className="text-center">
+              {measure === 'distance' ? 'm' : loadEntryFor(block.lift) === 'perSide' ? 'kg/side' : 'kg'}
+            </span>
             {measure !== 'weight' ? (
               <span className="text-center">time</span>
             ) : anyPerSide ? (
@@ -1082,8 +1101,8 @@ export function ExerciseCard({
       )}
 
       {superset && !superset.last && (
-        <div className="relative z-10 mt-2 text-center font-mono text-[10px] uppercase tracking-[0.14em] text-secondary/80">
-          ↓ no rest · straight into the next lift
+        <div className="relative z-10 mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-secondary">
+          ↓ no rest — straight into {superset.next}
         </div>
       )}
 
@@ -1158,6 +1177,14 @@ export function ExerciseCard({
         </button>
       </div>
 
+      {attachOpen && (
+        <AttachmentSheet
+          title={lift.name}
+          value={attachment}
+          onPick={(id) => dispatch({ type: 'setExerciseConfig', id: block.lift, patch: { attachment: id } })}
+          onClose={() => setAttachOpen(false)}
+        />
+      )}
       {rpeFor !== null && sets[rpeFor] && (
         <RpePicker
           title={`${lift.name} · set ${rpeFor + 1}`}
@@ -1228,4 +1255,21 @@ export function ExerciseCard({
       )}
     </div>
   );
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** "today" / "3d" / "2w" / "4mo" since the lift was last logged (and the raw days, for its colour), or null if never. */
+function lastDoneLabel(sessions: { id: string; at: string; exercises: { liftId: string }[] }[], liftId: string) {
+  const hit = sessions.find((s) => s.exercises.some((e) => e.liftId === liftId));
+  if (!hit) return null;
+  const d = new Date(hit.at);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const day = new Date(d);
+  day.setHours(0, 0, 0, 0);
+  const days = Math.round((today.getTime() - day.getTime()) / DAY_MS);
+  const ago =
+    days <= 0 ? 'today' : days < 14 ? `${days}d` : days < 60 ? `${Math.floor(days / 7)}w` : days < 730 ? `${Math.floor(days / 30)}mo` : `${Math.floor(days / 365)}y`;
+  return { sessionId: hit.id, days, ago, date: d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) };
 }

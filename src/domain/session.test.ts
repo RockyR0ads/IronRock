@@ -57,6 +57,6 @@ describe('sessionEntries', () => {
       title: 'Push',
       exercises: [{ liftId: 'bench', name: 'Bench press', sets: [] }],
     };
-    expect(sessionEntries(session)).toEqual([{ name: 'Bench press', sets: [] }]);
+    expect(sessionEntries(session)).toEqual([{ name: 'Bench press', liftId: 'bench', sets: [] }]);
   });
 });

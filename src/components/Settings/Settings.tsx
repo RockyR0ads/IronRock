@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react';
+import { APP_VERSION, devModeOn, setDevMode } from '../DevNotes';
 import { useStore } from '../../state/StoreContext';
 import { ACTIVITY_LEVELS, type Sex, type Profile } from '../../domain/calories';
 import {
@@ -170,7 +172,32 @@ export function Settings({ onBack }: { onBack: () => void }) {
         Training & data
       </div>
       <GlobalControls />
+
+      <VersionTap />
     </div>
+  );
+}
+
+/** The build stamp; five quick taps toggle dev mode (the dev-notes bubble). */
+function VersionTap() {
+  const taps = useRef<number[]>([]);
+  const [on, setOn] = useState(devModeOn);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        const now = Date.now();
+        taps.current = [...taps.current.filter((t) => now - t < 2000), now];
+        if (taps.current.length < 5) return;
+        taps.current = [];
+        setDevMode(!on);
+        setOn(!on);
+      }}
+      className="mt-8 block w-full text-center font-mono text-[11px] text-muted-2"
+    >
+      IronRock {APP_VERSION}
+      {on ? ' · dev mode' : ''}
+    </button>
   );
 }
 

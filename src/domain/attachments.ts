@@ -45,6 +45,39 @@ const CABLE_DEFAULTS: Record<string, string> = {
   leanlatraise: 'single',
 };
 
+/**
+ * Lifts whose handle is part of the exercise (a rope pushdown is always a
+ * rope) — no picker for these; the attachment is just recorded.
+ */
+const FIXED: Record<string, string> = {
+  ropepushdown: 'rope',
+  cableohext: 'rope',
+  facepull: 'rope',
+  singlepushdown: 'single',
+  singlecablerow: 'single',
+  leanlatraise: 'single',
+  latpulldown: 'lat',
+};
+
+/** The handle a lift is defined by, from the table or its name; else undefined. */
+export function fixedAttachment(lift: Lift): string | undefined {
+  if (FIXED[lift.id]) return FIXED[lift.id];
+  if (!isCable(lift)) return undefined;
+  const n = lift.name;
+  if (/\brope\b/i.test(n)) return 'rope';
+  if (/\bv[- ]?bar\b/i.test(n)) return 'vbar';
+  if (/\bstraight[- ]bar\b/i.test(n)) return 'straight';
+  if (/\bez[- ]?bar\b/i.test(n)) return 'ez';
+  if (/\bankle\b/i.test(n)) return 'ankle';
+  if (/\b(single|one)[- ]arm\b/i.test(n)) return 'single';
+  return undefined;
+}
+
+/** Cable lift where the handle is a real choice (so show the picker). */
+export function attachmentChoosable(lift: Lift): boolean {
+  return isCable(lift) && !fixedAttachment(lift);
+}
+
 /** Is this lift done on a cable stack (so an attachment applies)? */
 export function isCable(lift: Lift): boolean {
   if (lift.id in CABLE_DEFAULTS) return true;
@@ -61,7 +94,7 @@ export function defaultAttachment(lift: Lift): string {
 /** The attachment in use: the lifter's choice, else the lift's usual one. */
 export function attachmentFor(lift: Lift, chosen: string | undefined): string | undefined {
   if (!isCable(lift)) return undefined;
-  return chosen ?? defaultAttachment(lift);
+  return fixedAttachment(lift) ?? chosen ?? defaultAttachment(lift);
 }
 
 export function attachmentLabel(id: string | undefined): string {

@@ -1,3 +1,4 @@
+import { setLoadEntries } from '../domain/loadEntry';
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react';
 import { loadState, reducer, saveState, type Action, type State } from './store';
 import { setCustomDays } from '../domain/program';
@@ -22,6 +23,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyTheme(state.theme);
   }, [state.theme]);
+
+  // keep volume maths in step with each lift's total / per-side weight entry
+  useEffect(() => {
+    setLoadEntries(state.exerciseConfig);
+  }, [state.exerciseConfig]);
 
   // keep the day engine's view of the custom routine in sync with state
   useEffect(() => {

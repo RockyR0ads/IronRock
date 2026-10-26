@@ -125,6 +125,9 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
               {ex.attachment && <span className="text-[12px] text-muted-2">{attachmentLabel(ex.attachment)}</span>}
               {ex.offPlan && <OffPlanTag />}
             </div>
+            {ex.srcName && (
+              <div className="mt-0.5 text-[11px] text-muted-2">Imported as “{ex.srcName}”</div>
+            )}
             <div className="mt-2.5 space-y-1.5">
               {(() => {
                 let wn = 0;
@@ -253,15 +256,15 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
  * Archived workouts, newest first. Sessions land here when a workout is
  * completed on the program day or the freestyle page.
  */
-export function WorkoutHistory({ onBack }: { onBack: () => void }) {
+export function WorkoutHistory({ onBack, initialId }: { onBack: () => void; initialId?: string }) {
   const { state } = useStore();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(initialId ?? null);
   const session = state.sessions.find((s) => s.id === openId) ?? null;
 
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6">
       {session ? (
-        <SessionDetail session={session} onBack={() => setOpenId(null)} />
+        <SessionDetail session={session} onBack={() => (initialId && openId === initialId ? onBack() : setOpenId(null))} />
       ) : (
         <>
           <header className="flex items-center gap-3 pb-2 pt-6">

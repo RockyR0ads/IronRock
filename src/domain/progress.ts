@@ -1,3 +1,4 @@
+import { setVolume } from './loadEntry';
 import { estimate1Rm, round } from './calc';
 import { setReps } from './stats';
 import type { Increment, LoggedSet, Session } from './types';
@@ -89,7 +90,7 @@ export function exerciseSeries(
       const w = num(set.w) + add;
       const r = setReps(set);
       const rp = num(set.rpe);
-      volume += w * r;
+      volume += setVolume(liftId, set, add);
       totalReps += r;
       loadSum += w;
       const secs = num(set.secs ?? '');

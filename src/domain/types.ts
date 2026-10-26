@@ -184,6 +184,8 @@ export interface SessionExercise {
    * kept out of the program's progression and deload logic.
    */
   offPlan?: boolean;
+  /** The exercise name in the app it was imported from, when it differs. */
+  srcName?: string;
   /** Cable attachment used (see ATTACHMENTS), for cable lifts. */
   attachment?: string;
 }

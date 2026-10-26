@@ -1,3 +1,4 @@
+import { DevNotes } from './components/DevNotes';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { App as CapApp } from '@capacitor/app';
 import { ChevronLeft } from './components/common/icons';
@@ -29,7 +30,7 @@ type Loc =
   | { p: 'week' }
   | { p: 'reference' }
   | { p: 'freestyle' }
-  | { p: 'history' }
+  | { p: 'history'; sessionId?: string }
   | { p: 'weight' }
   | { p: 'stretch' }
   | { p: 'overview' }
@@ -124,6 +125,7 @@ export default function App() {
         />
       )}
       {renderScreen()}
+      <DevNotes screen={'/' + [loc.p, 'id' in loc ? loc.id : 'liftId' in loc ? loc.liftId : ''].filter(Boolean).join('/')} />
     </>
   );
 
@@ -137,16 +139,18 @@ export default function App() {
           onOpenReference={() => push({ p: 'reference' })}
         />
       ) : (
-        <TrainWeek onBack={back} onOpenExercise={(liftId) => push({ p: 'exercisePage', liftId })} />
+        <TrainWeek onBack={back} onOpenExercise={(liftId) => push({ p: 'exercisePage', liftId })}
+          onOpenSession={(sessionId) => push({ p: 'history', sessionId })} />
       );
     case 'reference':
       return <ReferencePage onBack={back} />;
     case 'freestyle':
       return (
-        <FreestyleWorkout onBack={back} onOpenExercise={(liftId) => push({ p: 'exercisePage', liftId })} />
+        <FreestyleWorkout onBack={back} onOpenExercise={(liftId) => push({ p: 'exercisePage', liftId })}
+          onOpenSession={(sessionId) => push({ p: 'history', sessionId })} />
       );
     case 'history':
-      return <WorkoutHistory onBack={back} />;
+      return <WorkoutHistory onBack={back} initialId={loc.sessionId} />;
     case 'weight':
       return <WeightTracker onBack={back} onOpenSettings={() => push({ p: 'settings' })} />;
     case 'stretch':

@@ -161,3 +161,26 @@ describe('cable attachments', () => {
     expect(attachmentFromName('Bench Press (Barbell)')).toBeUndefined();
   });
 });
+
+describe('dev-notes fixes', () => {
+  it('fixed-handle lifts skip the attachment picker', async () => {
+    const { fixedAttachment, attachmentChoosable, attachmentFor } = await import('./attachments');
+    expect(fixedAttachment(LIFTS.ropepushdown)).toBe('rope');
+    expect(attachmentChoosable(LIFTS.ropepushdown)).toBe(false);
+    expect(attachmentFor(LIFTS.ropepushdown, 'straight')).toBe('rope');
+    expect(attachmentChoosable(LIFTS.pushdown)).toBe(true);
+  });
+
+  it('per-side dumbbell weight counts twice in volume, unless logged L/R or one-armed', async () => {
+    const { setVolume, setLoadEntries } = await import('./loadEntry');
+    const set = { w: '20', reps: '10', rpe: '', done: true };
+    setLoadEntries({});
+    expect(setVolume('dbbench', set)).toBe(400);
+    expect(setVolume('dbrow', set)).toBe(200);
+    expect(setVolume('dbbench', { ...set, perSide: true, repsR: '10' })).toBe(400);
+    expect(setVolume('bench', set)).toBe(200);
+    setLoadEntries({ legpress: { loadEntry: 'perSide' } });
+    expect(setVolume('legpress', set)).toBe(400);
+    setLoadEntries({});
+  });
+});

@@ -20,10 +20,13 @@ export function DayView({
   onSwap,
   onAdd,
   onOpenExercise,
+  onOpenSession,
 }: {
   onSwap: (index: number) => void;
   onAdd: () => void;
   onOpenExercise?: (liftId: string) => void;
+  /** Open an archived workout in History. */
+  onOpenSession?: (sessionId: string) => void;
 }) {
   const { state, dispatch } = useStore();
   const rest = useRestTimer();
@@ -31,6 +34,7 @@ export function DayView({
   const [timing, setTiming] = useState<WorkoutTiming | null>(null);
   const day = defaultDay(state.day);
   const blocks = effBlocks(state, state.day);
+  const letters = supersetLetters(blocks);
   const deviated = state.sessionDays[state.day] !== undefined; // changed just for today
   const planEdited = state.planDays[state.day] !== undefined; // saved into the plan
   const hasLogs = (state.logs[state.day] ?? []).some((s) => s.length > 0);
@@ -280,7 +284,13 @@ export function DayView({
           const prevSame = !!g && blocks[i - 1]?.group === g;
           const nextSame = !!g && blocks[i + 1]?.group === g;
           const inSuperset = prevSame || nextSame;
-          const superset = inSuperset ? { first: !prevSame, last: !nextSame } : undefined;
+          const letter = g ? letters.get(g) ?? '' : '';
+          // 1-based place in its run of consecutive same-group lifts
+          let pos = 1;
+          while (inSuperset && blocks[i - pos]?.group === g) pos++;
+          const superset = inSuperset
+            ? { first: !prevSame, last: !nextSame, label: `${letter}${pos}`, next: `${letter}${pos + 1}` }
+            : undefined;
           // only the last lift in a superset starts the rest timer
           const autoRest = !inSuperset || !nextSame;
           return (
@@ -293,16 +303,34 @@ export function DayView({
               className={[
                 'touch-pan-y rounded-2xl',
                 dragFrom === i ? 'relative select-none' : '',
-                // tighten the gap within a superset so the pair reads as one unit
-                nextSame ? '-mb-2' : '',
+                // a superset hangs off one rail; padding carries it through the gap
+                inSuperset ? 'relative pl-3.5' : '',
+                nextSame ? '-mb-3 pb-3' : '',
               ].join(' ')}
             >
+              {superset && (
+                <span
+                  aria-hidden
+                  className={[
+                    'absolute left-0 w-1 bg-secondary',
+                    superset.first ? 'top-7 rounded-t-full' : 'top-0',
+                    superset.last ? 'bottom-4 rounded-b-full' : 'bottom-0',
+                  ].join(' ')}
+                />
+              )}
+              {superset?.first && (
+                <div className="mb-1.5 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-secondary">
+                  Superset {letter}
+                  <span className="font-medium normal-case tracking-normal text-muted-2">back to back, rest after the last</span>
+                </div>
+              )}
               <ExerciseCard
                 block={block}
                 index={i}
                 dayKey={state.day}
                 onSwap={onSwap}
                 onOpenExercise={onOpenExercise}
+                onOpenSession={onOpenSession}
                 superset={superset}
                 autoRest={autoRest}
               />
@@ -378,4 +406,15 @@ export function DayView({
       )}
     </div>
   );
+}
+
+/** Letter each superset group in order of appearance: A, B, C… */
+function supersetLetters(blocks: { group?: string }[]): Map<string, string> {
+  const letters = new Map<string, string>();
+  blocks.forEach((b, k) => {
+    const g = b.group;
+    const grouped = !!g && (blocks[k - 1]?.group === g || blocks[k + 1]?.group === g);
+    if (g && grouped && !letters.has(g)) letters.set(g, String.fromCharCode(65 + letters.size));
+  });
+  return letters;
 }

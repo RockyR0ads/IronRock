@@ -22,6 +22,8 @@ export interface ExerciseConfig {
   warmupRamp?: string;
   /** Tempo cue, e.g. "3-1-1" or "paused". Display-only. */
   tempo?: string;
+  /** Whether the weight entered is the total load or one side's (×2 in volume). */
+  loadEntry?: 'total' | 'perSide';
   /** Cable attachment id (see ATTACHMENTS). Only meaningful for cable lifts. */
   attachment?: string;
   /** Personal cues / notes, shown under the stock instructions. */

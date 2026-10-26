@@ -2,12 +2,27 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { execSync } from 'node:child_process';
+import pkg from './package.json';
+
+// Build stamp for the dev-notes header: package version + short commit.
+function commit(): string {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim();
+  } catch {
+    return 'unknown';
+  }
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => ({
   // Served from a project page (https://<user>.github.io/IronRock/) when built,
   // but from the root during local dev/preview-tool runs.
   base: command === 'build' ? '/IronRock/' : '/',
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_COMMIT__: JSON.stringify(commit()),
+  },
   plugins: [
     react(),
     // The Capacitor build (mode 'capacitor') skips the PWA service worker: the

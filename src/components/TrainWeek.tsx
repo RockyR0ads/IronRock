@@ -23,9 +23,12 @@ type PickerMode = { kind: 'swap'; index: number } | { kind: 'add' };
 export function TrainWeek({
   onBack,
   onOpenExercise,
+  onOpenSession,
 }: {
   onBack: () => void;
   onOpenExercise?: (liftId: string) => void;
+  /** Open an archived workout in History. */
+  onOpenSession?: (sessionId: string) => void;
 }) {
   const { state, dispatch } = useStore();
   const [picker, setPicker] = useState<PickerMode | null>(null);
@@ -136,6 +139,7 @@ export function TrainWeek({
         onSwap={(index) => setPicker({ kind: 'swap', index })}
         onAdd={() => setPicker({ kind: 'add' })}
         onOpenExercise={onOpenExercise}
+                onOpenSession={onOpenSession}
       />
 
       <footer className="mt-10 text-center text-[12px] text-muted-2">
