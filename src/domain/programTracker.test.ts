@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { programProgress, PPL_CYCLE, W531_CYCLE } from './programTracker';
+import { programProgress, programCycle, PPL_CYCLE, W531_CYCLE, rotationProgress } from './programTracker';
 import type { Session } from './types';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -86,14 +86,58 @@ describe('programProgress', () => {
   });
 });
 
-describe('blockStart', () => {
-  it('starts the clock at the first workout of the program, not the tapped start', async () => {
-    const { blockStart, programCycle, programProgress } = await import('./programTracker');
+describe('rotationProgress', () => {
+  const cycle = programCycle('upper-lower-arms');
+  const s = (at: string, dayKey: string) => ({ id: at, at, dayKey, title: '', exercises: [] });
+
+  it('advances a week only once every program day is done', () => {
+    const sessions = [
+      s('2026-10-18T12:00:00Z', 'pplvPush'), // legacy keys still count
+      s('2026-10-20T12:00:00Z', 'pplvPull'),
+      s('2026-10-27T12:00:00Z', 'ppl4PullH'), // a repeat doesn't finish the week
+      s('2026-10-03T12:00:00Z', 'freestyle'),
+    ];
+    const p = rotationProgress(sessions, cycle, { programStart: '2026-09-29T10:00:00Z' });
+    expect(p.weekInBlock).toBe(1);
+    expect(p.doneThisWeek.sort()).toEqual(['ppl4PullH', 'ppl4PushH']);
+    const full = rotationProgress(
+      [...sessions, s('2026-10-29T12:00:00Z', 'ppl4PushV'), s('2026-10-30T12:00:00Z', 'ppl4LegsPull'), s('2026-11-01T12:00:00Z', 'ppl4PushH')],
+      cycle
+    );
+    expect(full.weekInBlock).toBe(2);
+    expect(full.doneThisWeek).toEqual(['ppl4PushH']);
+    expect(full.weekCounts.slice(0, 2)).toEqual([5, 1]);
+  });
+
+  it('a hand-set week counts on from where it was set, until a later deload', () => {
+    const p = rotationProgress([s('2026-10-30T12:00:00Z', 'ppl4PushH')], cycle, {
+      weekSet: { week: 3, at: '2026-10-29T00:00:00Z' },
+    });
+    expect(p.weekInBlock).toBe(3);
+    expect(p.source).toBe('manual');
+    expect(p.sessionsThisWeek).toBe(1);
+    const after = rotationProgress([], cycle, { weekSet: { week: 3, at: '2026-10-29T00:00:00Z' }, lastDeload: '2026-11-05T00:00:00Z' });
+    expect(after.weekInBlock).toBe(1);
+  });
+});
+
+describe('week history', () => {
+  it('records how long each finished week took and its longest gap', () => {
     const cycle = programCycle('upper-lower-arms');
     const s = (at: string, dayKey: string) => ({ id: at, at, dayKey, title: '', exercises: [] });
-    const sessions = [s('2026-10-20T10:00:00Z', 'pplvPull'), s('2026-10-18T12:00:00Z', 'pplvPush'), s('2026-10-03T11:00:00Z', 'freestyle')];
-    const start = blockStart(sessions, cycle, '2026-09-29T10:00:00Z')!;
-    expect(new Date(start).getDate()).toBe(18);
-    expect(programProgress(sessions, start, cycle, new Date('2026-10-22T12:00:00Z')).weekInBlock).toBe(1);
+    const p = rotationProgress(
+      [
+        s('2026-10-01T12:00:00', 'ppl4PushH'),
+        s('2026-10-02T12:00:00', 'ppl4PullH'),
+        s('2026-10-15T12:00:00', 'ppl4PushV'), // 13-day lay-off
+        s('2026-10-16T12:00:00', 'ppl4LegsPull'),
+        s('2026-10-18T12:00:00', 'ppl4PushH'),
+      ],
+      cycle
+    );
+    expect(p.history[0]).toMatchObject({ week: 1, days: 16, sessions: 4, longestGap: 13 });
+    expect(p.history[0].end).toBe('2026-10-16T12:00:00');
+    expect(p.history[1]).toMatchObject({ week: 2, sessions: 1 });
+    expect(p.history[1].end).toBeUndefined();
   });
 });

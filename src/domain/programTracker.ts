@@ -5,6 +5,12 @@ import type { Session } from './types';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
+const startOfDay = (iso: string) => {
+  const d = new Date(iso);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+};
+
 const PPL_KEYS = new Set(DAYS.map((d) => d.key));
 const W531_KEYS = new Set(W531_DAYS.map((d) => d.key));
 
@@ -16,6 +22,10 @@ export interface ProgramCycle {
   targetSessions: number;
   /** Whether an archived session counts toward this program (by its day). */
   counts: (s: Session) => boolean;
+  /** The program's days in order — a week is done once each has been trained. */
+  dayKeys: string[];
+  /** The program day a counted session was, mapping renamed (legacy) keys. */
+  dayOf: (s: Session) => string | undefined;
 }
 
 /** PPL cut: a six-week block, six sessions a week. */
@@ -23,6 +33,8 @@ export const PPL_CYCLE: ProgramCycle = {
   cycleWeeks: 6,
   targetSessions: 6,
   counts: (s) => PPL_KEYS.has(s.dayKey),
+  dayKeys: [...PPL_KEYS],
+  dayOf: (s) => (PPL_KEYS.has(s.dayKey) ? s.dayKey : undefined),
 };
 
 /** 5/3/1: a four-week wave, four sessions a week. */
@@ -30,11 +42,18 @@ export const W531_CYCLE: ProgramCycle = {
   cycleWeeks: 4,
   targetSessions: 4,
   counts: (s) => W531_KEYS.has(s.dayKey),
+  dayKeys: [...W531_KEYS],
+  dayOf: (s) => (W531_KEYS.has(s.dayKey) ? s.dayKey : undefined),
 };
 
 /** Day keys a program used before its days were renamed, so old sessions still count. */
-const LEGACY_KEYS: Record<string, string[]> = {
-  'upper-lower-arms': ['pplvPush', 'pplvPull', 'pplvUpper', 'pplvLegsArms'],
+const LEGACY_KEYS: Record<string, Record<string, string>> = {
+  'upper-lower-arms': {
+    pplvPush: 'ppl4PushH',
+    pplvPull: 'ppl4PullH',
+    pplvUpper: 'ppl4PushV',
+    pplvLegsArms: 'ppl4LegsPull',
+  },
 };
 
 /** The tracking cycle for a program id (defaults to the PPL cut). */
@@ -43,12 +62,16 @@ export function programCycle(programId: string): ProgramCycle {
   if (programId === 'ppl-cut') return PPL_CYCLE;
   // any other day-based program: its own block length, days a week and day keys
   const days = daysForProgram(programId);
-  const keys = new Set([...days.map((d) => d.key), ...(LEGACY_KEYS[programId] ?? [])]);
+  const legacy = LEGACY_KEYS[programId] ?? {};
+  const dayKeys = days.map((d) => d.key);
+  const dayOf = (s: Session) => (dayKeys.includes(s.dayKey) ? s.dayKey : legacy[s.dayKey]);
   const meta = programMeta(programId);
   return {
     cycleWeeks: meta?.weeks ?? 8,
     targetSessions: meta?.days || days.length || 3,
-    counts: (s) => keys.has(s.dayKey),
+    counts: (s) => !!dayOf(s),
+    dayKeys,
+    dayOf,
   };
 }
 
@@ -125,27 +148,107 @@ export function programProgress(
   };
 }
 
+/** A week number the lifter set by hand, from a point in time onward. */
+export interface WeekSet {
+  week: number;
+  /** ISO time the set week began — workouts from here count toward it. */
+  at: string;
+}
+
+/** One week of the rotation, as it actually played out. */
+export interface WeekRecord {
+  /** Week number (overall, 1-based). */
+  week: number;
+  /** First workout of the week. */
+  start: string;
+  /** The workout that completed it; undefined for the week in progress. */
+  end?: string;
+  /** Calendar days from first to last workout, inclusive. */
+  days: number;
+  /** Workouts logged in the week (repeats included). */
+  sessions: number;
+  /** Longest stretch between two workouts in the week, in whole days. */
+  longestGap: number;
+}
+
+export interface RotationProgress extends ProgramProgress {
+  /** Every week so far, oldest first; the last may be in progress. */
+  history: WeekRecord[];
+  /** Program days already trained in the current week. */
+  doneThisWeek: string[];
+  /** When the current week began: the workout that finished the last one, or the start. */
+  weekStartedAt?: string;
+  /** Why the count is what it is. */
+  source: 'auto' | 'manual';
+}
+
 /**
- * When the current block really began: local midnight of the first workout
- * this program counts, on or after the later of the tapped start and the last
- * deload. Tapping Start and then training something else doesn't start the
- * clock — the first real session does. Undefined until there is one.
+ * Where the lifter is in the program, counted by **completed weeks of
+ * training**, not the calendar: a week is done once every program day has been
+ * trained, and the next workout starts the following week. Counting begins
+ * after the later of the tapped start, the last deload and a hand-set week (which
+ * also sets the starting number). Off-program workouts don't count; repeating a
+ * day before the week is finished still counts as a session but doesn't move it.
  */
-export function blockStart(
+export function rotationProgress(
   sessions: Session[],
   cycle: ProgramCycle,
-  programStart?: string,
-  lastDeload?: string
-): string | undefined {
-  const from = Math.max(
-    ...[programStart, lastDeload].map((d) => (d ? Date.parse(d) : 0)).filter(Number.isFinite),
-    0
-  );
-  const first = sessions
-    .filter((s) => cycle.counts(s) && Date.parse(s.at) >= from)
-    .reduce<number | undefined>((min, s) => Math.min(min ?? Infinity, Date.parse(s.at)), undefined);
-  if (first === undefined) return undefined;
-  const d = new Date(first);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+  opts: { programStart?: string; lastDeload?: string; weekSet?: WeekSet } = {}
+): RotationProgress {
+  const { programStart, lastDeload, weekSet } = opts;
+  const manual = !!weekSet && (!lastDeload || weekSet.at >= lastDeload);
+  const from = [programStart, lastDeload, manual ? weekSet!.at : undefined]
+    .filter((d): d is string => !!d)
+    .sort()
+    .pop();
+  let week = manual ? weekSet!.week : 1;
+  const counted = sessions
+    .filter((s) => cycle.dayOf(s) && (!from || s.at >= from))
+    .sort((a, b) => a.at.localeCompare(b.at));
+
+  const counts = new Map<number, number>();
+  let done = new Set<string>();
+  let weekStartedAt = from;
+  const history: WeekRecord[] = [];
+  let cur: { start: string; last: string; sessions: number; gap: number } | null = null;
+  const dayDiff = (a: string, b: string) => Math.round((startOfDay(b) - startOfDay(a)) / 864e5);
+  for (const s of counted) {
+    if (!cur) cur = { start: s.at, last: s.at, sessions: 0, gap: 0 };
+    cur.gap = Math.max(cur.gap, dayDiff(cur.last, s.at));
+    cur.last = s.at;
+    cur.sessions += 1;
+    done.add(cycle.dayOf(s)!);
+    counts.set(week, (counts.get(week) ?? 0) + 1);
+    if (cycle.dayKeys.every((k) => done.has(k))) {
+      history.push({ week, start: cur.start, end: s.at, days: dayDiff(cur.start, s.at) + 1, sessions: cur.sessions, longestGap: cur.gap });
+      cur = null;
+      week += 1;
+      done = new Set();
+      weekStartedAt = s.at;
+    }
+  }
+
+  if (cur) history.push({ week, start: cur.start, days: dayDiff(cur.start, new Date().toISOString()) + 1, sessions: cur.sessions, longestGap: cur.gap });
+
+  const { cycleWeeks, targetSessions } = cycle;
+  const block = Math.floor((week - 1) / cycleWeeks) + 1;
+  const weekInBlock = ((week - 1) % cycleWeeks) + 1;
+  const isDeload = weekInBlock === cycleWeeks;
+  const firstOfBlock = week - weekInBlock + 1;
+  return {
+    weekOverall: week,
+    block,
+    weekInBlock,
+    isDeload,
+    weeksToDeload: isDeload ? 0 : cycleWeeks - weekInBlock,
+    sessionsThisWeek: done.size,
+    weekCounts: Array.from({ length: cycleWeeks }, (_, w) => counts.get(firstOfBlock + w) ?? 0),
+    totalSessions: counted.length,
+    cycleWeeks,
+    targetSessions,
+    doneThisWeek: [...done],
+    history,
+    weekStartedAt,
+    source: manual ? 'manual' : 'auto',
+  };
 }

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { liftById } from '../../state/store';
-import { attachmentChoosable, attachmentFor } from '../../domain/attachments';
+import { attachmentChoosable, attachmentFor, bodyPartOf, isBodyPart, type BodyPart } from '../../domain/attachments';
 import { AttachmentChips } from '../AttachmentChips';
+import { BodyPartIcon } from '../BodyPartIcon';
 import {
   EQUIP_OPTIONS,
   GROUP_ORDER,
@@ -204,6 +205,7 @@ export function ExercisePicker({
         {attachFor ? (
           <AttachmentStep
             name={liftById(state, attachFor).name}
+            suggested={bodyPartOf(attachFor)}
             value={attachmentFor(liftById(state, attachFor), state.exerciseConfig[attachFor]?.attachment)}
             onBack={() => setAttachFor(null)}
             onPick={(attachment) => {
@@ -313,7 +315,7 @@ export function ExercisePicker({
             </div>
 
             {group !== 'My' && (
-              <div className="mt-3 flex gap-1.5 overflow-x-auto px-4 pb-1">
+              <div className="mt-3 flex flex-wrap gap-1.5 px-4 pb-1">
                 <button
                   type="button"
                   onClick={() => setEquip(null)}
@@ -341,7 +343,7 @@ export function ExercisePicker({
             )}
 
             {!q && (
-              <div className="mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1">
+              <div className="mt-2 flex flex-wrap gap-1.5 px-4 pb-1">
                 <button
                   type="button"
                   onClick={() => startCreate()}
@@ -363,19 +365,44 @@ export function ExercisePicker({
                     Mine
                   </button>
                 )}
-                {GROUP_ORDER.map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setGroup(g)}
-                    className={[
-                      'shrink-0 rounded-full px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors',
-                      group === g ? 'bg-ink text-bg' : 'bg-surface-2 text-muted hover:text-ink',
-                    ].join(' ')}
-                  >
-                    {g}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  onClick={() => setGroup('Other')}
+                  className={[
+                    'shrink-0 rounded-full px-3 py-1.5 font-mono text-[11px] font-bold uppercase tracking-wide transition-colors',
+                    group === 'Other' ? 'bg-ink text-bg' : 'bg-surface-2 text-muted hover:text-ink',
+                  ].join(' ')}
+                >
+                  Other muscles
+                </button>
+              </div>
+            )}
+
+            {!q && (
+              // muscle-map tiles: the body part lit up, so groups read at a glance.
+              // Six share the row evenly so they fit a phone without scrolling;
+              // 'Other' has no body part and sits with the chips above.
+              <div className="mt-2 grid grid-cols-6 gap-1.5 px-4 pb-1">
+                {GROUP_ORDER.filter(isBodyPart).map((g) => {
+                  const on = group === g;
+                  return (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setGroup(g)}
+                      aria-pressed={on}
+                      className={[
+                        'flex min-w-0 flex-col items-center gap-0.5 rounded-xl border px-0.5 pb-1.5 pt-1 transition-colors',
+                        on ? 'border-accent bg-accent/10' : 'border-line-2 bg-surface-2 hover:border-secondary/50',
+                      ].join(' ')}
+                    >
+                      <BodyPartIcon part={g} className="h-16 w-8" />
+                      <span className={`max-w-full truncate font-mono text-[9px] font-bold uppercase tracking-wide ${on ? 'text-accent' : 'text-muted'}`}>
+                        {g === 'Shoulders' ? 'Delts' : g}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -445,11 +472,13 @@ export function ExercisePicker({
 /** Second step for cable lifts: which handle is on the cable. */
 function AttachmentStep({
   name,
+  suggested,
   value,
   onBack,
   onPick,
 }: {
   name: string;
+  suggested?: BodyPart;
   value: string | undefined;
   onBack: () => void;
   onPick: (id: string) => void;
@@ -462,7 +491,7 @@ function AttachmentStep({
       <h2 className="mt-3 font-display text-[20px] font-bold tracking-[-0.01em]">{name}</h2>
       <p className="mt-1 text-[13px] text-muted">Which attachment is on the cable? You can change it on the workout card.</p>
       <div className="mt-5">
-        <AttachmentChips value={value} onPick={onPick} />
+        <AttachmentChips suggested={suggested} value={value} onPick={onPick} />
       </div>
     </div>
   );

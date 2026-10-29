@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
 import { useStore } from '../state/StoreContext';
 import { effBlocks, setsFor, liftById, computedInUse } from '../state/store';
-import { doneSetCount, e1rmFor } from '../state/selectors';
-import { defaultDay, PROGRAM_DAYS, CUSTOM_PROGRAM_ID } from '../domain/program';
+import { doneSetCount, e1rmFor, currentBodyweight } from '../state/selectors';
+import { programCycle, rotationProgress } from '../domain/programTracker';
+import { defaultDay, daysForProgram, PROGRAM_DAYS, CUSTOM_PROGRAM_ID } from '../domain/program';
 import { sessionDayLabel } from '../domain/session';
 import { programMeta } from '../domain/programs';
 import { cycleWeek, WAVE_LABEL, CYCLE_WEEKS } from '../domain/wendler531';
@@ -68,6 +69,24 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
       ? `Cycle week ${week531} of ${CYCLE_WEEKS}`
       : (prog?.tagline ?? '');
 
+  // where the week stands: days of the rotation ticked off
+  const rotation = isDayProgram
+    ? rotationProgress(state.sessions, programCycle(state.activeProgram), {
+        programStart: state.programStart,
+        lastDeload: state.lastDeload,
+        weekSet: state.weekSet,
+      })
+    : null;
+  const weekDays = isDayProgram ? daysForProgram(state.activeProgram) : [];
+
+  // at-a-glance numbers for the tiles
+  const last = state.sessions[0];
+  const daysSince = last ? Math.floor((Date.now() - Date.parse(last.at)) / 864e5) : null;
+  const weekAgo = Date.now() - 7 * 864e5;
+  const last7 = state.sessions.filter((x) => Date.parse(x.at) >= weekAgo).length;
+  const bw = currentBodyweight(state);
+  const goal = parseFloat(state.weightGoal?.target ?? '') || 0;
+
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6 sm:pb-16">
       <header className="flex items-center gap-3 pb-2 pt-8">
@@ -122,81 +141,118 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
               {done} / {prescribed} sets done
             </span>
           )}
+          {rotation && weekDays.length > 0 && (
+            <span className="mt-3 flex items-center gap-2">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-bg/80">
+                {rotation.isDeload ? 'Deload' : `Week ${rotation.weekInBlock}/${rotation.cycleWeeks}`}
+              </span>
+              <span className="flex gap-1" aria-label={`${rotation.doneThisWeek.length} of ${weekDays.length} days done this week`}>
+                {weekDays.map((d) => (
+                  <span
+                    key={d.key}
+                    className={[
+                      'h-2 w-5 rounded-full',
+                      rotation.doneThisWeek.includes(d.key) ? 'bg-bg' : d.key === state.day ? 'bg-bg/50' : 'bg-bg/20',
+                    ].join(' ')}
+                  />
+                ))}
+              </span>
+            </span>
+          )}
         </span>
       </button>
 
-      <div className="mb-2 mt-7 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
-        Log & review
+      {/* at a glance */}
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <Stat value={String(last7)} label="Last 7 days" />
+        <Stat value={daysSince === null ? '—' : daysSince === 0 ? 'Today' : `${daysSince}d`} label="Since last" />
+        <Stat value={state.sessions.length.toLocaleString()} label="Workouts" />
       </div>
-      <div className="flex flex-col gap-2.5">
-        <Tile
-          icon={<PlusIcon className="h-5 w-5" />}
-          title="Freestyle workout"
-          sub="Log any session — no program"
-          onClick={() => onGo('freestyle')}
-        />
-        <Tile
+
+      <button
+        type="button"
+        onClick={() => onGo('freestyle')}
+        className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-dashed border-line-2 bg-surface/50 px-4 py-3.5 text-left transition-colors hover:border-accent hover:bg-accent/5"
+      >
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+          <PlusIcon className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-[15px] font-bold tracking-[-0.01em]">Freestyle workout</span>
+          <span className="text-[12px] text-muted-2">Log any session — no program</span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-2" />
+      </button>
+
+      <SectionLabel>Log & review</SectionLabel>
+      <div className="grid grid-cols-2 gap-2.5">
+        <GridTile
+          tone="blue"
           icon={<HistoryIcon className="h-5 w-5" />}
           title="History"
-          sub={
-            state.sessions.length === 0
-              ? 'Completed workouts land here'
-              : `${state.sessions.length} workout${state.sessions.length === 1 ? '' : 's'} · last ${sessionDayLabel(state.sessions[0].at).toLowerCase()}`
-          }
+          value={state.sessions.length ? state.sessions.length.toLocaleString() : undefined}
+          sub={last ? `Last: ${sessionDayLabel(last.at)}` : 'Workouts land here'}
           onClick={() => onGo('history')}
         />
-        <Tile
+        <GridTile
+          tone="green"
           icon={<TrendIcon className="h-5 w-5" />}
-          title="Exercise charts"
-          sub="See a lift trend over time"
+          title="Charts"
+          sub="Every lift over time"
           onClick={() => onGo('progress')}
         />
-        <Tile
+        <GridTile
+          tone="yellow"
           icon={<TrophyIcon className="h-5 w-5" />}
           title="Overview"
-          sub="Volume, frequency & PRs across all lifts"
+          sub="Volume, frequency & PRs"
           onClick={() => onGo('overview')}
         />
-        <Tile
+        <GridTile
+          tone="secondary"
           icon={<Dumbbell className="h-5 w-5" />}
           title="Exercises"
-          sub="History, records & per-lift settings"
+          sub="Records & per-lift settings"
           onClick={() => onGo('exercises')}
         />
-        <Tile
+        <GridTile
+          tone="orange"
           icon={<TrendDownIcon className="h-5 w-5" />}
           title="Weight"
-          sub="Track weigh-ins toward a goal"
+          value={bw ? `${bw} kg` : undefined}
+          sub={bw && goal ? `${Math.max(0, Math.round((bw - goal) * 10) / 10)} kg to ${goal}` : 'Track weigh-ins'}
           onClick={() => onGo('weight')}
         />
-        <Tile
+        <GridTile
+          tone="red"
           icon={<StretchIcon className="h-5 w-5" />}
           title="Stretching"
           sub={
             state.stretch.active
-              ? 'Session in progress — resume'
+              ? 'In progress — resume'
               : state.stretch.sessions.length
-                ? `${state.stretch.sessions.length} done · loosen hips & hamstrings`
-                : 'Loosen tight hips & hamstrings'
+                ? `${state.stretch.sessions.length} sessions done`
+                : 'Hips & hamstrings'
           }
           onClick={() => onGo('stretch')}
         />
       </div>
 
-      <div className="mb-2 mt-7 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
-        Program
-      </div>
-      <div className="flex flex-col gap-2.5">
-        <Tile
+      <SectionLabel>Program</SectionLabel>
+      <div className="grid grid-cols-2 gap-2.5">
+        <GridTile
+          tone="accent"
           icon={<BookIcon className="h-5 w-5" />}
           title="The program"
-          sub="Choose your plan · rules & the split"
+          sub={prog?.name ?? 'Choose your plan'}
           onClick={() => onGo('program')}
         />
-        <Tile
+        <GridTile
+          tone="accent"
           icon={<Dumbbell className="h-5 w-5" />}
           title="Reference lifts"
-          sub={`${refsSet} of ${refIds.length} set · drives your targets`}
+          value={`${refsSet}/${refIds.length}`}
+          sub="Drive your targets"
           onClick={() => onGo('reference')}
         />
       </div>
@@ -208,14 +264,42 @@ export function Home({ onGo }: { onGo: (dest: HomeDest) => void }) {
   );
 }
 
-function Tile({
+const TONES = {
+  blue: 'bg-blue/15 text-blue',
+  green: 'bg-green/15 text-green',
+  yellow: 'bg-yellow/15 text-yellow',
+  orange: 'bg-orange/15 text-orange',
+  red: 'bg-red/15 text-red',
+  secondary: 'bg-secondary/15 text-secondary',
+  accent: 'bg-accent/15 text-accent',
+} as const;
+
+function SectionLabel({ children }: { children: ReactNode }) {
+  return <div className="mb-2 mt-7 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">{children}</div>;
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-2xl border border-line bg-surface px-3 py-2.5 shadow-card">
+      <div className="font-display text-[20px] font-black leading-none tabular-nums">{value}</div>
+      <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-muted-2">{label}</div>
+    </div>
+  );
+}
+
+/** A colour-coded destination card: tinted icon, title, an optional live number. */
+function GridTile({
+  tone,
   icon,
   title,
+  value,
   sub,
   onClick,
 }: {
+  tone: keyof typeof TONES;
   icon: ReactNode;
   title: string;
+  value?: string;
   sub: string;
   onClick: () => void;
 }) {
@@ -223,18 +307,16 @@ function Tile({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 text-left shadow-card transition-colors hover:border-secondary/50"
+      className="flex min-h-[118px] flex-col justify-between gap-3 rounded-2xl border border-line bg-surface p-3.5 text-left shadow-card transition-colors hover:border-secondary/50 active:scale-[0.99]"
     >
-      <span className="flex items-center gap-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary/15 text-secondary">
-          {icon}
-        </span>
-        <span className="min-w-0">
-          <span className="block font-display text-[15px] font-bold tracking-[-0.01em]">{title}</span>
-          <span className="text-[12px] text-muted-2">{sub}</span>
-        </span>
+      <span className="flex items-start justify-between gap-2">
+        <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${TONES[tone]}`}>{icon}</span>
+        {value && <span className="font-display text-[18px] font-black leading-none tabular-nums">{value}</span>}
       </span>
-      <ChevronRight className="h-5 w-5 shrink-0 text-muted-2" />
+      <span className="min-w-0">
+        <span className="block font-display text-[15px] font-bold tracking-[-0.01em]">{title}</span>
+        <span className="line-clamp-2 block text-[12px] leading-snug text-muted-2">{sub}</span>
+      </span>
     </button>
   );
 }

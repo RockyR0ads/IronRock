@@ -4,7 +4,7 @@ import { useStore } from '../state/StoreContext';
 import { effBlocks } from '../state/store';
 import { defaultDay, daysForProgram } from '../domain/program';
 import { programMeta } from '../domain/programs';
-import { programProgress, programCycle, blockStart } from '../domain/programTracker';
+import { programCycle, rotationProgress, type RotationProgress } from '../domain/programTracker';
 import { ChevronLeft, ChevronDown } from './common/icons';
 import { DayView } from './DayView/DayView';
 import { DayNav } from './DayView/DayNav';
@@ -70,15 +70,31 @@ export function TrainWeek({
   const dayNum = daysForProgram(state.activeProgram).findIndex((d) => d.key === state.day) + 1;
   const programName = programMeta(state.activeProgram)?.name ?? 'Training';
 
-  // Where the lifter is in the block, so the header can name the week.
-  // A taken deload restarts the block, so count from whichever is later.
+  // Where the lifter is in the block: weeks advance by finishing every day of
+  // the program, not by the calendar (a deload or a hand-set week restarts it).
   const cycle = programCycle(state.activeProgram);
-  const start = blockStart(state.sessions, cycle, state.programStart, state.lastDeload);
-  const prog = start ? programProgress(state.sessions, start, cycle) : null;
-  const weekLabel = isDeloadActive(state) || prog?.isDeload ? 'Deload week' : `Week ${prog?.weekInBlock ?? 1}`;
+  const prog = rotationProgress(state.sessions, cycle, {
+    programStart: state.programStart,
+    lastDeload: state.lastDeload,
+    weekSet: state.weekSet,
+  });
+  const [weekOpen, setWeekOpen] = useState(false);
+  const weekLabel = isDeloadActive(state) || prog?.isDeload ? 'Deload week' : `Week ${prog.weekInBlock}`;
 
   return (
     <div className="mx-auto min-h-dvh max-w-[760px] px-4 pb-20 pt-safe sm:px-6 sm:pb-16">
+      {weekOpen && (
+        <WeekSheet
+          prog={prog}
+          days={daysForProgram(state.activeProgram).map((d) => ({ key: d.key, label: `${d.label} · ${d.variant}` }))}
+          // keep this week's progress: the set week starts where the current one did
+          onSet={(w) =>
+            dispatch({ type: 'setWeek', set: { week: (prog.block - 1) * prog.cycleWeeks + w, at: prog.weekStartedAt ?? new Date().toISOString() } })
+          }
+          onAuto={() => dispatch({ type: 'setWeek' })}
+          onClose={() => setWeekOpen(false)}
+        />
+      )}
       <header className="flex items-center justify-between gap-3 pb-2 pt-6">
         <div className="flex min-w-0 items-center gap-3">
           <button
@@ -90,9 +106,15 @@ export function TrainWeek({
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 leading-none">
-            <div className="truncate font-display text-[22px] font-black uppercase tracking-[-0.01em]">
+            <button
+              type="button"
+              onClick={() => setWeekOpen(true)}
+              aria-label={`${weekLabel} — how this is counted`}
+              className="flex items-center gap-1 truncate font-display text-[22px] font-black uppercase tracking-[-0.01em]"
+            >
               {weekLabel}
-            </div>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-2" />
+            </button>
             <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">
               {programName}
             </div>
@@ -152,3 +174,120 @@ export function TrainWeek({
     </div>
   );
 }
+
+/** Explains where the week number comes from, and lets the lifter set it. */
+function WeekSheet({
+  prog,
+  days,
+  onSet,
+  onAuto,
+  onClose,
+}: {
+  prog: RotationProgress;
+  days: { key: string; label: string }[];
+  onSet: (week: number) => void;
+  onAuto: () => void;
+  onClose: () => void;
+}) {
+  const done = new Set(prog.doneThisWeek);
+  const left = days.length - done.size;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 backdrop-blur-sm animate-fade-in sm:items-center sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Training week"
+        className="w-full rounded-t-3xl border-t border-line bg-surface px-5 pb-6 pt-4 animate-sheet-up sm:max-w-[480px] sm:rounded-3xl sm:border"
+      >
+        <div className="font-display text-[20px] font-black uppercase">
+          Week {prog.weekInBlock} <span className="text-muted-2">of {prog.cycleWeeks}</span>
+        </div>
+        <p className="mt-2 text-[13px] leading-relaxed text-muted">
+          A week is done once you've trained every day of the program — the next workout starts the next week, however
+          long it took.{' '}
+          {left > 0 ? `${left} to go this week.` : ''}
+          {prog.source === 'manual' && ' You set the week number by hand.'}
+        </p>
+
+        <ul className="mt-3 flex flex-col gap-1.5">
+          {days.map((d) => {
+            const on = done.has(d.key);
+            return (
+              <li key={d.key} className="flex items-center gap-2.5 text-[14px]">
+                <span
+                  className={[
+                    'flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold',
+                    on ? 'bg-green text-bg' : 'border border-line-2 text-transparent',
+                  ].join(' ')}
+                  aria-hidden
+                >
+                  ✓
+                </span>
+                <span className={on ? 'text-muted line-through' : 'text-ink'}>{d.label}</span>
+              </li>
+            );
+          })}
+        </ul>
+
+        {prog.history.length > 0 && (
+          <>
+            <div className="mb-2 mt-5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">How long each week took</div>
+            <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+              {[...prog.history].reverse().map((w) => {
+                // a full week in ~7 days is on track; much longer means time off
+                const tone = w.days > 14 ? 'text-red' : w.days > 9 ? 'text-orange' : 'text-green';
+                return (
+                  <li key={w.week} className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-[12px]">
+                    <span className="w-14 font-mono font-bold text-ink">Wk {((w.week - 1) % prog.cycleWeeks) + 1}</span>
+                    <span className="min-w-0 flex-1 truncate text-muted">
+                      {shortDate(w.start)} → {w.end ? shortDate(w.end) : 'now'}
+                    </span>
+                    {w.longestGap >= 7 && <span className="font-mono text-[11px] text-red">{w.longestGap}d gap</span>}
+                    <span className={`font-mono font-bold tabular-nums ${w.end ? tone : 'text-muted-2'}`}>
+                      {w.days}d{w.end ? '' : '…'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+
+        <div className="mb-2 mt-5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">Set the current week</div>
+        <div className="flex flex-wrap gap-1.5">
+          {Array.from({ length: prog.cycleWeeks }, (_, i) => i + 1).map((w) => (
+            <button
+              key={w}
+              type="button"
+              onClick={() => onSet(w)}
+              aria-pressed={w === prog.weekInBlock}
+              className={[
+                'h-10 w-10 rounded-xl border font-mono text-[14px] font-bold',
+                w === prog.weekInBlock ? 'border-accent bg-accent/10 text-accent' : 'border-line-2 bg-surface-2 text-ink',
+              ].join(' ')}
+            >
+              {w}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-muted-2">Changes the number only — days already done this week stay ticked.</p>
+
+        <div className="mt-5 flex gap-2">
+          {prog.source === 'manual' && (
+            <button type="button" onClick={onAuto} className="flex-1 rounded-xl border border-line-2 py-2.5 text-[13px] font-semibold text-muted">
+              Back to automatic
+            </button>
+          )}
+          <button type="button" onClick={onClose} className="flex-1 rounded-xl bg-secondary/15 py-2.5 text-[13px] font-bold text-secondary">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" });

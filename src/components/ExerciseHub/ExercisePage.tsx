@@ -1,4 +1,4 @@
-import { attachmentChoosable, attachmentFor } from '../../domain/attachments';
+import { attachmentChoosable, attachmentFor, bodyPartOf } from '../../domain/attachments';
 import { loadEntryFor } from '../../domain/loadEntry';
 import { liftMeasure } from '../../domain/measure';
 import { AttachmentChips } from '../AttachmentChips';
@@ -414,7 +414,7 @@ function SettingsTab({ lift }: { lift: Lift }) {
 
       {attachmentChoosable(lift) && (
         <Section title="Cable attachment" hint="The handle you use on this lift. Saved with every workout, so history shows rope vs bar.">
-          <AttachmentChips value={attachmentFor(lift, config.attachment)} onPick={(attachment) => set({ attachment })} />
+          <AttachmentChips suggested={bodyPartOf(liftId)} value={attachmentFor(lift, config.attachment)} onPick={(attachment) => set({ attachment })} />
         </Section>
       )}
 

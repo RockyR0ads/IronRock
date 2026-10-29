@@ -4,26 +4,45 @@
 // The choice is a standing per-lift setting, stamped onto each logged session.
 
 import { LIBRARY_BY_ID } from './library';
+import { muscleGroupOf } from './overview';
 import type { Lift } from './types';
+
+export type BodyPart = 'Arms' | 'Back' | 'Shoulders' | 'Chest' | 'Legs' | 'Core';
+
+/** Body-part cards shown first, so the handle list stays short. */
+export const BODY_PARTS: BodyPart[] = ['Arms', 'Back', 'Shoulders', 'Chest', 'Legs', 'Core'];
 
 export interface Attachment {
   id: string;
   label: string;
+  /** Body parts this handle is a staple for (drives the first-step filter). */
+  parts: BodyPart[];
 }
 
 export const ATTACHMENTS: Attachment[] = [
-  { id: 'rope', label: 'Rope' },
-  { id: 'straight', label: 'Straight bar' },
-  { id: 'ez', label: 'EZ bar' },
-  { id: 'vbar', label: 'V-bar' },
-  { id: 'lat', label: 'Lat bar (wide)' },
-  { id: 'closegrip', label: 'Close-grip handle' },
-  { id: 'single', label: 'Single D-handle' },
-  { id: 'double', label: 'Two D-handles' },
-  { id: 'mag', label: 'MAG grip' },
-  { id: 'ankle', label: 'Ankle strap' },
-  { id: 'none', label: 'No attachment' },
+  { id: 'rope', label: 'Rope', parts: ['Arms', 'Back', 'Shoulders', 'Legs', 'Core'] },
+  { id: 'straight', label: 'Straight bar', parts: ['Arms', 'Back', 'Shoulders'] },
+  { id: 'revolving', label: 'Revolving bar', parts: ['Arms'] },
+  { id: 'ez', label: 'EZ curl bar', parts: ['Arms'] },
+  { id: 'vbar', label: 'V-bar', parts: ['Arms'] },
+  { id: 'lat', label: 'Wide lat bar', parts: ['Back'] },
+  { id: 'neutrallat', label: 'Neutral-grip lat bar', parts: ['Back'] },
+  { id: 'closegrip', label: 'Close-grip row handle', parts: ['Back'] },
+  { id: 'mag', label: 'MAG grip', parts: ['Back'] },
+  { id: 'tbar', label: 'Wide row bar', parts: ['Back'] },
+  { id: 'single', label: 'D-handle', parts: ['Arms', 'Back', 'Shoulders', 'Chest', 'Core'] },
+  { id: 'double', label: 'Pair of D-handles', parts: ['Chest', 'Shoulders', 'Back'] },
+  { id: 'stirrup', label: 'Stirrup handle', parts: ['Arms', 'Shoulders', 'Chest'] },
+  { id: 'cuff', label: 'Wrist cuff', parts: ['Shoulders'] },
+  { id: 'ankle', label: 'Ankle strap', parts: ['Legs', 'Core'] },
+  { id: 'harness', label: 'Ab crunch harness', parts: ['Core'] },
+  { id: 'none', label: 'Bare cable', parts: ['Shoulders', 'Chest'] },
 ];
+
+/** Handles that are staples for a body part. */
+export function attachmentsFor(part: BodyPart): Attachment[] {
+  return ATTACHMENTS.filter((a) => a.parts.includes(part));
+}
 
 /** Built-in cable lifts and the handle they're usually done with. */
 const CABLE_DEFAULTS: Record<string, string> = {
@@ -99,4 +118,14 @@ export function attachmentFor(lift: Lift, chosen: string | undefined): string | 
 
 export function attachmentLabel(id: string | undefined): string {
   return ATTACHMENTS.find((a) => a.id === id)?.label ?? '';
+}
+
+/** The body part a lift trains, as one of the attachment picker's cards. */
+export function bodyPartOf(liftId: string, customGroups: Record<string, string> = {}): BodyPart | undefined {
+  const g = muscleGroupOf(liftId, customGroups);
+  return (BODY_PARTS as string[]).includes(g) ? (g as BodyPart) : undefined;
+}
+
+export function isBodyPart(g: string): g is BodyPart {
+  return (BODY_PARTS as string[]).includes(g);
 }

@@ -1,3 +1,4 @@
+import type { WeekSet } from '../domain/programTracker';
 import { setLoadEntries } from '../domain/loadEntry';
 import { defaultDay, daysForProgram, setCustomDays } from '../domain/program';
 import { LIFTS, LIB_DUPES, canonicalLiftId } from '../domain/lifts';
@@ -89,6 +90,8 @@ export interface State {
   lastDeload?: string;
   /** ISO time until which the deload prompt stays hidden ("Not now"). */
   deloadSnoozeUntil?: string;
+  /** A week number set by hand (and when), overriding the automatic count from then on. */
+  weekSet?: WeekSet;
   /** Id of the currently selected training program. */
   activeProgram: string;
   /** Body-weight weigh-ins for goal tracking (date + kg). */
@@ -222,6 +225,7 @@ export type Action =
   | { type: 'setProfile'; patch: Partial<Profile> }
   | { type: 'setTheme'; patch: Partial<ThemeChoice> }
   | { type: 'startProgram'; at: string }
+  | { type: 'setWeek'; set?: WeekSet }
   | { type: 'startDeload'; at: string }
   | { type: 'endDeload' }
   | { type: 'snoozeDeload'; until: string }
@@ -716,7 +720,10 @@ export function reducer(state: State, action: Action): State {
       // and day engine resolve against the right template)
       const days = daysForProgram(action.id);
       const day = days.some((d) => d.key === state.day) ? state.day : (days[0]?.key ?? state.day);
-      return { ...state, activeProgram: action.id, day };
+      // a hand-set week belongs to the old program
+      const { weekSet: _b, ...rest } = state;
+      if (action.id === state.activeProgram) return { ...state, day };
+      return { ...rest, activeProgram: action.id, day };
     }
     case 'deleteLift': {
       // drop the lift from every archived workout (and any workout left empty),
@@ -866,6 +873,10 @@ export function reducer(state: State, action: Action): State {
       return { ...state, theme: { ...state.theme, ...action.patch } };
     case 'startProgram':
       return { ...state, programStart: action.at };
+    case 'setWeek': {
+      const { weekSet: _w, ...rest } = state;
+      return action.set ? { ...rest, weekSet: action.set } : rest;
+    }
     case 'startDeload':
       // a deload closes the block: restart its clock and clear any snooze
       return { ...state, deload: action.at, lastDeload: action.at, deloadSnoozeUntil: undefined };

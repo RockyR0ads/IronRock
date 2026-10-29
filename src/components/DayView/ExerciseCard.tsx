@@ -1,4 +1,4 @@
-import { attachmentChoosable, attachmentFor, attachmentLabel } from '../../domain/attachments';
+import { attachmentChoosable, attachmentFor, attachmentLabel, bodyPartOf } from '../../domain/attachments';
 import { AttachmentIcon } from '../AttachmentIcon';
 import { AttachmentSheet } from '../AttachmentChips';
 import { loadEntryFor } from '../../domain/loadEntry';
@@ -1180,6 +1180,7 @@ export function ExerciseCard({
       {attachOpen && (
         <AttachmentSheet
           title={lift.name}
+          suggested={bodyPartOf(block.lift)}
           value={attachment}
           onPick={(id) => dispatch({ type: 'setExerciseConfig', id: block.lift, patch: { attachment: id } })}
           onClose={() => setAttachOpen(false)}
