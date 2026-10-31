@@ -1,3 +1,4 @@
+import { weeklyMuscleSets, type MuscleVolume } from '../domain/insights';
 import { isDeloadActive } from '../domain/deload';
 import { useEffect, useState } from 'react';
 import { useStore } from '../state/StoreContext';
@@ -86,6 +87,15 @@ export function TrainWeek({
       {weekOpen && (
         <WeekSheet
           prog={prog}
+          // this week's work: from the week in progress's first workout, but never more
+          // than 7 days back (a stalled week shouldn't pile up a month of sets)
+          volume={weeklyMuscleSets(
+            state.sessions,
+            daysForProgram(state.activeProgram),
+            [prog.history.find((w) => !w.end)?.start ?? new Date().toISOString(), new Date(Date.now() - 7 * 864e5).toISOString()]
+              .sort()
+              .pop()
+          )}
           days={daysForProgram(state.activeProgram).map((d) => ({ key: d.key, label: `${d.label} · ${d.variant}` }))}
           // keep this week's progress: the set week starts where the current one did
           onSet={(w) =>
@@ -178,12 +188,14 @@ export function TrainWeek({
 /** Explains where the week number comes from, and lets the lifter set it. */
 function WeekSheet({
   prog,
+  volume,
   days,
   onSet,
   onAuto,
   onClose,
 }: {
   prog: RotationProgress;
+  volume: MuscleVolume[];
   days: { key: string; label: string }[];
   onSet: (week: number) => void;
   onAuto: () => void;
@@ -231,6 +243,31 @@ function WeekSheet({
             );
           })}
         </ul>
+
+        {volume.length > 0 && (
+          <>
+            <div className="mb-2 mt-5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-2">Sets per muscle · this week vs plan</div>
+            <ul className="flex flex-col gap-1.5">
+              {volume.map((m) => {
+                const pct = m.target ? Math.min(100, Math.round((m.done / m.target) * 100)) : 100;
+                return (
+                  <li key={m.muscle} className="flex items-center gap-2 text-[12px]">
+                    <span className="w-[68px] shrink-0 font-semibold text-muted">{m.muscle}</span>
+                    <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
+                      <span
+                        className={`block h-full rounded-full ${m.done >= m.target ? 'bg-green' : 'bg-secondary'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </span>
+                    <span className="w-12 text-right font-mono tabular-nums text-ink">
+                      {m.done}/{m.target}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
 
         {prog.history.length > 0 && (
           <>

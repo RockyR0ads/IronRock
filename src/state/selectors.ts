@@ -53,7 +53,7 @@ export function blockLoad(state: State, block: Block): number | null {
   const e1rm = e1rmFor(state, block.lift);
   if (e1rm === null) return null;
   const inc = state.exerciseConfig[block.lift]?.inc ?? state.inc;
-  return calcTargetLoad(e1rm, midReps(block.reps), rpeNum(block.rpe), inc);
+  return calcTargetLoad(e1rm, midReps(block.reps), rpeNum(block.rpe) + (state.readiness?.[state.day]?.adjust ?? 0), inc);
 }
 
 /** A logged set has all three values entered. */

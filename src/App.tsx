@@ -156,7 +156,7 @@ export default function App() {
     case 'stretch':
       return <StretchSection onBack={back} />;
     case 'overview':
-      return <OverviewDashboard onBack={back} />;
+      return <OverviewDashboard onBack={back} onOpenExercise={(liftId) => push({ p: 'exercisePage', liftId })} />;
     case 'settings':
       return <Settings onBack={back} />;
     case 'programMenu':

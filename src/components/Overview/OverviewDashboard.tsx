@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { findPlateaus } from '../../domain/insights';
+import { useMemo, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { buildOverview, trainingCalendar } from '../../domain/overview';
 import { ConsistencyHeatmap } from './ConsistencyHeatmap';
@@ -20,8 +21,9 @@ const GROUP_COLOR: Record<MuscleGroup, string> = {
   Other: C.muted2,
 };
 
-export function OverviewDashboard({ onBack }: { onBack: () => void }) {
+export function OverviewDashboard({ onBack, onOpenExercise }: { onBack: () => void; onOpenExercise?: (liftId: string) => void }) {
   const { state } = useStore();
+  const plateaus = useMemo(() => findPlateaus(state.sessions, state.inc), [state.sessions, state.inc]);
   const [rangeKey, setRangeKey] = useState('6m');
   const range = rangeFor(rangeKey);
   const ov = buildOverview(state.sessions, {
@@ -94,6 +96,28 @@ export function OverviewDashboard({ onBack }: { onBack: () => void }) {
             <Stat value={ov.avgPerWeek.toFixed(1)} label="Per week" tone={C.ink} />
             <Stat value={String(ov.windowWorkouts)} label="In range" tone={C.muted} />
           </div>
+
+          {plateaus.length > 0 && (
+            <Card title="Stalled lifts" right={`${plateaus.length}`}>
+              <ul className="mt-1 flex flex-col divide-y divide-line/60">
+                {plateaus.map((p) => (
+                  <li key={p.liftId}>
+                    <button
+                      type="button"
+                      onClick={() => onOpenExercise?.(p.liftId)}
+                      className="flex w-full flex-col gap-0.5 py-2.5 text-left"
+                    >
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="font-display text-[14px] font-bold">{p.name}</span>
+                        <span className="font-mono text-[12px] text-orange">{p.weeks} wk flat · e1RM {p.best}</span>
+                      </span>
+                      <span className="text-[12px] leading-snug text-muted-2">{p.advice}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
 
           {/* consistency heatmap — fixed 26-week window, independent of range */}
           <Card title="Consistency">

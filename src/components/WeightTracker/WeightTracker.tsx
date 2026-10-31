@@ -1,3 +1,4 @@
+import { calorieAdvice } from '../../domain/insights';
 import { useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { currentBodyweight } from '../../state/selectors';
@@ -20,6 +21,7 @@ export function WeightTracker({
   onOpenSettings: () => void;
 }) {
   const { state, dispatch } = useStore();
+  const advice = calorieAdvice(state.weighIns);
   const { weighIns, weightGoal } = state;
   const p = weightProgress(weighIns, weightGoal);
   // required daily deficit → calorie target, once the goal + profile are set;
@@ -119,6 +121,18 @@ export function WeightTracker({
           />
         </label>
       </div>
+
+      {advice && (
+        <div
+          className={[
+            'mt-3 rounded-2xl border px-4 py-3 text-[13px] leading-snug',
+            advice.change === 0 ? 'border-green/40 bg-green/10 text-ink' : 'border-orange/40 bg-orange/10 text-ink',
+          ].join(' ')}
+        >
+          <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-2">2-week check · 7-day averages</div>
+          <div className="mt-1">{advice.message}</div>
+        </div>
+      )}
 
       {p ? (
         <>

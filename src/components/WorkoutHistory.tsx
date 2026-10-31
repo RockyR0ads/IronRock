@@ -1,3 +1,4 @@
+import { shareWorkout } from '../domain/shareWorkout';
 import { attachmentLabel } from '../domain/attachments';
 import { useState } from 'react';
 import { useStore } from '../state/StoreContext';
@@ -225,8 +226,20 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
 
       <button
         type="button"
+        onClick={() => {
+          const accent = `rgb(${getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().split(/s+/).join(', ')})`;
+          shareWorkout(session, stats, accent).catch(() => {
+            /* share sheet dismissed */
+          });
+        }}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-accent py-3 font-display text-[14px] font-bold text-bg transition-transform active:scale-[0.99]"
+      >
+        Share workout
+      </button>
+      <button
+        type="button"
         onClick={saveAsRoutine}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-line-2 bg-surface py-3 font-display text-[14px] font-bold text-secondary transition-colors hover:border-secondary/50"
+        className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-line-2 bg-surface py-3 font-display text-[14px] font-bold text-secondary transition-colors hover:border-secondary/50"
       >
         Save as routine day
       </button>

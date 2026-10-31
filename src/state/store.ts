@@ -1,3 +1,4 @@
+import { readinessAdjust, type Readiness } from '../domain/insights';
 import type { WeekSet } from '../domain/programTracker';
 import { setLoadEntries } from '../domain/loadEntry';
 import { defaultDay, daysForProgram, setCustomDays } from '../domain/program';
@@ -68,6 +69,8 @@ export interface State {
   logs: Record<string, LoggedSet[][]>;
   /** In-progress workout note per day; archived onto the session on completion. */
   dayNote: Record<string, string>;
+  /** Today's pre-workout check-in per day: ratings and the RPE ease it applied. */
+  readiness?: Record<string, { r: Readiness; adjust: number }>;
   /** Last completed set per lift id — shown as a "last time" hint. */
   history: Record<string, LiftHistory>;
   /** Archived workouts, newest first. */
@@ -203,6 +206,7 @@ export type Action =
   | { type: 'removeSet'; dayKey: string; index: number; setIndex: number }
   | { type: 'clearDaySets'; dayKey: string }
   | { type: 'setDayNote'; dayKey: string; note: string }
+  | { type: 'setReadiness'; dayKey: string; r?: Readiness }
   | { type: 'completeWorkout'; dayKey: string; title: string; at: string; id: string }
   | { type: 'removeSession'; id: string }
   | { type: 'setActiveProgram'; id: string }
@@ -644,6 +648,12 @@ export function reducer(state: State, action: Action): State {
       delete logs[action.dayKey];
       return { ...state, logs };
     }
+    case 'setReadiness': {
+      const readiness = { ...(state.readiness ?? {}) };
+      if (action.r) readiness[action.dayKey] = { r: action.r, adjust: readinessAdjust(action.r).adjust };
+      else delete readiness[action.dayKey];
+      return { ...state, readiness };
+    }
     case 'setDayNote': {
       const dayNote = { ...state.dayNote };
       if (action.note.trim()) dayNote[action.dayKey] = action.note;
@@ -700,6 +710,9 @@ export function reducer(state: State, action: Action): State {
       delete logs[action.dayKey];
       const dayNote = { ...state.dayNote };
       delete dayNote[action.dayKey];
+      // the check-in was for this session only
+      const readiness = { ...(state.readiness ?? {}) };
+      delete readiness[action.dayKey];
       // today's deviations were one-off — next time this day starts from the
       // plan again (saved plan edits and option picks persist; freestyle is one-off)
       const sessionDays = { ...state.sessionDays };
@@ -710,6 +723,7 @@ export function reducer(state: State, action: Action): State {
         sessions: [session, ...state.sessions],
         logs,
         dayNote,
+        readiness,
         sessionDays,
       };
     }

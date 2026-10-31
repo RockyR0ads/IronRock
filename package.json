@@ -20,6 +20,8 @@
     "@capacitor/app": "^6.0.3",
     "@capacitor/cli": "^6.2.2",
     "@capacitor/core": "^6.2.2",
+    "@capacitor/filesystem": "^6.0.4",
+    "@capacitor/share": "^6.0.4",
     "react": "^18.3.1",
     "react-body-highlighter": "^2.0.5",
     "react-dom": "^18.3.1"

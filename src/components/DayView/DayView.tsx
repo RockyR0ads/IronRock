@@ -1,3 +1,4 @@
+import { ReadinessCard } from './ReadinessCard';
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { useRestTimer } from '../../state/RestTimer';
@@ -276,6 +277,8 @@ export function DayView({
           ) : null}
         </div>
       </div>
+
+      {!hasLogs && <ReadinessCard dayKey={state.day} />}
 
       <div className="flex flex-col gap-3">
         {blocks.map((block, i) => {
