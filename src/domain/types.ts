@@ -13,7 +13,8 @@ export type Category =
   | 'reardelt'
   | 'biceps'
   | 'triceps'
-  | 'calf';
+  | 'calf'
+  | 'core';
 
 /**
  * A lift in the catalogue.

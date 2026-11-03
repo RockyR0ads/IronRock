@@ -14,6 +14,7 @@ export const CAT: Record<Category, string> = {
   biceps: 'Biceps',
   triceps: 'Triceps',
   calf: 'Calves',
+  core: 'Abs',
 };
 
 /** Order categories appear in the "Add exercise" picker. */
@@ -95,6 +96,9 @@ export const LIFTS: Record<string, Lift> = {
   straightarmpd: { id: 'straightarmpd', name: 'Straight-arm cable pulldown', type: 'manual', unit: 'kg', cats: ['vpull'] },
   cablerow: { id: 'cablerow', name: 'Seated cable row', type: 'manual', unit: 'kg', cats: ['hpull'] },
   shrug: { id: 'shrug', name: 'Barbell shrug', type: 'manual', unit: 'kg on bar', cats: ['hpull'] },
+  // abs — keyed by their library ids so imported history lines up
+  Ab_Roller: { id: 'Ab_Roller', name: 'Ab wheel rollout', type: 'manual', unit: 'added kg', cats: ['core'], lib: 'Ab_Roller' },
+  Hanging_Leg_Raise: { id: 'Hanging_Leg_Raise', name: 'Hanging leg raise', type: 'manual', unit: 'added kg', cats: ['core'], lib: 'Hanging_Leg_Raise' },
   // timed holds & conditioning — measured in time / distance, not weight × reps
   plank: { id: 'plank', name: 'Plank', type: 'manual', unit: 'time', cats: [] },
   deadhang: { id: 'deadhang', name: 'Dead hang', type: 'manual', unit: 'time', cats: [] },

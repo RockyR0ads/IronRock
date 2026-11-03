@@ -137,6 +137,7 @@ const CAT_GROUP: Record<string, MuscleGroup> = {
   calf: 'Legs',
   biceps: 'Arms',
   triceps: 'Arms',
+  core: 'Core',
 };
 
 const GROUPS: MuscleGroup[] = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Other'];

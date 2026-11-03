@@ -52,9 +52,9 @@ export const PROGRAMS: ProgramMeta[] = [
   },
   {
     id: 'upper-lower-arms',
-    name: '4-Day PPL · Heavy + Volume',
+    name: '4-Day PPL v2 · Heavy + Volume',
     tagline: 'Grow arms & shoulders, hold the legs, cut 85 → 80 kg.',
-    focus: 'Push / Pull / Push / Legs + Pull. Chest and back twice a week — one heavy day (3–7 reps), one volume day (8–15). No rows on push days. Mon · Tue · Thu · Fri.',
+    focus: 'Push Heavy / Pull Heavy / Push Arms + Delts / Legs + Pull. Back twice (heavy + volume), chest twice for strength, side delts 16 sets a week. No rows on push days. Mon · Tue · Thu · Fri.',
     days: 4,
     level: 'Intermediate',
     origin: 'custom',
