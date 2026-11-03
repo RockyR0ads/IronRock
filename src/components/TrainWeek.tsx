@@ -102,6 +102,10 @@ export function TrainWeek({
             dispatch({ type: 'setWeek', set: { week: (prog.block - 1) * prog.cycleWeeks + w, at: prog.weekStartedAt ?? new Date().toISOString() } })
           }
           onAuto={() => dispatch({ type: 'setWeek' })}
+          onRestart={() => {
+            dispatch({ type: 'startProgram', at: new Date().toISOString() });
+            setWeekOpen(false);
+          }}
           onClose={() => setWeekOpen(false)}
         />
       )}
@@ -192,6 +196,7 @@ function WeekSheet({
   days,
   onSet,
   onAuto,
+  onRestart,
   onClose,
 }: {
   prog: RotationProgress;
@@ -199,8 +204,10 @@ function WeekSheet({
   days: { key: string; label: string }[];
   onSet: (week: number) => void;
   onAuto: () => void;
+  onRestart: () => void;
   onClose: () => void;
 }) {
+  const [confirmRestart, setConfirmRestart] = useState(false);
   const done = new Set(prog.doneThisWeek);
   const left = days.length - done.size;
   return (
@@ -311,6 +318,18 @@ function WeekSheet({
           ))}
         </div>
         <p className="mt-2 text-[11px] text-muted-2">Changes the number only — days already done this week stay ticked.</p>
+
+        <button
+          type="button"
+          onClick={() => (confirmRestart ? onRestart() : setConfirmRestart(true))}
+          className={[
+            'mt-5 w-full rounded-xl border py-2.5 text-[13px] font-bold',
+            confirmRestart ? 'border-red bg-red/15 text-red' : 'border-line-2 text-muted',
+          ].join(' ')}
+        >
+          {confirmRestart ? 'Tap again — back to Week 1, Day 1 from today' : 'Restart program'}
+        </button>
+        <p className="mt-2 text-[11px] text-muted-2">For after a long break: starts block 1, week 1 fresh. Your history is kept.</p>
 
         <div className="mt-5 flex gap-2">
           {prog.source === 'manual' && (

@@ -885,8 +885,11 @@ export function reducer(state: State, action: Action): State {
       return { ...state, profile: { ...state.profile, ...action.patch } };
     case 'setTheme':
       return { ...state, theme: { ...state.theme, ...action.patch } };
-    case 'startProgram':
-      return { ...state, programStart: action.at };
+    case 'startProgram': {
+      // a fresh start: week 1 from now, nothing done yet, any hand-set week dropped
+      const { weekSet: _s, ...rest } = state;
+      return { ...rest, programStart: action.at };
+    }
     case 'setWeek': {
       const { weekSet: _w, ...rest } = state;
       return action.set ? { ...rest, weekSet: action.set } : rest;
