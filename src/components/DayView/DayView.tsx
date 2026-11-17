@@ -222,7 +222,6 @@ export function DayView({
               {day.variant}
             </span>
           </h3>
-          <p className="m-0 mt-1 text-[13px] text-muted">{day.note}</p>
           {deviated && (
             <p className="m-0 mt-1.5 flex items-center gap-1.5 text-[12px] font-medium text-secondary">
               <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-secondary" />

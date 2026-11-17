@@ -13,6 +13,7 @@ import {
  */
 interface RestTimerNative {
   start(options: { seconds: number }): Promise<void>;
+  adjust(options: { seconds: number }): Promise<void>;
   stop(): Promise<void>;
   requestPermission(): Promise<{ granted: boolean }>;
 }
@@ -30,6 +31,8 @@ export interface RestNotifier {
   requestPermission(): void;
   /** A rest just started (`seconds` total). */
   start(seconds: number): void;
+  /** ±15 s mid-rest: `secondsLeft` is the new time remaining. */
+  adjust(secondsLeft: number): void;
   /** App went to the background mid-rest. */
   background(secondsLeft: number): void;
   /** App returned to the foreground. */
@@ -49,6 +52,9 @@ const nativeNotifier: RestNotifier = {
   start(seconds) {
     void Native.start({ seconds });
   },
+  adjust(secondsLeft) {
+    void Native.adjust({ seconds: secondsLeft });
+  },
   background() {},
   foreground() {},
   complete() {},
@@ -64,6 +70,7 @@ const webNotifier: RestNotifier = {
   start(seconds) {
     if (document.hidden) showRestNotification(seconds);
   },
+  adjust() {}, // web only posts once backgrounded, with the time left then
   background(secondsLeft) {
     showRestNotification(secondsLeft);
   },

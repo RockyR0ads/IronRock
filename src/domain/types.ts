@@ -82,6 +82,11 @@ export interface Block {
    * double-progress the load).
    */
   prog?: 'hold' | 'push';
+  /**
+   * Top set + back-off: set 1 is the top set, the rest drop to `pct` of it for
+   * `reps`. The first back-off set opens pre-filled from the top set.
+   */
+  backoff?: { pct: number; reps: Reps };
 }
 
 /** A training day. */

@@ -6,8 +6,18 @@ import { useId } from 'react';
  * small header/nav mark. Brand-constant red — it does NOT follow the themeable
  * accent, so the logo reads the same whatever palette the user picks.
  */
-export function PlateMark({ size = 44, className }: { size?: number; className?: string }) {
+export function PlateMark({
+  size = 44,
+  className,
+  remaining,
+}: {
+  size?: number;
+  className?: string;
+  /** 0–1: run the plate down like a clock — the spent part, from 12 o'clock clockwise, goes dark. */
+  remaining?: number;
+}) {
   const id = useId().replace(/:/g, '');
+  const spent = remaining === undefined ? 0 : 1 - Math.max(0, Math.min(1, remaining));
   return (
     <svg
       width={size}
@@ -32,11 +42,21 @@ export function PlateMark({ size = 44, className }: { size?: number; className?:
       <ellipse cx="49" cy="41" rx="29" ry="15" fill="#ffffff" fillOpacity="0.22" />
       <circle cx="64" cy="64" r="50" fill="none" stroke="#3C120E" strokeOpacity="0.3" strokeWidth="2" />
       <circle cx="64" cy="64" r="33" fill="none" stroke="#280A08" strokeOpacity="0.28" strokeWidth="1" />
+      {spent > 0 && <path d={wedge(spent)} fill="#1A1C20" fillOpacity="0.82" />}
       <circle cx="64" cy="64" r="21" fill={`url(#${id}h)`} stroke="#8A342B" strokeWidth="1" />
       <circle cx="64" cy="64" r="8.5" fill="#141619" />
       <circle cx="64" cy="64" r="8.5" fill="none" stroke="#ffffff" strokeOpacity="0.18" strokeWidth="1" />
     </svg>
   );
+}
+
+/** Pie slice of the plate face from 12 o'clock clockwise, covering `frac` of it. */
+function wedge(frac: number): string {
+  if (frac >= 0.9999) return 'M64 7.5a56.5 56.5 0 1 1 0 113a56.5 56.5 0 1 1 0-113Z';
+  const a = frac * 2 * Math.PI;
+  const x = 64 + 56.5 * Math.sin(a);
+  const y = 64 - 56.5 * Math.cos(a);
+  return `M64 64L64 7.5A56.5 56.5 0 ${frac > 0.5 ? 1 : 0} 1 ${x.toFixed(2)} ${y.toFixed(2)}Z`;
 }
 
 /**

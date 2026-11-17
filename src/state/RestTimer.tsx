@@ -75,6 +75,8 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
   }, [stop]);
 
   const addTime = useCallback((delta: number) => {
+    const next = Math.max(0, leftRef.current + delta);
+    if (runningRef.current) restNotifier.adjust(next); // keep the lock-screen countdown and alarm in step
     setSecondsLeft((s) => Math.max(0, s + delta));
     setDuration((d) => Math.max(d, 0));
   }, []);

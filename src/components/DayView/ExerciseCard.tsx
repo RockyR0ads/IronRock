@@ -1,4 +1,9 @@
-import { attachmentChoosable, attachmentFor, attachmentLabel, bodyPartOf } from '../../domain/attachments';
+import {
+  attachmentChoosable,
+  attachmentFor,
+  attachmentLabel,
+  bodyPartOf,
+} from '../../domain/attachments';
 import { AttachmentIcon } from '../AttachmentIcon';
 import { AttachmentSheet } from '../AttachmentChips';
 import { loadEntryFor } from '../../domain/loadEntry';
@@ -33,14 +38,16 @@ import { suggestNext } from '../../domain/progression';
 import { liftMeasure, fmtSecs, parseSecs } from '../../domain/measure';
 import { detectSetPr } from '../../domain/records';
 import { celebratePr } from '../PrToast';
-import type { Block, BlockClass, Increment, LiftHistory, LoggedSet, WarmupFeel } from '../../domain/types';
-
-/** Intensity → dot color. */
-const DOT: Record<BlockClass, string> = {
-  'r-hi': 'bg-red',
-  'r-mid': 'bg-blue',
-  'r-iso': 'bg-yellow',
-};
+import type {
+  Block,
+  BlockClass,
+  Increment,
+  LiftHistory,
+  LoggedSet,
+  Session,
+  WarmupFeel,
+} from '../../domain/types';
+import { predictNext } from '../../domain/nextSet';
 
 /** Intensity → RPE chip color. */
 const CHIP: Record<BlockClass, string> = {
@@ -221,9 +228,13 @@ function prefillSet(
   targetLoad: number | null,
   inc: Increment,
   history?: LiftHistory,
-  perSideDefault = false
+  perSideDefault = false,
+  sessions: Session[] = []
 ): LoggedSet {
   const last = [...sets].reverse().find((s) => !s.warmup);
+  // predicted from the plan's back-off or last session's set-to-set pattern
+  const drop = predictNext(block, sets, sessions, inc);
+  if (last && drop) return { ...drop, rpe: '', done: false, ...(last.perSide ? { perSide: true, repsR: drop.reps } : {}) };
   if (last) {
     // a new row inherits the previous set's per-side choice
     const side = last.perSide ? { perSide: true, repsR: last.repsR ?? '' } : {};
@@ -237,7 +248,13 @@ function prefillSet(
   // first working set of the session: open with the progression suggestion
   const suggestion = suggestNext(block, history, inc);
   if (suggestion) {
-    return { w: String(suggestion.w), reps: String(suggestion.reps), rpe: '', done: false, ...side };
+    return {
+      w: String(suggestion.w),
+      reps: String(suggestion.reps),
+      rpe: '',
+      done: false,
+      ...side,
+    };
   }
   if (history) return { ...history, done: false, ...side };
   const reps = Array.isArray(block.reps) ? block.reps[1] : block.reps;
@@ -262,7 +279,8 @@ function prefillWarmup(sets: LoggedSet[], perSideDefault = false): LoggedSet {
 }
 
 /**
- * One typed value in a logged set. Fills green once the set is checked off.
+ * One typed value in a logged set. Stays neutral once checked off — the tick
+ * says it's done, so the RPE's effort colour is what stands out down the card.
  * Tap to type; press and hold to reveal quick-step chips (see useHoldMenu),
  * so the next set's weight/reps can be nudged off the last without typing.
  */
@@ -334,9 +352,7 @@ function SetInput({
             ? done
               ? '' // colour comes from warmStyle (tinted)
               : 'text-ink' // faint warm tint comes from warmStyle
-            : done
-              ? 'bg-green/20 text-green'
-              : 'bg-surface-2 text-ink',
+            : 'bg-surface-2 text-ink',
         ].join(' ')}
       />
       {hold.menu}
@@ -353,7 +369,6 @@ function MeasureCell({
   value,
   kind,
   label,
-  done,
   onCommit,
 }: {
   value: string;
@@ -389,7 +404,7 @@ function MeasureCell({
       }}
       className={[
         'h-11 w-full rounded-[9px] text-center font-mono text-[15px] font-bold transition-colors placeholder:font-normal placeholder:text-muted-2 focus:outline-none focus:ring-2 focus:ring-secondary/70',
-        done ? 'bg-green/20 text-green' : 'bg-surface-2 text-ink',
+        'bg-surface-2 text-ink',
       ].join(' ')}
     />
   );
@@ -485,7 +500,6 @@ function RepsCell({
 function RpeButton({
   value,
   base,
-  done,
   label,
   onOpen,
   onApply,
@@ -556,15 +570,18 @@ function RpeButton({
     <button
       type="button"
       aria-haspopup="dialog"
-      aria-label={rated ? `${label}, currently ${value}. Swipe to adjust` : `${label}, not rated. Swipe to adjust`}
+      aria-label={
+        rated
+          ? `${label}, currently ${value}. Swipe to adjust`
+          : `${label}, not rated. Swipe to adjust`
+      }
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onClick={onClick}
       style={
-        // once a working set is done, the RPE settles into the row's green
-        // rather than keeping its effort hue — one calm colour per done row
-        rated && !done
+        // the effort hue stays after the set is ticked — difficulty at a glance
+        rated
           ? {
               backgroundColor: `hsl(${hue} 60% 45% / 0.14)`,
               color: `hsl(${hue} 70% 68%)`,
@@ -573,13 +590,7 @@ function RpeButton({
       }
       className={[
         'h-11 w-full touch-none select-none rounded-[9px] text-center font-mono text-[15px] font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-secondary/70',
-        rated
-          ? done
-            ? 'bg-green/20 text-green'
-            : ''
-          : done
-            ? 'bg-green/20 text-green'
-            : 'bg-surface-2 text-muted-2 hover:text-ink',
+        rated ? '' : 'bg-surface-2 text-muted-2 hover:text-ink',
       ].join(' ')}
     >
       {rated ? value : '–'}
@@ -664,7 +675,10 @@ export function ExerciseCard({
   const attachment = attachmentFor(lift, state.exerciseConfig[block.lift]?.attachment);
   const choosable = attachmentChoosable(lift);
   const [attachOpen, setAttachOpen] = useState(false);
-  const lastDone = useMemo(() => lastDoneLabel(state.sessions, block.lift), [state.sessions, block.lift]);
+  const lastDone = useMemo(
+    () => lastDoneLabel(state.sessions, block.lift),
+    [state.sessions, block.lift]
+  );
   const perLeg = isPerLeg(block, lift.uni);
   const sets = setsFor(state, dayKey, index);
   const target = lift.type === 'computed' ? blockLoad(state, block) : null;
@@ -676,7 +690,9 @@ export function ExerciseCard({
   const measure = liftMeasure(lift);
   const scheme =
     measure === 'weight'
-      ? `${block.sets} × ${repLabel(block.reps)}${perLeg ? '/leg' : ''}`
+      ? block.backoff
+        ? `1 × ${repLabel(block.reps)} + ${block.sets - 1} × ${repLabel(block.backoff.reps)} @ ${Math.round(block.backoff.pct * 100)}%`
+        : `${block.sets} × ${repLabel(block.reps)}${perLeg ? '/leg' : ''}`
       : `${block.sets} ${block.sets === 1 ? 'set' : 'sets'} · ${measure === 'time' ? 'timed' : 'distance'}`;
   const cardId = `blk-${dayKey}-${index}`;
   // if any set logs reps per side, widen the reps column and split its header
@@ -776,7 +792,8 @@ export function ExerciseCard({
         />
       )}
       <div className="relative z-10">
-        <div className="flex items-center gap-2.5">
+        {/* wraps: a long name pushes the plate bar and set count onto a second line */}
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
           {complete ? (
             <span
               className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green text-bg"
@@ -784,9 +801,7 @@ export function ExerciseCard({
             >
               <CheckIcon className="h-3 w-3" />
             </span>
-          ) : (
-            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[block.cls]}`} aria-hidden />
-          )}
+          ) : null}
           {superset && (
             <span className="shrink-0 rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[11px] font-black text-bg">
               {superset.label}
@@ -799,13 +814,13 @@ export function ExerciseCard({
               aria-label={`Open ${lift.name} exercise page`}
               className="group flex min-w-0 shrink items-center gap-1 text-left"
             >
-              <span className="min-w-0 truncate font-display text-[16px] font-bold tracking-[-0.01em] transition-colors group-hover:text-secondary">
+              <span className="min-w-0 font-display text-[16px] font-bold tracking-[-0.01em] transition-colors group-hover:text-secondary">
                 {lift.name}
               </span>
               <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-2 transition-colors group-hover:text-secondary" />
             </button>
           ) : (
-            <span className="min-w-0 shrink truncate font-display text-[16px] font-bold tracking-[-0.01em]">
+            <span className="min-w-0 shrink font-display text-[16px] font-bold tracking-[-0.01em]">
               {lift.name}
             </span>
           )}
@@ -833,23 +848,26 @@ export function ExerciseCard({
               {attachmentLabel(attachment)}
             </button>
           )}
-          {isBarbell && barWeight > 0 ? (
-            <span className="min-w-[48px] flex-1">
-              <PlateBar weight={barWeight} bar={emptyBar} />
-            </span>
-          ) : (
-            <span className="flex-1" />
-          )}
-          {showBadge && (
-            <span
-              className={[
-                'shrink-0 rounded-full px-2.5 py-1 font-mono text-[12px] font-bold tabular-nums',
-                complete ? 'bg-green/15 text-green' : 'bg-surface-2 text-muted',
-              ].join(' ')}
-            >
-              {badgeText}
-            </span>
-          )}
+          {/* plate bar + set count travel together, so they wrap as one */}
+          <span className="flex min-w-[170px] flex-1 items-center gap-2.5">
+            {isBarbell && barWeight > 0 ? (
+              <span className="min-w-0 flex-1">
+                <PlateBar weight={barWeight} bar={emptyBar} />
+              </span>
+            ) : (
+              <span className="flex-1" />
+            )}
+            {showBadge && (
+              <span
+                className={[
+                  'ml-auto shrink-0 rounded-full px-2.5 py-1 font-mono text-[12px] font-bold tabular-nums',
+                  complete ? 'bg-green/15 text-green' : 'bg-surface-2 text-muted',
+                ].join(' ')}
+              >
+                {badgeText}
+              </span>
+            )}
+          </span>
         </div>
 
         {!freestyle && (
@@ -879,7 +897,10 @@ export function ExerciseCard({
             <span className="font-bold text-ink">
               {suggestion.w} kg × {suggestion.reps}
             </span>
-            <span className={suggestion.bumped ? 'text-green' : 'text-muted-2'}> · {suggestion.note}</span>
+            <span className={suggestion.bumped ? 'text-green' : 'text-muted-2'}>
+              {' '}
+              · {suggestion.note}
+            </span>
           </div>
         )}
       </div>
@@ -887,11 +908,17 @@ export function ExerciseCard({
       {/* logged sets */}
       {sets.length > 0 && (
         <div className="relative z-10 mt-3 space-y-1.5">
-          <div className={`grid ${gridCols} gap-2 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-2`}>
+          <div
+            className={`grid ${gridCols} gap-2 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-2`}
+          >
             <span className="text-center">Set</span>
             <span aria-hidden />
             <span className="text-center">
-              {measure === 'distance' ? 'm' : loadEntryFor(block.lift) === 'perSide' ? 'kg/side' : 'kg'}
+              {measure === 'distance'
+                ? 'm'
+                : loadEntryFor(block.lift) === 'perSide'
+                  ? 'kg/side'
+                  : 'kg'}
             </span>
             {measure !== 'weight' ? (
               <span className="text-center">time</span>
@@ -917,14 +944,8 @@ export function ExerciseCard({
               const rowLabel = warm ? 'W' : wn;
               // each warm-up set gets its colour from the heating-up ramp
               const warmTone = warm ? heatColor(warmN - 1) : undefined;
-              // faint full-row wash matching the set's state (done green / warm tone)
-              const rowBg = warm
-                ? warmTone
-                  ? `${warmTone}14`
-                  : undefined
-                : set.done
-                  ? '#41C27712'
-                  : undefined;
+              // faint full-row wash for warm-ups only (their heating-up tone)
+              const rowBg = warm ? (warmTone ? `${warmTone}14` : undefined) : undefined;
               // special set type (drop / failure / rest-pause / myo) — working sets only
               const typeMeta = warm ? undefined : setTypeMeta(set.type);
               return (
@@ -991,23 +1012,37 @@ export function ExerciseCard({
                       done={!!set.done}
                       label={`${lift.name} set ${rowLabel} distance in metres`}
                       onCommit={(v) =>
-                        dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'dist', value: v })
+                        dispatch({
+                          type: 'updateSet',
+                          dayKey,
+                          index,
+                          setIndex: si,
+                          field: 'dist',
+                          value: v,
+                        })
                       }
                     />
                   ) : (
-                  <SetInput
-                    value={set.w}
-                    mode="decimal"
-                    kind="weight"
-                    base={() => cellBase(sets, si, 'w')}
-                    done={!!set.done}
-                    warmup={warm}
-                    warmTone={warmTone}
-                    label={`${lift.name} ${warm ? 'warm-up' : `set ${rowLabel}`} weight`}
-                    onChange={(v) =>
-                      dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'w', value: v })
-                    }
-                  />
+                    <SetInput
+                      value={set.w}
+                      mode="decimal"
+                      kind="weight"
+                      base={() => cellBase(sets, si, 'w')}
+                      done={!!set.done}
+                      warmup={warm}
+                      warmTone={warmTone}
+                      label={`${lift.name} ${warm ? 'warm-up' : `set ${rowLabel}`} weight`}
+                      onChange={(v) =>
+                        dispatch({
+                          type: 'updateSet',
+                          dayKey,
+                          index,
+                          setIndex: si,
+                          field: 'w',
+                          value: v,
+                        })
+                      }
+                    />
                   )}
                   {measure !== 'weight' ? (
                     <MeasureCell
@@ -1016,27 +1051,50 @@ export function ExerciseCard({
                       done={!!set.done}
                       label={`${lift.name} set ${rowLabel} time`}
                       onCommit={(v) =>
-                        dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'secs', value: v })
+                        dispatch({
+                          type: 'updateSet',
+                          dayKey,
+                          index,
+                          setIndex: si,
+                          field: 'secs',
+                          value: v,
+                        })
                       }
                     />
                   ) : (
-                  <RepsCell
-                    set={set}
-                    perSide={!!set.perSide}
-                    done={!!set.done}
-                    warmup={warm}
-                    warmTone={warmTone}
-                    label={`${lift.name} ${warm ? 'warm-up' : `set ${rowLabel}`}`}
-                    baseLeft={() => cellBase(sets, si, 'reps')}
-                    baseRight={() => cellBase(sets, si, 'repsR')}
-                    onLeft={(v) =>
-                      dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'reps', value: v })
-                    }
-                    onRight={(v) =>
-                      dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'repsR', value: v })
-                    }
-                    onToggle={() => dispatch({ type: 'toggleSetPerSide', dayKey, index, setIndex: si })}
-                  />
+                    <RepsCell
+                      set={set}
+                      perSide={!!set.perSide}
+                      done={!!set.done}
+                      warmup={warm}
+                      warmTone={warmTone}
+                      label={`${lift.name} ${warm ? 'warm-up' : `set ${rowLabel}`}`}
+                      baseLeft={() => cellBase(sets, si, 'reps')}
+                      baseRight={() => cellBase(sets, si, 'repsR')}
+                      onLeft={(v) =>
+                        dispatch({
+                          type: 'updateSet',
+                          dayKey,
+                          index,
+                          setIndex: si,
+                          field: 'reps',
+                          value: v,
+                        })
+                      }
+                      onRight={(v) =>
+                        dispatch({
+                          type: 'updateSet',
+                          dayKey,
+                          index,
+                          setIndex: si,
+                          field: 'repsR',
+                          value: v,
+                        })
+                      }
+                      onToggle={() =>
+                        dispatch({ type: 'toggleSetPerSide', dayKey, index, setIndex: si })
+                      }
+                    />
                   )}
                   {warm ? (
                     <FeelButton
@@ -1052,7 +1110,14 @@ export function ExerciseCard({
                       label={`${lift.name} set ${rowLabel} RPE`}
                       onOpen={() => setRpeFor(si)}
                       onApply={(v) =>
-                        dispatch({ type: 'updateSet', dayKey, index, setIndex: si, field: 'rpe', value: v })
+                        dispatch({
+                          type: 'updateSet',
+                          dayKey,
+                          index,
+                          setIndex: si,
+                          field: 'rpe',
+                          value: v,
+                        })
                       }
                     />
                   )}
@@ -1091,7 +1156,6 @@ export function ExerciseCard({
                         set.done ? (popped === si ? 'animate-check-pop' : '') : 'opacity-40',
                       ].join(' ')}
                     />
-
                   </button>
                 </SwipeRow>
               );
@@ -1115,9 +1179,13 @@ export function ExerciseCard({
               type: 'addSet',
               dayKey,
               index,
-              set: measure === 'weight'
-                ? prefillSet(block, sets, target, state.inc, history, perSideDefault)
-                : { ...prefillSet(block, sets, target, state.inc, history, perSideDefault), reps: '' },
+              set:
+                measure === 'weight'
+                  ? prefillSet(block, sets, target, state.inc, history, perSideDefault, state.sessions)
+                  : {
+                      ...prefillSet(block, sets, target, state.inc, history, perSideDefault),
+                      reps: '',
+                    },
             })
           }
           className="inline-flex flex-[3] items-center justify-center gap-1.5 rounded-lg bg-secondary/15 px-3 py-2 text-[13px] font-semibold text-secondary transition-colors hover:bg-secondary/25"
@@ -1182,7 +1250,9 @@ export function ExerciseCard({
           title={lift.name}
           suggested={bodyPartOf(block.lift)}
           value={attachment}
-          onPick={(id) => dispatch({ type: 'setExerciseConfig', id: block.lift, patch: { attachment: id } })}
+          onPick={(id) =>
+            dispatch({ type: 'setExerciseConfig', id: block.lift, patch: { attachment: id } })
+          }
           onClose={() => setAttachOpen(false)}
         />
       )}
@@ -1202,7 +1272,14 @@ export function ExerciseCard({
             setRpeFor(null);
           }}
           onClear={() => {
-            dispatch({ type: 'updateSet', dayKey, index, setIndex: rpeFor, field: 'rpe', value: '' });
+            dispatch({
+              type: 'updateSet',
+              dayKey,
+              index,
+              setIndex: rpeFor,
+              field: 'rpe',
+              value: '',
+            });
             setRpeFor(null);
           }}
           onClose={() => setRpeFor(null)}
@@ -1219,7 +1296,11 @@ export function ExerciseCard({
               dayKey,
               index,
               setIndex: noteFor,
-              patch: { note: patch.note || undefined, quality: patch.quality, flags: patch.flags.length ? patch.flags : undefined },
+              patch: {
+                note: patch.note || undefined,
+                quality: patch.quality,
+                flags: patch.flags.length ? patch.flags : undefined,
+              },
             });
             setNoteFor(null);
           }}
@@ -1261,7 +1342,10 @@ export function ExerciseCard({
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** "today" / "3d" / "2w" / "4mo" since the lift was last logged (and the raw days, for its colour), or null if never. */
-function lastDoneLabel(sessions: { id: string; at: string; exercises: { liftId: string }[] }[], liftId: string) {
+function lastDoneLabel(
+  sessions: { id: string; at: string; exercises: { liftId: string }[] }[],
+  liftId: string
+) {
   const hit = sessions.find((s) => s.exercises.some((e) => e.liftId === liftId));
   if (!hit) return null;
   const d = new Date(hit.at);
@@ -1271,6 +1355,19 @@ function lastDoneLabel(sessions: { id: string; at: string; exercises: { liftId: 
   day.setHours(0, 0, 0, 0);
   const days = Math.round((today.getTime() - day.getTime()) / DAY_MS);
   const ago =
-    days <= 0 ? 'today' : days < 14 ? `${days}d` : days < 60 ? `${Math.floor(days / 7)}w` : days < 730 ? `${Math.floor(days / 30)}mo` : `${Math.floor(days / 365)}y`;
-  return { sessionId: hit.id, days, ago, date: d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) };
+    days <= 0
+      ? 'today'
+      : days < 14
+        ? `${days}d`
+        : days < 60
+          ? `${Math.floor(days / 7)}w`
+          : days < 730
+            ? `${Math.floor(days / 30)}mo`
+            : `${Math.floor(days / 365)}y`;
+  return {
+    sessionId: hit.id,
+    days,
+    ago,
+    date: d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
+  };
 }

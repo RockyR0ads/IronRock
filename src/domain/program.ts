@@ -100,9 +100,9 @@ export const ULA_DAYS: Day[] = [
     key: 'ppl4PushH',
     label: 'Push',
     variant: 'Heavy',
-    note: 'Bench: set 1 is a top set of 3–5 @ RPE 8, then 3 back-off sets of 5–6 at ~90% of it. Then OHP, side delts, close-grip bench and overhead extensions. ~55 min.',
+    note: 'Bench: set 1 is a top set of 3–5 @ RPE 8, then 3 back-off sets of 5–6 at ~90% of it (set 2 fills in for you). Then OHP, side delts, close-grip bench and overhead extensions. ~55 min.',
     blocks: [
-      { lift: 'bench', alts: ['dbbench'], sets: 4, reps: [3, 6], rpe: 8, cls: 'r-hi', cat: 'hpress', prog: 'hold' },
+      { lift: 'bench', alts: ['dbbench'], sets: 4, reps: [3, 5], rpe: 8, cls: 'r-hi', cat: 'hpress', prog: 'hold', backoff: { pct: 0.9, reps: [5, 6] } },
       { lift: 'ohp', alts: ['dbohp'], sets: 3, reps: [5, 7], rpe: 8, cls: 'r-hi', cat: 'vpress', prog: 'hold' },
       { lift: 'cablelatraise', alts: ['latraise'], sets: 4, reps: [12, 15], rpe: '9–10', cls: 'r-iso', cat: 'latdelt', prog: 'push' },
       { lift: 'cgbench', alts: ['dips'], sets: 3, reps: [6, 8], rpe: 8, cls: 'r-hi', cat: 'triceps', prog: 'hold' },

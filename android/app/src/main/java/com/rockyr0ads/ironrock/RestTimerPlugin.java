@@ -48,6 +48,15 @@ public class RestTimerPlugin extends Plugin {
         }
     }
 
+    /** ±15 s mid-rest: move the finish time, keeping the plate's start so it reads true. */
+    @PluginMethod
+    public void adjust(PluginCall call) {
+        Integer seconds = call.getInt("seconds", 0);
+        long finishAt = System.currentTimeMillis() + (seconds == null ? 0L : seconds.longValue()) * 1000L;
+        RestNotifications.adjust(getContext(), finishAt);
+        call.resolve();
+    }
+
     @PluginMethod
     public void stop(PluginCall call) {
         RestNotifications.clear(getContext());

@@ -4,6 +4,8 @@ import { buildSteps, STRETCH_TEMPLATES, sessionAreas } from '../../domain/stretc
 import { newSessionId } from '../../domain/session';
 import type { StretchSession } from '../../domain/stretchSession';
 import { CheckIcon, ChevronLeft, ChevronRight } from '../common/icons';
+import { ExerciseGuide } from '../common/ExerciseGuide';
+import { stretchGuide, stretchVideoUrl } from '../../domain/stretchGuide';
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.max(0, s) % 60).padStart(2, '0')}`;
 
@@ -28,6 +30,7 @@ export function StretchPlayer({ onExit }: { onExit: () => void }) {
   const step = steps[idx];
   const [remaining, setRemaining] = useState(step?.seconds ?? 0);
   const [paused, setPaused] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [summary, setSummary] = useState<StretchSession | null>(null);
 
   // reset the clock whenever the step changes
@@ -194,7 +197,48 @@ export function StretchPlayer({ onExit }: { onExit: () => void }) {
         </div>
 
         <p className="mt-6 max-w-[42ch] text-[14px] leading-relaxed text-muted">{step.cue}</p>
+        {stretchGuide(step.stretchId).instructions[0] && stretchGuide(step.stretchId).instructions[0] !== step.cue && (
+          <p className="mt-2 max-w-[42ch] text-[12px] leading-relaxed text-muted-2">
+            <span className="font-bold text-muted">Setup: </span>
+            {/* first real instruction — skip intro lines like "This is a three-part stretch." */}
+            {stretchGuide(step.stretchId)
+              .instructions[0].split(/(?<=\.)\s/)
+              .find((l) => !/^(this is|it's)/i.test(l))}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setPaused(true);
+            setGuideOpen(true);
+          }}
+          className="mt-4 rounded-full border border-line-2 bg-surface-2 px-4 py-2 text-[12px] font-bold text-secondary"
+        >
+          How to do it
+        </button>
       </div>
+
+      {guideOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60" onClick={(e) => e.target === e.currentTarget && setGuideOpen(false)}>
+          <div className="max-h-[88dvh] w-full max-w-[560px] overflow-y-auto rounded-t-3xl border border-line bg-surface p-5 pb-safe">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="font-display text-[18px] font-black uppercase">{step.name}</span>
+              <button type="button" onClick={() => setGuideOpen(false)} className="text-[13px] font-semibold text-muted">
+                Close
+              </button>
+            </div>
+            <ExerciseGuide ex={stretchGuide(step.stretchId)} />
+            <a
+              href={stretchVideoUrl(step.stretchId)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 block w-full rounded-xl bg-red/15 py-3 text-center text-[13px] font-bold text-red"
+            >
+              Watch on YouTube
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* controls */}
       <div className="mt-2">
