@@ -1,3 +1,5 @@
+import { customEquipment, unitForCustomEquipment } from '../../domain/customEquipment';
+import { EquipmentChips } from '../EquipmentChips';
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../state/StoreContext';
 import { liftById } from '../../state/store';
@@ -49,7 +51,7 @@ function libRow(ex: LibraryExercise): Row {
 /** Built-in lifts as picker rows — matched by search words or by muscle group. */
 const norm = (t: string) => (t.length > 3 && t.endsWith('s') && !t.endsWith('ss') ? t.slice(0, -1) : t);
 function builtInRows(match: { query?: string; group?: MuscleGroup }): Row[] {
-  const terms = (match.query ?? '').toLowerCase().split(/s+/).filter(Boolean).map(norm);
+  const terms = (match.query ?? '').toLowerCase().split(/\s+/).filter(Boolean).map(norm);
   return Object.values(LIFTS)
     .filter((l) => {
       if (match.group) return muscleGroupOf(l.id, {}) === match.group;
@@ -65,14 +67,11 @@ function uniqueRows(rows: Row[]): Row[] {
   return rows.filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
 }
 
-/** Equipment presets for a custom exercise, mapped to a logging unit. */
-const EQUIPMENT = [
-  { label: 'Barbell', unit: 'kg on bar' },
-  { label: 'Dumbbell', unit: 'kg / DB' },
-  { label: 'Machine / Cable', unit: 'kg' },
-  { label: 'Bodyweight', unit: 'bodyweight' },
-  { label: 'Other', unit: 'kg' },
-];
+
+/** Picker subtitle for a custom exercise: what it's on and the muscle group. */
+function customSub(c: { unit: string; group: string; equipment?: string }): string {
+  return `${customEquipment(c) ?? 'Equipment not set'} · ${c.group}`;
+}
 
 export function ExercisePicker({
   request,
@@ -93,7 +92,7 @@ export function ExercisePicker({
   const [detailId, setDetailId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [attachFor, setAttachFor] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', group: 'Chest' as MuscleGroup, unit: 'kg on bar' });
+  const [form, setForm] = useState({ name: '', group: 'Chest' as MuscleGroup, equipment: '' });
 
   const open = !!request;
 
@@ -106,7 +105,7 @@ export function ExercisePicker({
     setDetailId(null);
     setCreating(false);
     setAttachFor(null);
-    setForm({ name: '', group: 'Chest', unit: 'kg on bar' });
+    setForm({ name: '', group: 'Chest', equipment: '' });
     setTimeout(() => searchRef.current?.focus(), 50);
   }, [open]);
 
@@ -141,7 +140,7 @@ export function ExercisePicker({
       ? []
       : customEntries
           .filter(([, c]) => c.name.toLowerCase().includes(q))
-          .map(([id, c]) => ({ id, name: c.name, sub: c.unit || 'Custom', hasDetail: false }));
+          .map(([id, c]) => ({ id, name: c.name, sub: customSub(c), hasDetail: false }));
     rows = uniqueRows([
       ...custom,
       ...(equip ? [] : builtInRows({ query })),
@@ -151,7 +150,7 @@ export function ExercisePicker({
     rows = customEntries.map(([id, c]) => ({
       id,
       name: c.name,
-      sub: c.unit || 'Custom',
+      sub: customSub(c),
       hasDetail: false,
     }));
   } else {
@@ -168,15 +167,22 @@ export function ExercisePicker({
   }
 
   function startCreate(prefillName = '') {
-    setForm({ name: prefillName, group: group === 'My' ? 'Chest' : group, unit: 'kg on bar' });
+    setForm({ name: prefillName, group: group === 'My' ? 'Chest' : group, equipment: '' });
     setCreating(true);
   }
 
   function createCustom() {
     const name = form.name.trim();
-    if (!name) return;
+    if (!name || !form.equipment) return;
     const id = `custom-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-    dispatch({ type: 'addCustomLift', id, name, unit: form.unit, group: form.group });
+    dispatch({
+      type: 'addCustomLift',
+      id,
+      name,
+      unit: unitForCustomEquipment(form.equipment),
+      group: form.group,
+      equipment: form.equipment,
+    });
     onPick(id);
   }
 
@@ -260,26 +266,16 @@ export function ExercisePicker({
                   ))}
                 </select>
               </label>
-              <label className="block">
+              <div>
                 <span className="mb-1.5 block text-[12px] font-medium text-muted">Equipment</span>
-                <select
-                  value={form.unit}
-                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-line-2 bg-surface-2 px-3 text-[15px] text-ink focus:border-secondary focus:outline-none"
-                >
-                  {EQUIPMENT.map((eq) => (
-                    <option key={eq.label} value={eq.unit}>
-                      {eq.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <EquipmentChips value={form.equipment} onPick={(equipment) => setForm((f) => ({ ...f, equipment }))} />
+              </div>
             </div>
             <div className="border-t border-line px-5 py-3 pb-safe">
               <button
                 type="button"
                 onClick={createCustom}
-                disabled={!form.name.trim()}
+                disabled={!form.name.trim() || !form.equipment}
                 className="w-full rounded-xl bg-accent py-3 font-display text-[14px] font-bold text-bg shadow-glow transition-transform active:scale-[0.99] disabled:opacity-40 disabled:shadow-none"
               >
                 Create & add

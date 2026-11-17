@@ -227,7 +227,7 @@ function SessionDetail({ session, onBack }: { session: Session; onBack: () => vo
       <button
         type="button"
         onClick={() => {
-          const accent = `rgb(${getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().split(/s+/).join(', ')})`;
+          const accent = `rgb(${getComputedStyle(document.documentElement).getPropertyValue('--accent').trim().split(/\s+/).join(', ')})`;
           shareWorkout(session, stats, accent).catch(() => {
             /* share sheet dismissed */
           });

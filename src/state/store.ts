@@ -1,3 +1,4 @@
+import { customEquipment } from '../domain/customEquipment';
 import { readinessAdjust, type Readiness } from '../domain/insights';
 import type { WeekSet } from '../domain/programTracker';
 import { setLoadEntries } from '../domain/loadEntry';
@@ -34,6 +35,8 @@ export interface CustomLift {
   name: string;
   unit: string;
   group: string;
+  /** What it's done on — Machine, Cable, Dumbbell… (see CUSTOM_EQUIPMENT). */
+  equipment?: string;
 }
 
 export interface State {
@@ -173,7 +176,8 @@ export function liftById(state: State, id: string): Lift {
   const curated = LIFTS[canonicalLiftId(id)];
   if (curated) return curated;
   const custom = state.customLifts[id];
-  if (custom) return { id, name: custom.name, type: 'manual', unit: custom.unit, cats: [] };
+  if (custom)
+    return { id, name: custom.name, type: 'manual', unit: custom.unit, cats: [], custom: true, equip: customEquipment(custom) };
   const lib = LIBRARY_BY_ID[id];
   if (lib) return libraryLift(lib);
   return { id, name: id, type: 'manual', unit: '', cats: [] };
@@ -192,7 +196,8 @@ export type Action =
   | { type: 'pickOption'; dayKey: string; index: number; liftId: string }
   | { type: 'addOption'; dayKey: string; index: number; liftId: string }
   | { type: 'removeOption'; dayKey: string; index: number; liftId: string }
-  | { type: 'addCustomLift'; id: string; name: string; unit: string; group: string }
+  | { type: 'addCustomLift'; id: string; name: string; unit: string; group: string; equipment?: string }
+  | { type: 'updateCustomLift'; id: string; patch: Partial<CustomLift> }
   | { type: 'setExerciseConfig'; id: string; patch: Partial<ExerciseConfig> }
   | { type: 'restoreDay'; dayKey: string }
   | { type: 'revertDay'; dayKey: string }
@@ -531,9 +536,14 @@ export function reducer(state: State, action: Action): State {
         ...state,
         customLifts: {
           ...state.customLifts,
-          [action.id]: { name: action.name, unit: action.unit, group: action.group },
+          [action.id]: { name: action.name, unit: action.unit, group: action.group, equipment: action.equipment },
         },
       };
+    case 'updateCustomLift': {
+      const prev = state.customLifts[action.id];
+      if (!prev) return state;
+      return { ...state, customLifts: { ...state.customLifts, [action.id]: { ...prev, ...action.patch } } };
+    }
     case 'setExerciseConfig': {
       const prev = state.exerciseConfig[action.id] ?? {};
       return {

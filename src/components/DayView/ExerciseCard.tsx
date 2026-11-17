@@ -836,6 +836,20 @@ export function ExerciseCard({
               {lastDone.ago}
             </button>
           )}
+          {/* custom exercises carry no hint in their name — say what they're on */}
+          {lift.custom && (
+            <button
+              type="button"
+              disabled={!onOpenExercise}
+              onClick={() => onOpenExercise?.(block.lift)}
+              className={[
+                'shrink-0 rounded-full px-2.5 py-0.5 text-[12px] font-semibold',
+                lift.equip ? 'border border-line-2 bg-surface-2 text-ink' : 'border border-dashed border-orange/60 text-orange',
+              ].join(' ')}
+            >
+              {lift.equip ?? 'Set equipment'}
+            </button>
+          )}
           {attachment && (
             <button
               type="button"

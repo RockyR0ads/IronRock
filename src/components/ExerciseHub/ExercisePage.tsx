@@ -1,3 +1,5 @@
+import { customEquipment, unitForCustomEquipment } from '../../domain/customEquipment';
+import { EquipmentChips } from '../EquipmentChips';
 import { attachmentChoosable, attachmentFor, bodyPartOf } from '../../domain/attachments';
 import { loadEntryFor } from '../../domain/loadEntry';
 import { liftMeasure } from '../../domain/measure';
@@ -23,7 +25,7 @@ import {
 } from '../../domain/exerciseConfig';
 import type { Increment, Lift } from '../../domain/types';
 import { REST_DEFAULT } from '../../state/RestTimer';
-import { LIBRARY_BY_ID } from '../../domain/library';
+import { GROUP_ORDER, LIBRARY_BY_ID, type MuscleGroup } from '../../domain/library';
 import { ChevronLeft } from '../common/icons';
 import { ExerciseGuide } from '../common/ExerciseGuide';
 
@@ -124,10 +126,42 @@ export function ExercisePage({ liftId, onBack }: { liftId: string; onBack: () =>
       {tab === 'records' && <RecordsTab series={series} />}
       {tab === 'settings' && (
         <>
+          {lift.custom && <CustomDetails liftId={liftId} />}
           <SettingsTab lift={lift} />
           <ManageSection liftId={liftId} onGone={onBack} />
         </>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- Custom lift */
+
+/** Name, equipment and muscle group of a user-made exercise — editable here. */
+function CustomDetails({ liftId }: { liftId: string }) {
+  const { state, dispatch } = useStore();
+  const c = state.customLifts[liftId];
+  if (!c) return null;
+  const patch = (p: Partial<typeof c>) => dispatch({ type: 'updateCustomLift', id: liftId, patch: p });
+  return (
+    <div className="mb-8 mt-4 space-y-6">
+      <Section title="Name" hint="Make it specific enough to tell apart — e.g. “Lateral raise (machine)”.">
+        <input
+          type="text"
+          defaultValue={c.name}
+          onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== c.name && patch({ name: e.target.value.trim() })}
+          className="w-full rounded-xl border border-line-2 bg-surface-2 px-3.5 py-2.5 text-[14px] text-ink focus:border-secondary focus:outline-none"
+        />
+      </Section>
+      <Section title="Equipment" hint="Shown on the exercise card and in the picker.">
+        <EquipmentChips
+          value={customEquipment(c)}
+          onPick={(equipment) => patch({ equipment, unit: unitForCustomEquipment(equipment) })}
+        />
+      </Section>
+      <Section title="Muscle group" hint="Where its sets count in your weekly volume and overview.">
+        <ChipRow options={GROUP_ORDER.filter((g) => g !== 'Other').map((g) => ({ key: g, label: g }))} value={c.group as MuscleGroup} onPick={(group) => patch({ group })} />
+      </Section>
     </div>
   );
 }

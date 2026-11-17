@@ -73,7 +73,7 @@ export function ExerciseSelector({
     if (!query || onlyIds) return null;
     // word-by-word, plural-tolerant: "lateral raises" finds "Cable lateral raise"
     const norm = (t: string) => (t.length > 3 && t.endsWith('s') && !t.endsWith('ss') ? t.slice(0, -1) : t);
-    const terms = query.toLowerCase().split(/s+/).filter(Boolean).map(norm);
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean).map(norm);
     const hit = (name: string) => {
       const words = name.toLowerCase().split(/[^a-z0-9]+/).map(norm);
       return terms.every((t) => words.some((w) => w.startsWith(t)));

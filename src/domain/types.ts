@@ -33,6 +33,10 @@ export interface Lift {
   uni?: boolean;
   /** Library exercise id, linking to its how-to guide (photos, instructions). */
   lib?: string;
+  /** Custom exercises: what it's done on (Machine, Cable…); undefined = not set. */
+  equip?: string;
+  /** True for a user-made exercise. */
+  custom?: boolean;
 }
 
 /** A fixed rep target or an inclusive [lo, hi] range. */
